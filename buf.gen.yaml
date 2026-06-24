@@ -1,0 +1,24 @@
+# 컨트롤러 전용 코드 생성(검증용). 3언어 stub을 gen/ 아래로 (gitignored).
+# 실제 서비스 stub은 각 다운스트림 레포의 buf.gen.yaml에서 생성한다.
+version: v2
+clean: true
+inputs:
+  - directory: proto
+plugins:
+  # --- Java (messages + grpc) : ws-gateway / doc-service ---
+  - remote: buf.build/protocolbuffers/java
+    out: gen/java
+  - remote: buf.build/grpc/java
+    out: gen/java
+
+  # --- Python (messages + grpc) : ai-service / indexer ---
+  - remote: buf.build/protocolbuffers/python
+    out: gen/python
+  - remote: buf.build/grpc/python
+    out: gen/python
+
+  # --- Rust (prost messages + tonic services) : crdt-engine ---
+  - remote: buf.build/community/neoeinstein-prost
+    out: gen/rust
+  - remote: buf.build/community/neoeinstein-tonic
+    out: gen/rust

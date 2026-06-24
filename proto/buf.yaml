@@ -1,0 +1,17 @@
+# buf 모듈 설정 — proto SSOT.
+# 다운스트림 레포(backend / ai-service / crdt-engine)는 이 디렉터리를 git submodule로 mount하고,
+# 이 buf.yaml(lint/breaking 규칙)을 그대로 공유한다. 코드 생성 플러그인은 각 레포의 buf.gen.yaml.
+version: v2
+modules:
+  - path: .
+lint:
+  # BASIC 채택: RPC 요청/응답을 도메인 이름(ClientFrame/ServerFrame/DocRef 등)으로 쓰기 위해
+  # STANDARD의 RPC_*_STANDARD_NAME / PACKAGE_VERSION_SUFFIX 강제는 적용하지 않는다.
+  # 플랫 레이아웃(common/ crdt/ doc/ ai/)에 맞춰 패키지는 단일 세그먼트.
+  # 필요 시 synapse.*.v1 + STANDARD로 승격 가능.
+  use:
+    - BASIC
+breaking:
+  # wire 호환성 게이트 — 이게 핵심 showcase. 필드 번호/타입 변경 등 호환 파괴를 차단.
+  use:
+    - FILE

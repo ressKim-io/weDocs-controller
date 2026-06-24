@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package ai;
+
+option java_multiple_files = true;
+option java_package = "io.synapse.proto.ai";
+
+// 내부 RAG 검색 계약. 클라이언트向 Q&A/요약은 REST + SSE(토큰 스트림)로 별도 — proto 아님.
+// (AI Service는 stateless 텍스트 in/out, CRDT 미인지 — SDD §0.3 / 가드레일)
+service RagRetriever {
+  rpc Retrieve(RetrieveRequest) returns (RetrieveResponse);
+}
+
+message RetrieveRequest {
+  string doc_id = 1;
+  string query = 2;
+  int32 top_k = 3;
+}
+
+message RetrieveResponse {
+  repeated RetrievedChunk chunks = 1;
+}
+
+message RetrievedChunk {
+  string chunk_id = 1;
+  string text = 2;
+  float score = 3;
+}

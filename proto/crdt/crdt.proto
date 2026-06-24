@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package crdt;
+
+import "common/common.proto";
+
+option java_multiple_files = true;
+option java_package = "io.synapse.proto.crdt";
+
+// CRDT 엔진: 문서별 yrs 상태 머지 / 스냅샷.
+// docId는 Sync 스트림의 gRPC 메타데이터로 전달 → Istio waypoint consistent-hash 라우팅
+// (같은 문서 = 같은 엔진 인스턴스, 인메모리 일관성).
+service CrdtEngine {
+  // 게이트웨이 ↔ 엔진 양방향 스트림. 매 update마다 새 호출 X (연결 유지).
+  rpc Sync(stream ClientFrame) returns (stream ServerFrame);
+
+  // 스냅샷 조회 (복원/디버그용).
+  rpc GetSnapshot(common.DocRef) returns (Snapshot);
+}
+
+// 클라이언트 → 엔진 프레임
+message ClientFrame {
+  string doc_id = 1; // 첫 프레임에서 식별(메타데이터와 일치)
+  bytes update = 2; // yrs/Yjs binary update
+  bytes state_vector = 3; // 신규 접속 시 최소 diff 계산용
+}
+
+// 엔진 → 클라이언트 프레임
+message ServerFrame {
+  bytes update = 1;
+  bytes state_vector = 2;
+}
+
+// encode_state_as_update 결과 blob
+message Snapshot {
+  string doc_id = 1;
+  bytes data = 2;
+}

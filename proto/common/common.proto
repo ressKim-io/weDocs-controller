@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package common;
+
+option java_multiple_files = true;
+option java_package = "io.synapse.proto.common";
+
+// 문서 권한 역할 (Doc 서비스 권한 모델)
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_VIEWER = 1;
+  ROLE_EDITOR = 2;
+  ROLE_OWNER = 3;
+}
+
+// 여러 서비스가 공유하는 문서 참조
+message DocRef {
+  string doc_id = 1;
+}
