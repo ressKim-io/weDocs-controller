@@ -64,12 +64,12 @@ proto 소비자 = crdt-engine + backend 둘뿐. frontend는 gRPC 모름(표준 y
 - [x] 검증 `cargo check --all-targets` + `cargo test`(proptest 2 통과) ✅ · git init + 초기 커밋
 - 비고: prost-build가 protoc 필요 → `protoc-bin-vendored`로 시스템 설치 없이 해결(ADR-0010 codegen 경로 유지).
 
-### Phase B2 — weDocs-backend (Java/ws-gateway)
-- [ ] settings/build.gradle.kts (Java25 toolchain, SpringBoot 4.0.x, Gradle 9.x wrapper)
-- [ ] buf.gen.yaml(java+grpc) + Makefile proto-sync
-- [ ] ws-gateway 모듈: GatewayApplication(VT), DocWebSocketHandler 스텁, EngineClient 스텁, application.yml
-- [ ] README, .gitignore
-- [ ] 검증 `./gradlew :ws-gateway:compileJava`(JDK25+net 가용 시; 아니면 미실행 명시) · git init + 초기 커밋
+### Phase B2 — weDocs-backend (Java/ws-gateway) ✅ (로컬 커밋 f25491e)
+- [x] settings/build.gradle.kts (Java25 toolchain, **Spring Boot 4.1.0**, **Gradle 9.1** wrapper, platform BOM)
+- [x] buf.gen.yaml(protocolbuffers/java v34.1 + grpc/java v1.82.1) + Makefile proto-gen
+- [x] ws-gateway: GatewayApplication(VT) · WebSocketConfig · DocWebSocketHandler 스텁 · EngineClient(CrdtEngineGrpc) · application.yml
+- [x] README · .gitignore (build/·.gradle/ 제외, wrapper jar 포함)
+- [x] 검증 `buf generate` + `./gradlew :ws-gateway:compileJava` 통과 ✅ (grpc-java 1.82.1 / protobuf-java 4.34.1) · git init + 커밋
 
 ### Phase B3 — weDocs-frontend (React/Vite/TS)
 - [ ] Vite React-TS scaffold (package.json, vite.config.ts, tsconfig.json, index.html)
@@ -106,7 +106,7 @@ Gradle 정확 버전(Java25 toolchain), Spring Boot 패치(4.0.6 vs 4.1.0), Vite
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: Phase B1 (crdt-engine) — `cargo check --all-targets`/`cargo test` 통과, 로컬 커밋 3eca141.
-> **다음**: Phase B2(weDocs-backend Java/ws-gateway) → B3(frontend).
+> **마지막 완료**: Phase B2 (ws-gateway) — `buf generate` + `./gradlew compileJava` 통과, 로컬 커밋 f25491e.
+> **다음**: Phase B3(weDocs-frontend React/Vite/Tiptap3) — 마지막 골격.
 > **주의**: 외부 작업(Phase C, push/gh)은 건별 승인 전까지 금지. 서비스 레포 골격은 로컬 git init+커밋까지만.
 > **환경**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 26 · gh 2.95 설치 확인 → 로컬 빌드 검증 가능.
