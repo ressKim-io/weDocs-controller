@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: synapse
+
+resources:
+  - ../../base
+
+# 홈랩 전용 패치는 여기:
+#   - 리소스 limit/request (단일 노드 규모)
+#   - AI Service GPU node affinity
+#   - 이미지 태그 / replica 수
+# patches: []

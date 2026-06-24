@@ -1,0 +1,14 @@
+# docId 기반 consistent hashing → 같은 문서 = 같은 엔진 인스턴스(인메모리 yrs 일관성).
+# waypoint(L7)가 gRPC 메타데이터 헤더를 보고 해시. 키 전달 상세는 M2에서 확정(SDD §15 미해결).
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: crdt-engine-consistent-hash
+  namespace: synapse
+spec:
+  host: crdt-engine.synapse.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      consistentHash:
+        # 게이트웨이가 Sync 스트림 open 시 doc_id를 이 헤더로 전달.
+        httpHeaderName: x-doc-id

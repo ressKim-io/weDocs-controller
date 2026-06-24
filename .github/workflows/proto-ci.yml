@@ -1,0 +1,29 @@
+name: proto-ci
+
+# proto SSOT 게이트. proto 변경 PR은 lint + format + breaking을 통과해야 한다.
+on:
+  pull_request:
+    paths:
+      - "proto/**"
+      - "buf.gen.yaml"
+      - ".github/workflows/proto-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "proto/**"
+
+jobs:
+  buf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # buf breaking이 main 베이스라인과 비교하려면 히스토리 필요
+
+      - uses: bufbuild/buf-action@v1
+        with:
+          input: proto
+          # main 브랜치의 proto/ 와 비교해 wire 호환성 파괴 차단
+          breaking_against: ".git#branch=main,subdir=proto"
+
+  # TODO(M5): buf 통과 시 다운스트림(backend / ai-service / crdt-engine) repository_dispatch 트리거

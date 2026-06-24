@@ -1,0 +1,22 @@
+# app-of-apps 루트. ArgoCD가 이 컨트롤러 레포를 watch하며 홈랩 overlay를 동기화한다.
+# TODO: repoURL을 실제 controller 레포 URL로 교체(폴리레포라 원격 push 후 확정).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: synapse-root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/CHANGEME/weDocs-controller.git
+    targetRevision: main
+    path: infra/k8s/overlays/homelab
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: synapse
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

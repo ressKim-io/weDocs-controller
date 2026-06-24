@@ -1,0 +1,18 @@
+# CRDT Engine 전용 L7 waypoint. 엔진만 L7이 필요한 이유: gRPC consistent-hash 라우팅(docId).
+# 나머지 서비스는 ztunnel L4 mTLS로 충분 → waypoint 미부착(리소스 절약).
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: crdt-engine-waypoint
+  namespace: synapse
+  labels:
+    istio.io/waypoint-for: service
+spec:
+  gatewayClassName: istio-waypoint
+  listeners:
+    - name: mesh
+      port: 15008
+      protocol: HBONE
+---
+# 엔진 Service에 이 waypoint를 사용하도록 지정 (M5에서 Service 생성 시 라벨 부여):
+#   metadata.labels["istio.io/use-waypoint"] = "crdt-engine-waypoint"

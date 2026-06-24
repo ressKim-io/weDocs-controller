@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: synapse
+  labels:
+    # Ambient 데이터플레인 등록 → ztunnel이 이 네임스페이스 전 워크로드에 L4 mTLS 자동 적용.
+    # (사이드카 주입 없음, 코드 무관)
+    istio.io/dataplane-mode: ambient
