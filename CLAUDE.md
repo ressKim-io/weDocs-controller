@@ -25,7 +25,8 @@
 - infra → `infra/` (kustomize · istio ambient · argocd)
 
 ## 현재 상태
-**M0** (기획·proto·스캐폴딩). 다음 리스크 최우선 작업 = **M1**: Yjs↔yrs 상호운용 + bidi 스트림으로 "두 브라우저 동시 편집 수렴" 증명 (crdt-engine + 얇은 ws-gateway + 최소 frontend 수직 슬라이스).
+**M1 진행** — 수직 슬라이스 3레포 골격 완료(빌드 검증 + GitHub PUBLIC): `weDocs-crdt-engine`(Rust/yrs/tonic) · `weDocs-backend`(ws-gateway, Java25 VT/Spring Boot4) · `weDocs-frontend`(React19/Tiptap3/Yjs). proto 배포 = buf 원격 git input(ADR-0010, `proto-v0.1.0` 태그).
+다음 = **M1 본 구현**: y-protocols↔gRPC 브리지 + yrs 머지 + `proptest` 수렴으로 "두 브라우저 동시 편집 수렴" 증명 (crdt-engine 우선). 상세: `docs/plans/2026-06-25-m1-repo-scaffold.md`.
 
 ---
 
