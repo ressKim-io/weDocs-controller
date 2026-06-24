@@ -56,13 +56,13 @@ proto 소비자 = crdt-engine + backend 둘뿐. frontend는 gRPC 모름(표준 y
 - [x] A6. 검증 `buf lint proto && buf build proto` → 통과 ✅ (buf 1.71)
 - [x] A7. commit 분할 (proto / adr / sdd / dev-log+plan)
 
-### Phase B1 — weDocs-crdt-engine (Rust)
-- [ ] Cargo.toml(edition 2024; yrs/tonic/tonic-prost/prost/tokio + build-dep tonic-prost-build + dev proptest/criterion)
-- [ ] build.rs (tonic-prost-build), Makefile `proto-sync`(buf export, ref=main 시작)
-- [ ] src/main.rs · src/engine.rs · src/service.rs 스텁
-- [ ] tests/convergence_proptest.rs (commutative/associative/idempotent 골격)
-- [ ] benches/convergence.rs, README, .gitignore
-- [ ] 검증 `make proto-sync && cargo check` (buf/cargo 설치 시) · git init + 초기 커밋
+### Phase B1 — weDocs-crdt-engine (Rust) ✅ (로컬 커밋 3eca141)
+- [x] Cargo.toml(edition 2024; yrs0.27/tonic0.14/tonic-prost/prost/tokio + tonic-prost-build + **protoc-bin-vendored3** + proptest/criterion0.8)
+- [x] build.rs (tonic-prost-build + vendored protoc PROTOC 주입), Makefile `proto-sync`(buf export)
+- [x] src/main.rs · src/engine.rs(DocRegistry) · src/service.rs(CrdtEngine Sync bidi/GetSnapshot 스텁)
+- [x] tests/convergence_proptest.rs (commutative/idempotent 골격) · benches/convergence.rs · README · .gitignore
+- [x] 검증 `cargo check --all-targets` + `cargo test`(proptest 2 통과) ✅ · git init + 초기 커밋
+- 비고: prost-build가 protoc 필요 → `protoc-bin-vendored`로 시스템 설치 없이 해결(ADR-0010 codegen 경로 유지).
 
 ### Phase B2 — weDocs-backend (Java/ws-gateway)
 - [ ] settings/build.gradle.kts (Java25 toolchain, SpringBoot 4.0.x, Gradle 9.x wrapper)
@@ -106,7 +106,7 @@ Gradle 정확 버전(Java25 toolchain), Spring Boot 패치(4.0.6 vs 4.1.0), Vite
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: Phase A 전체 (proto rename·ADR-0010·SDD·dev-log; `buf lint/build` 통과).
-> **다음**: Phase B1(weDocs-crdt-engine Rust 골격) → B2(backend) → B3(frontend).
+> **마지막 완료**: Phase B1 (crdt-engine) — `cargo check --all-targets`/`cargo test` 통과, 로컬 커밋 3eca141.
+> **다음**: Phase B2(weDocs-backend Java/ws-gateway) → B3(frontend).
 > **주의**: 외부 작업(Phase C, push/gh)은 건별 승인 전까지 금지. 서비스 레포 골격은 로컬 git init+커밋까지만.
 > **환경**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 26 · gh 2.95 설치 확인 → 로컬 빌드 검증 가능.
