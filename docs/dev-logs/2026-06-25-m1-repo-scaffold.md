@@ -3,7 +3,7 @@ date: 2026-06-25
 category: decision
 tier: 1
 importance: major
-status: open
+status: resolved
 tags: [m1, proto, buf, naming, wedocs, scaffold, plan-logging, session-handoff]
 related:
   - plans/2026-06-25-m1-repo-scaffold.md
@@ -38,11 +38,20 @@ related:
 - **Phase 0**: plan-logging 룰 신설 + CLAUDE.md import + memory + `docs/plans/2026-06-25-m1-repo-scaffold.md` 기록 (커밋 18e5138).
 - **Phase A**: java_package rename(5곳) · `proto/README.md`+`buf.yaml` submodule→buf git-input · ADR-0010 작성(대안 5종 비교표) · `adr/README.md` 인덱스(0010 추가, 0006 주석, 미해결서 proto 항목 제거) · SDD §12/§15 갱신.
 
-## 다음 (Phase B — 진행 중)
-- B1 crdt-engine(Rust): Cargo+build.rs(tonic-prost-build)+엔진/서비스 스텁+proptest 골격(M1 가드레일).
-- B2 backend(Java): Gradle 멀티모듈+ws-gateway(VT, WS↔gRPC 브리지 스텁).
-- B3 frontend(React): Vite+Tiptap3+yjs+y-websocket(→gateway).
-- 외부(Phase C, gh repo create/push)는 건별 승인 전 보류.
+## 한 일 (Phase B — 3레포 골격 완료, 로컬 커밋)
+검증된 스택으로 각 레포 빌드까지 통과(로컬 환경: buf 1.71/cargo 1.96/java 25.0.3/node 26 전부 가용).
+- **B1 weDocs-crdt-engine** (3eca141): yrs 0.27 + tonic 0.14(tonic-prost-build, vendored protoc) + proptest/criterion. `cargo check --all-targets`·`cargo test`(수렴 골격 2개) 통과.
+- **B2 weDocs-backend** (f25491e): Gradle 9.1 + Spring Boot 4.1 + Java 25 VT, ws-gateway(WS 핸들러·EngineClient 스텁), `buf generate`(java v34.1/grpc v1.82.1) → `CrdtEngineGrpc`. `./gradlew :ws-gateway:compileJava` 통과.
+- **B3 weDocs-frontend** (4527bec): Vite 8 + React 19 + Tiptap 3.27 + Yjs, WebsocketProvider→gateway. `npm run build`(tsc --noEmit + vite build) 통과.
+
+## 남은 것 (Phase C — 외부, 건별 승인 필요)
+- `gh repo create ressKim-io/weDocs-{crdt-engine,backend,frontend}` + push (서비스 레포는 일반 룰 대상).
+- controller `proto-v0.1.0` 태그 → 다운스트림 buf input `ref` 핀 전환.
+
+## 학습 / 비고
+- prost-build는 protoc 바이너리 필요 → `protoc-bin-vendored`로 시스템 설치 없이 해결(ADR-0010 codegen 경로 유지).
+- backend는 Spring BOM이 protobuf-java를 다른 버전으로 관리할 수 있어 **4.34.1 명시 고정**(buf v34.1 정렬, config-contract-audit).
+- proto 소비자는 crdt-engine·backend 둘뿐 — frontend는 y-websocket(gRPC 비소비자).
 
 ## 재개
-> `docs/plans/2026-06-25-m1-repo-scaffold.md`의 재개 지점 참조. status: open — Phase B 완료 시 이 dev-log를 resolved로 갱신.
+> `docs/plans/2026-06-25-m1-repo-scaffold.md` 재개 지점 참조. Phase 0/A/B 완료(로컬). Phase C(push/gh/태그)는 사용자 승인 후.

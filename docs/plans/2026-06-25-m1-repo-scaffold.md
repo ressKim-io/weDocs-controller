@@ -71,11 +71,11 @@ proto 소비자 = crdt-engine + backend 둘뿐. frontend는 gRPC 모름(표준 y
 - [x] README · .gitignore (build/·.gradle/ 제외, wrapper jar 포함)
 - [x] 검증 `buf generate` + `./gradlew :ws-gateway:compileJava` 통과 ✅ (grpc-java 1.82.1 / protobuf-java 4.34.1) · git init + 커밋
 
-### Phase B3 — weDocs-frontend (React/Vite/TS)
-- [ ] Vite React-TS scaffold (package.json, vite.config.ts, tsconfig.json, index.html)
-- [ ] src/Editor.tsx (Tiptap3 + Collaboration + Y.Doc + WebsocketProvider→gateway), main/App
-- [ ] .env.example(VITE_WS_URL), README, .gitignore
-- [ ] 검증 `tsc --noEmit`/`npm run build`(install 비용 크면 lockfile까지) · git init + 초기 커밋
+### Phase B3 — weDocs-frontend (React/Vite/TS) ✅ (로컬 커밋 4527bec)
+- [x] Vite8 React19 TS6 scaffold (package.json[pinned], vite.config.ts, tsconfig.json, index.html, vite-env.d.ts)
+- [x] src/Editor.tsx (Tiptap 3.27 Collaboration + Y.Doc + WebsocketProvider→gateway) · main/App · index.css
+- [x] .env.example(VITE_WS_URL) · README · .gitignore
+- [x] 검증 `npm install`(81pkg, 0 vuln) + `npm run build`(tsc --noEmit + vite build) 통과 ✅ · git init + 커밋
 
 ### Phase C — 외부 (건별 승인 필수, 도달 시 별도 요청) — **아직 안 함**
 - [ ] gh repo create + push (3 레포)
@@ -106,7 +106,8 @@ Gradle 정확 버전(Java25 toolchain), Spring Boot 패치(4.0.6 vs 4.1.0), Vite
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: Phase B2 (ws-gateway) — `buf generate` + `./gradlew compileJava` 통과, 로컬 커밋 f25491e.
-> **다음**: Phase B3(weDocs-frontend React/Vite/Tiptap3) — 마지막 골격.
+> **마지막 완료**: Phase B 전체 — 3레포 골격 빌드·검증 통과, 각 로컬 커밋(crdt `3eca141` / backend `f25491e` / frontend `4527bec`).
+> **남은 것**: Phase C(외부, 건별 승인 필요) — `gh repo create` 3개 + push, controller `proto-v0.1.0` 태그. **사용자 승인 전 보류**.
+> **주의**: 서비스 레포는 로컬 커밋만 완료. 푸시/원격생성 미실행.
 > **주의**: 외부 작업(Phase C, push/gh)은 건별 승인 전까지 금지. 서비스 레포 골격은 로컬 git init+커밋까지만.
 > **환경**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 26 · gh 2.95 설치 확인 → 로컬 빌드 검증 가능.
