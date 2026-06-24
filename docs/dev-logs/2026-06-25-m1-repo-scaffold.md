@@ -44,9 +44,10 @@ related:
 - **B2 weDocs-backend** (f25491e): Gradle 9.1 + Spring Boot 4.1 + Java 25 VT, ws-gateway(WS 핸들러·EngineClient 스텁), `buf generate`(java v34.1/grpc v1.82.1) → `CrdtEngineGrpc`. `./gradlew :ws-gateway:compileJava` 통과.
 - **B3 weDocs-frontend** (4527bec): Vite 8 + React 19 + Tiptap 3.27 + Yjs, WebsocketProvider→gateway. `npm run build`(tsc --noEmit + vite build) 통과.
 
-## 남은 것 (Phase C — 외부, 건별 승인 필요)
-- `gh repo create ressKim-io/weDocs-{crdt-engine,backend,frontend}` + push (서비스 레포는 일반 룰 대상).
-- controller `proto-v0.1.0` 태그 → 다운스트림 buf input `ref` 핀 전환.
+## Phase C (완료 — PUBLIC push, 사용자 승인)
+- controller main + `proto-v0.1.0` 태그 → origin push.
+- `gh repo create ressKim-io/weDocs-{crdt-engine,backend,frontend} --public --push` 완료.
+- 4레포 전부 GitHub PUBLIC. 이후 서비스 레포 변경은 일반 룰(브랜치+PR+승인).
 
 ## 학습 / 비고
 - prost-build는 protoc 바이너리 필요 → `protoc-bin-vendored`로 시스템 설치 없이 해결(ADR-0010 codegen 경로 유지).

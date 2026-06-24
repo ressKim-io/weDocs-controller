@@ -1,7 +1,7 @@
 ---
 date: 2026-06-25
 slug: m1-repo-scaffold
-status: in-progress
+status: done
 related:
   - adr/0010-proto-distribution-buf-git-input.md
   - dev-logs/2026-06-25-m1-repo-scaffold.md
@@ -77,9 +77,9 @@ proto 소비자 = crdt-engine + backend 둘뿐. frontend는 gRPC 모름(표준 y
 - [x] .env.example(VITE_WS_URL) · README · .gitignore
 - [x] 검증 `npm install`(81pkg, 0 vuln) + `npm run build`(tsc --noEmit + vite build) 통과 ✅ · git init + 커밋
 
-### Phase C — 외부 (건별 승인 필수, 도달 시 별도 요청) — **아직 안 함**
-- [ ] gh repo create + push (3 레포)
-- [ ] controller `proto-v0.1.0` 태그 → 다운스트림 ref 핀 전환
+### Phase C — 외부 (PUBLIC, 사용자 승인 후 실행) ✅
+- [x] controller push (main → origin) + `proto-v0.1.0` 태그 push
+- [x] gh repo create ressKim-io/weDocs-{crdt-engine,backend,frontend} --public --push (3 레포)
 
 ---
 
@@ -96,7 +96,7 @@ proto 소비자 = crdt-engine + backend 둘뿐. frontend는 gRPC 모름(표준 y
 - doc-service / ai-service 레포
 - M1 수렴 로직 본체 (골격만; y-protocols↔gRPC 브리지·yrs 머지·proptest 본문은 후속)
 - infra/ 서비스명·네임스페이스 갱신 (후속)
-- 외부 GitHub 레포 생성·push (Phase C, 승인 전 보류)
+- ~~외부 GitHub 레포 생성·push~~ → 사용자 승인 후 Phase C로 실행 완료(PUBLIC)
 
 ## 미결 (write-time 재검증)
 
@@ -106,8 +106,8 @@ Gradle 정확 버전(Java25 toolchain), Spring Boot 패치(4.0.6 vs 4.1.0), Vite
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: Phase B 전체 — 3레포 골격 빌드·검증 통과, 각 로컬 커밋(crdt `3eca141` / backend `f25491e` / frontend `4527bec`).
-> **남은 것**: Phase C(외부, 건별 승인 필요) — `gh repo create` 3개 + push, controller `proto-v0.1.0` 태그. **사용자 승인 전 보류**.
-> **주의**: 서비스 레포는 로컬 커밋만 완료. 푸시/원격생성 미실행.
+> **마지막 완료**: 전 Phase(0/A/B/C) 완료. 4레포 모두 GitHub **PUBLIC** push + `proto-v0.1.0` 태그.
+> **다음 작업(M1 본 구현)**: y-protocols↔gRPC 브리지 + yrs 머지 + proptest 수렴 본체 → "두 탭 동시 편집 수렴" 증명. crdt-engine 우선(rust-expert).
+> **주의**: 서비스 레포는 일반 룰(브랜치+PR+승인) — 이후 변경은 main 직접 push 금지(controller만 직접 허용).
 > **주의**: 외부 작업(Phase C, push/gh)은 건별 승인 전까지 금지. 서비스 레포 골격은 로컬 git init+커밋까지만.
 > **환경**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 26 · gh 2.95 설치 확인 → 로컬 빌드 검증 가능.
