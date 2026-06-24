@@ -4,27 +4,24 @@
 ## 12. 레포 구조 (5-repo 폴리레포)
 
 ```
-① frontend/        React + Tiptap + Yjs + 커스텀 y-websocket provider
+① weDocs-frontend/    React + Tiptap + Yjs + y-websocket provider (gRPC 비소비자)
 
-② backend/         Java만 (gradle 멀티모듈)
-   ├── ws-gateway/   (Spring Boot, Virtual Thread)
-   ├── doc-service/  (Spring Boot, Security/JPA)
-   ├── proto/        → git submodule (controller/proto)
-   └── buf.gen.yaml
+② weDocs-backend/     Java만 (gradle 멀티모듈)
+   ├── ws-gateway/   (Spring Boot 4 / Virtual Thread)
+   ├── doc-service/  (Spring Boot, Security/JPA — M2+)
+   └── buf.gen.yaml  → buf 원격 git input (controller proto, ADR-0010)
 
-③ ai-service/      Python (uv/poetry)
+③ weDocs-ai-service/ Python (uv/poetry)
    ├── app/          (FastAPI + LlamaIndex)
    ├── indexer/      (Kafka consumer)
-   ├── proto/        → git submodule
-   └── buf.gen.yaml
+   └── buf.gen.yaml  → buf 원격 git input
 
-④ crdt-engine/     Rust (cargo)
+④ weDocs-crdt-engine/ Rust (cargo)
    ├── src/          (yrs 엔진 + tonic gRPC)
    ├── benches/      (criterion)
-   ├── proto/        → git submodule
-   └── buf.gen.yaml
+   └── build.rs      → buf export + tonic-prost-build (proto vendored, gitignored)
 
-⑤ controller/      컨트롤 플레인
+⑤ weDocs-controller/  컨트롤 플레인
    ├── proto/        ★proto SSOT (common/ crdt/ doc/ ai/)
    ├── infra/
    │   ├── k8s/      (kustomize base+overlays)
@@ -35,7 +32,7 @@
    ├── ci/           (buf breaking 게이트 + 다운스트림 트리거)
    └── docs/         (PRD.md, SDD.md, adr/)
 ```
-- proto SSOT는 controller. ①②③④가 submodule로 참조, 각자 `buf generate`로 stub.
+- proto SSOT는 controller. gRPC 소비자(②③④)가 **buf 원격 git input**으로 참조해 stub 생성(submodule 아님 — ADR-0010). ①(frontend)은 gRPC 비소비자(y-websocket).
 - infra는 controller에 흡수(별도 레포 X).
 - 폴리레포 비용(proto 동기화, CI 5벌)은 controller의 멀티레포 오케스트레이션 + buf 게이트로 관리 → 그 자체가 DevOps showcase.
 
@@ -79,7 +76,7 @@
 3. **AI Python/LlamaIndex** — "모델 통합"이 아니라 "AI 생태계 깊이"가 목적. RAG 품질 차별화.
 4. **Rust 독립 엔진 + bidi streaming** — 단순 래퍼 아님. consistent hashing으로 stateful 확장. (사이드카·FFI 기각: stateful 충돌 / VT pinning)
 5. **CRDT 라이브러리 yrs** — 클라 Yjs와 wire 호환. 직접 구현은 학습용 1모듈로 INTERNALS 문서화.
-6. **5-repo 폴리레포 + buf + submodule** — infra는 controller 흡수. proto SSOT=controller.
+6. **5-repo 폴리레포 + buf** — proto 배포 = buf 원격 git input(submodule 아님 — ADR-0010). infra는 controller 흡수. proto SSOT=controller.
 7. **Istio Ambient** — ztunnel L4 mTLS 전부, waypoint L7은 엔진만(consistent hash).
 8. **vector store=pgvector** — 별도 DB 미도입.
 9. **배포 메인=홈랩 KinD + 로컬 GPU**. 멀티클라우드 생략.
