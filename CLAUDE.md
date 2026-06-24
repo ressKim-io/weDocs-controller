@@ -55,3 +55,14 @@
 **Rust/CRDT `rust-expert`** ★(엔진 핵심) / 언어 `java-expert`·`python-expert` / 리뷰 `code-reviewer`·`cicd-reviewer`·`dockerfile-reviewer` / 아키텍처 `architect-agent`(proto·계약)·`saga-agent`(outbox) / 메시 `service-mesh-expert`(Istio Ambient) / 관측 `otel-expert`·`observability-reviewer` / K8s·GitOps `k8s-troubleshooter`·`k8s-reviewer`·`gitops-reviewer`·`platform-engineer` / 데이터 `database-expert`·`redis-expert` / 메시징 `messaging-expert` / 기타 `debugging-expert`·`git-workflow`·`tech-lead`
 
 지식 참조: `.claude/skills/<category>/` (on-demand, 17개 카테고리 — `rust/`에 `crdt-yrs`·`crdt-convergence-testing` 신규). 신규 작성 표준: `.claude/templates/`.
+
+---
+
+## 커밋·push 규칙 (이 레포 전용 오버라이드)
+
+> 일반 룰 `git.md`("main 직접 push 금지")·`user-approval.md`("push는 승인 후")를 **이 controller 레포에 한해** 오버라이드한다. controller는 솔로 컨트롤 플레인이라 PR 게이트가 불필요.
+
+- ✅ **controller는 `main`에 직접 commit·push 허용** — push마다 별도 승인 안 받아도 됨(사용자 사전 승인됨).
+- ✅ **커밋은 논리 단위로 분할** — 한 커밋에 몰지 말 것. 영역별(proto / docs / infra / ci / claude …) Conventional Commit.
+- ⛔ **서비스 레포는 예외 아님** — `backend` / `ai-service` / `crdt-engine` / `frontend`는 일반 룰 적용(브랜치 + PR + 승인).
+- 그 외(force push 금지, 시크릿 커밋 금지, `git add .` 지양·명시적 스테이징)는 `git.md` 그대로.
