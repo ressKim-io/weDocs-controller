@@ -1,0 +1,74 @@
+# {PROJECT_NAME} — Memory Index
+
+> Anthropic 메모리 시스템 진입점. 새 세션 시작 시 Tier 0 자동 로딩.
+> 이 파일은 인덱스만 — 메모리 본문은 `memory/{type}_{topic}.md` 에 저장.
+
+## 빠른 진입
+- `INDEX.md` 먼저 (프로젝트 루트) → 자산 위치 / 슬래시 커맨드 목록
+- `/where <키워드>` → 인덱스 + 카드 + 메모리 + dev-log 횡단 검색
+- `/related <개념>` → timeline 재구성
+- `/consolidate-memory` → 메모리 정리 (dry-run 기본)
+
+## Project Status
+- {프로젝트 단계 / 마일스톤 / 데드라인}
+- 자세한 진행 자료: `INDEX.md`, `memory/project_*`
+
+## User
+- {사용자 역할 / 책임 / 의사결정 권한}
+- {커뮤니케이션 선호도}
+
+## 미해결 — 이어갈 작업
+- [작업 1](memory/project_*.md)
+- [작업 2](memory/trouble_*.md)
+- **🎯 다음 세션 시작점**: {다음 작업 진입 가이드}
+
+## 현재 작업 (active)
+- [현재 작업 1](memory/project_*.md) — 1줄 설명
+- [현재 작업 2](memory/project_*.md) — 1줄 설명
+
+## Git/PR 규칙
+- {레포별 커밋/PR 권한 매트릭스}
+- {커밋 메시지 컨벤션}
+- {PR 루틴 (auto-review, gap 분석 등)}
+
+## Permanent Feedback (행동 규칙, 영구)
+- [피드백 1](memory/feedback_*.md)
+- [피드백 2](memory/feedback_*.md)
+
+## Reference TOP 5 (자주 호출)
+- [참조 1](memory/reference_*.md)
+- [참조 2](memory/reference_*.md)
+
+전체 reference 목록: `ls memory/reference_*`
+
+## ADR 현황 (요약)
+- 완료: {NNNN, ...}
+- Proposed: {NNNN — 상태}
+- 전체: `docs/adr/`
+
+---
+
+## 메모리 작성 가이드
+
+### Types
+- `user` — 사용자 역할/선호/지식
+- `feedback` — 행동 규칙 (영구). Body: 규칙 + **Why:** + **How to apply:**
+- `project` — 진행 중 작업/결정/마일스톤. 날짜 ISO 8601. 1~2분기 후 stale 가능성
+- `reference` — 외부 시스템 포인터 (Linear, Grafana, Slack 등)
+
+### Frontmatter
+```yaml
+---
+name: {memory name}
+description: {1줄 설명}
+type: {user|feedback|project|reference}
+---
+```
+
+### NOT 저장
+- 코드 패턴/컨벤션 — git/source 에서 derivable
+- git 히스토리 — `git log/blame` 이 SoT
+- 디버깅 fix 레시피 — 코드 + commit 메시지가 충분
+- ephemeral 진행 상태 — 세션 context
+
+상세 가이드: `~/.claude/projects/{slug}/memory/` 의 시스템 prompt 또는 본 프로젝트 `AGENTS.md` §auto memory

@@ -1,0 +1,85 @@
+---
+date: {YYYY-MM-DD}
+category: {troubleshoot|decision|migration|meta}
+tier: {1|2|3|4}
+importance: {critical|major|minor}
+status: {open|resolved|superseded}
+tags: [tag1, tag2]
+related:
+  - dev-logs/{YYYY-MM-DD-...}.md
+  - adr/{NNNN-...}.md
+  - memory/{...}.md
+# replaced_by: dev-logs/{YYYY-MM-DD-...}.md   # status: superseded 만
+---
+
+# {제목 — 동사형 / 명확한 사건 기술}
+
+## Context
+
+- 발생 환경: {repo 이름 / 환경 (dev/staging/prod) / 영향 범위}
+- 트리거: {언제 / 어떻게 발견되었나}
+- 관련 컴포넌트: {서비스명, 버전, 의존 라이브러리}
+
+## Issue
+
+- 증상: {로그 / 메트릭 / 사용자 보고 — 정확한 에러 메시지 포함}
+- 재현 조건: {minimal reproducible steps}
+- 영향: {RPS / 사용자 수 / SLO 영향 / 비용}
+
+```
+# 핵심 로그 / 스택트레이스 / 메트릭 스냅샷
+```
+
+## Action
+
+### 가설 → 검증 루프
+
+1. **가설 1**: {원인 가설} — **근거**: {로그/설정/코드 참조} — **검증**: {관찰 방법} — **결과**: confirmed/rejected/inconclusive
+2. **가설 2**: {...}
+
+> 가설 3개 연속 기각 시 초기 가정 재검토. 5개 기각 시 사용자 보고.
+
+### 근본 원인 (Root Cause)
+
+{왜 이렇게 동작하는지 — 코드/설정/라이브러리/플랫폼 기본값 등 정확한 위치}
+
+### 적용한 수정
+
+- {파일/설정 변경 N건}
+- {배포/rollout 절차}
+- {검증 방법 (테스트 / 메트릭 / 로그)}
+
+```diff
+# 핵심 diff
+```
+
+## Result
+
+- 증상 해소 확인: {메트릭 그래프 / 로그 / 사용자 응답}
+- regression 점검: {다른 영역 영향 없음}
+- 후속 작업: {monitoring alert 추가, 회귀 테스트, 문서화 등}
+
+## Failure Type Tags
+
+> `.claude/rules/debugging.md` §실패 유형 분류 참조
+
+- [ ] `context-missing`
+- [ ] `manual-config-blind`
+- [ ] `residual-effect`
+- [ ] `env-difference`
+- [ ] `dependency-unknown`
+- [ ] `wrong-layer`
+- [ ] `race-timing`
+
+## Learning / Universal Lesson
+
+> 이 사고가 다른 프로젝트에도 적용 가능한 일반 교훈인가?
+> Yes 면 `/promote-devlog <slug>` 로 ADR/skill 승격 후보.
+
+- {1~2줄 교훈}
+- 일반화 가능 여부: {Yes/No/Maybe — 같은 패턴 3건 누적 시 promote}
+
+## 관련 자료
+
+- {연관 dev-log / ADR / memory / repo-card}
+- {외부 링크 — vendor docs, CHANGELOG 등}

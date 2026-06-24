@@ -1,0 +1,97 @@
+# ADR-{NNNN}: {결정 한 줄 요약}
+
+| 항목 | 값 |
+|------|---|
+| **상태** | {Proposed \| Accepted \| Deprecated \| Superseded by ADR-NNNN} |
+| **결정일** | {YYYY-MM-DD} |
+| **결정자** | {@user, @team-lead} |
+| **컨텍스트 범위** | {repo 이름 / 시스템 전체 / 특정 모듈} |
+| **관련 dev-logs** | dev-logs/{YYYY-MM-DD-...}.md |
+
+---
+
+## Context
+
+> 왜 이 결정이 필요한가? 어떤 force (제약 / 요구사항) 가 있는가?
+
+- 비즈니스 요구: {기능 / SLO / 비용 / 일정}
+- 기술 제약: {기존 시스템 / 호환성 / 팀 역량}
+- 외부 요인: {벤더 정책 / 규제 / 보안 요구}
+
+---
+
+## Decision
+
+> 결정 자체. "We will use X because Y" 형태.
+
+### 선택한 옵션: **{Option N}**
+
+{1~2 문단으로 결정 내용 명시}
+
+---
+
+## Considered Options
+
+### Option 1: {옵션 이름}
+
+- **장점**: {bullet}
+- **단점**: {bullet}
+- **비용**: {시간 / $ / 운영 부담}
+- **위험**: {실패 시 영향}
+
+### Option 2: {옵션 이름}
+
+- **장점**: {bullet}
+- **단점**: {bullet}
+- **비용**: {시간 / $ / 운영 부담}
+- **위험**: {실패 시 영향}
+
+### Option 3: {옵션 이름 — 또는 "Do Nothing"}
+
+- **장점**: {bullet}
+- **단점**: {bullet}
+
+---
+
+## Consequences
+
+> 결정의 결과. 긍정 / 부정 / 중립 모두.
+
+### 긍정 (Pros)
+- {결과}
+- {결과}
+
+### 부정 (Cons / Trade-offs)
+- {감수해야 할 trade-off}
+- {새로 생기는 위험 / 부채}
+
+### 중립 (Neutral)
+- {변경되지만 좋지도 나쁘지도 않은 점}
+
+---
+
+## Validation / Success Criteria
+
+> 결정이 옳았는지 어떻게 측정하나?
+
+- [ ] 메트릭 X 가 Y 이내
+- [ ] 운영 비용이 Z 이하 유지
+- [ ] N개월 후 회고 — 결정 반복 여부 평가
+
+---
+
+## Implementation Notes
+
+> 구현 시 주의사항 / 단계 / 마일스톤.
+
+- Phase 1: {...}
+- Phase 2: {...}
+- 롤백 계획: {git revert / feature flag / 데이터 마이그레이션}
+
+---
+
+## References
+
+- {외부 자료 — vendor docs, blog, paper}
+- {연관 ADR}
+- {연관 dev-log / postmortem}

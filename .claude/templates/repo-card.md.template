@@ -1,0 +1,101 @@
+# {REPO_NAME}
+
+> 레포 1페이지 요약. `/where` `/related` 가 hotspot 검색 시 참조.
+> 5분 작성, 분기 1회 갱신.
+
+## Overview
+
+- **목적**: {1~2줄. "무엇을 하는 서비스/레포인가"}
+- **언어/스택**: {Java 21 + Spring Boot 3.5 / Go 1.22 / TypeScript + React 19 / Terraform / Helm 등}
+- **메인 브랜치**: `{main|develop}`
+- **Remote**: `{git@github.com:org/repo.git}`
+- **컨벤션**: {커밋 형식 / 이슈 템플릿 / PR 템플릿 위치}
+
+---
+
+## 진입점
+
+| 위치 | 역할 |
+|------|------|
+| `src/main/java/.../Application.java` | 앱 부트스트랩 |
+| `cmd/server/main.go` | Go 엔트리 |
+| `chart/templates/` | Helm 매니페스트 |
+| `terraform/main.tf` | 인프라 IaC root |
+| `.github/workflows/*.yml` | CI/CD |
+
+---
+
+## 핵심 모듈 / 디렉토리
+
+| 디렉토리 | 책임 |
+|---------|------|
+| `domain/` | 도메인 모델 / Aggregate |
+| `application/` | UseCase / Service |
+| `infrastructure/` | DB / 외부 API adapter |
+| `interface/` | REST / gRPC controller |
+
+---
+
+## Hotspot (트러블 빈도 높은 영역)
+
+> dev-logs 중 이 레포 태그가 붙은 트러블의 영역을 1줄씩 기록.
+> `/where <키워드>` 가 이 섹션에서 hit 검색.
+
+- {모듈 A — 인증/JWT 관련 트러블 N건}
+- {모듈 B — DB 쿼리 성능 / connection pool}
+- {모듈 C — 외부 API 통합}
+
+---
+
+## 의존성 (외부)
+
+| 시스템 | 종류 | 진입점 |
+|--------|------|--------|
+| PostgreSQL | DB | `application.yml` `spring.datasource.url` |
+| Redis | Cache / Lock | `application.yml` `spring.redis.host` |
+| Kafka | Event | `application.yml` `spring.kafka.bootstrap-servers` |
+| External API X | REST | `infrastructure/external/XClient.java` |
+
+---
+
+## 운영 / 모니터링
+
+| 항목 | 위치 |
+|------|------|
+| Grafana 대시보드 | `{url}` 또는 `monitoring-repo/grafana/dashboards/{repo}.json` |
+| Alert rules | `monitoring-repo/prometheus/rules/{repo}.yml` |
+| Tracing | Tempo / Jaeger UI 에서 `service.name=...` 필터 |
+| Log query | LogQL: `{service_name="{repo}"} \| logfmt` |
+| SLI/SLO | `docs/sre/sli-slo.md` |
+
+---
+
+## 관련 자료
+
+| 종류 | 위치 |
+|------|------|
+| ADR | `docs/adr/` 중 이 레포 관련 |
+| 마이그레이션 | `docs/migration/` |
+| Postmortem | `docs/postmortem/` |
+| Architecture | `docs/architecture/{repo}.md` |
+
+---
+
+## 권한 / 컨벤션
+
+- **커밋 형식**: {Conventional Commits / `[TYPE] 설명 (#이슈)`}
+- **Claude commit/push**: {✅ / ❌ 추천만}
+- **Claude PR/이슈 생성**: {✅ / ❌ 추천만}
+- **PR 템플릿**: `.github/pull_request_template.md`
+- **이슈 템플릿**: `.github/ISSUE_TEMPLATE/`
+
+---
+
+## 부트스트랩 메모
+
+> 이 레포 처음 만지는 사람을 위한 5분 가이드.
+
+1. `git clone` + IDE open
+2. `{언어별 setup command}` (`./gradlew build`, `go mod tidy`, `npm install` 등)
+3. `{로컬 실행 command}`
+4. 첫 디버깅 시 hotspot 섹션 참조

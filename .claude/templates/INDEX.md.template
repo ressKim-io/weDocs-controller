@@ -1,0 +1,74 @@
+# {PROJECT_NAME} — INDEX
+
+> 프로젝트 자산 진입점. `/where`, `/related` 슬래시 커맨드가 이 파일을 참조한다.
+> 부트스트랩 후 빈 줄을 채우고 commit. 이후 자산 추가/이동 시 함께 갱신.
+
+---
+
+## Repository / Service 인덱스
+
+| 이름 | 설명 | 메인 브랜치 | Remote | repo-card |
+|------|------|-----------|--------|-----------|
+| {repo-1} | {1줄 설명} | {main\|develop} | {git url} | [card](docs/repo-cards/{repo-1}.md) |
+| {repo-2} | {1줄 설명} | {main} | {git url} | [card](docs/repo-cards/{repo-2}.md) |
+
+---
+
+## 자산 위치
+
+| 자산 | 위치 | 설명 |
+|------|------|------|
+| Architecture docs | `docs/architecture/` | 인프라/네트워크 경로, 수동 설정 |
+| ADR | `docs/adr/NNNN-제목.md` | 기술/아키텍처 결정 |
+| Dev-logs | `docs/dev-logs/YYYY-MM-DD-제목.md` | 트러블슈팅 / 결정 / migration / meta |
+| Repo cards | `docs/repo-cards/{repo}.md` | 레포별 1페이지 요약 |
+| Postmortem | `docs/postmortem/YYYY-MM-DD-제목.md` | 프로덕션 장애 사후 분석 |
+| Migration | `docs/migration/NNNN-제목.md` | 환경/버전 전환 |
+| Version matrix | `docs/version-matrix.md` | K8s/Istio/ArgoCD/Java/OTel 호환 |
+| Memory (Claude) | `~/.claude/projects/{slug}/memory/` | 영구 메모리 (사용자/feedback/project/reference) |
+
+---
+
+## 핵심 슬래시 커맨드
+
+| 의도 | 커맨드 | 동작 |
+|------|--------|------|
+| "이거 어디 있지?" | `/where <키워드>` | INDEX + repo-cards + memory + dev-log 횡단 검색 |
+| "이거 어떻게 흘러왔지?" | `/related <개념>` | timeline 재구성 + CURRENT STATE 합성 |
+| 메모리 정리 | `/consolidate-memory` | stale/duplicate/orphan 분류 (dry-run) |
+| dev-log Tier 산출 | `/consolidate-devlogs` | frontmatter 기반 자동 분류 |
+| Tier 2 → ADR/skill | `/promote-devlog <slug>` | episodic → semantic 승격 |
+| Tier 4 archive | `/archive-devlog <slug>` | superseded 이동 |
+| 트러블 기록 | `/log-trouble` | dev-log troubleshoot |
+| 결정 기록 | `/log-decision` | ADR or decision dev-log |
+| meta 기록 | `/log-meta` | AI 워크플로우 변경 |
+
+---
+
+## 진행 중 (active)
+
+- {프로젝트 상태 / 마일스톤 / 현재 작업}
+- 자세한 진행: `~/.claude/projects/{slug}/memory/MEMORY.md` 또는 `memory/project_*`
+
+---
+
+## 컨벤션 / 권한 매트릭스
+
+| 레포 | 커밋 형식 | Claude commit/push | Claude PR/이슈 |
+|------|----------|-------------------|---------------|
+| {this-repo} | Conventional Commits | ✅ / ❌ | ✅ / ❌ |
+| {team-repo} | `[TYPE] 설명 (#이슈)` | ❌ 추천만 | ❌ 추천만 |
+
+자세한 권한 / 컨벤션은 본 프로젝트 `AGENTS.md` 참조.
+
+---
+
+## 부트스트랩 체크
+
+새 프로젝트 활성화 단계:
+
+- [ ] 본 `INDEX.md` 의 빈 줄 채움
+- [ ] `docs/repo-cards/{repo}.md` 각 5분 작성 (`templates/repo-card.md.template`)
+- [ ] `docs/version-matrix.md` 채움 (`templates/version-matrix.md.template`)
+- [ ] 빈 `docs/{adr,dev-logs,postmortem,migration,architecture}/` 디렉토리
+- [ ] `~/.claude/projects/{slug}/memory/MEMORY.md` 초기화 (`templates/MEMORY.md.template`)

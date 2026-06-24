@@ -1,0 +1,162 @@
+---
+phase: {phase-slug}
+date: {YYYY-MM-DD}
+status: {draft|review|approved|implementing|merged}
+owner: {@user}
+related:
+  - adr/{NNNN-...}.md
+  - dev-logs/{YYYY-MM-DD-...}.md
+depends_on: []
+---
+
+# SDD: {Phase 제목 — 동사형 / 명확한 목표}
+
+> Software Design Document. `.claude/rules/phase-workflow.md` Gate 1-5 강제 대상.
+> 이 문서가 없으면 코드 구현 금지. 작성 후 `code-reviewer` 에이전트 리뷰 필수 (Gate 2).
+
+---
+
+## 1. Background
+
+> 왜 이 작업이 필요한가? 어떤 비즈니스/기술 force 가 있는가?
+
+- **트리거**: {장애 / 신규 기능 요구 / 마이그레이션 / 컴플라이언스}
+- **영향 범위**: {repo / 서비스 / 모듈 / 사용자 수}
+- **현재 상태의 문제**: {정량적 표현 — RPS, 비용, SLO 위반 등}
+- **관련 ADR**: {ADR-NNNN 링크 — 이 SDD 가 어떤 결정을 구현하는가}
+
+---
+
+## 2. Requirements (수락 기준)
+
+### Functional Requirements
+
+- [ ] **FR1**: {기능 요구 — 검증 가능한 형태로}
+- [ ] **FR2**: {...}
+- [ ] **FR3**: {...}
+
+### Non-Functional Requirements
+
+- [ ] **NFR1**: SLO — 예: p99 < 200ms, 에러율 < 0.1%
+- [ ] **NFR2**: 비용 — 예: 월 $X 이하
+- [ ] **NFR3**: 보안 — 예: PIPA 24h breach notification 대응 가능
+- [ ] **NFR4**: 호환성 — 예: 기존 API v1 무중단 유지
+
+### Out of Scope
+
+> 이 Phase 에서 다루지 않는 것 — 명시적으로 제외.
+
+- {나중에 별도 Phase 로 할 작업}
+
+---
+
+## 3. Design
+
+### 3.1 Architecture Overview
+
+```
+{ASCII 다이어그램 또는 mermaid — 컴포넌트 간 관계}
+```
+
+### 3.2 API Spec
+
+| Method | Path | Request | Response | 인증 |
+|--------|------|---------|----------|------|
+| POST | /api/v1/X | {schema} | {schema} | JWT |
+| GET | /api/v1/X/:id | - | {schema} | JWT |
+
+신규/변경 API 만 기술. 기존 API 영향 시 §4 Migration 에 명시.
+
+### 3.3 Data Model
+
+| 테이블/컬렉션 | 변경 | 마이그레이션 필요 |
+|-------------|------|----------------|
+| {name} | 신규 / 컬럼 추가 / 인덱스 추가 | Yes/No |
+
+스키마 변경은 `migration/expand-contract-pattern.md` skill 적용 (online migration).
+
+### 3.4 외부 의존
+
+- {외부 API / 메시지 큐 / DB / 캐시 — 추가/변경 항목만}
+
+---
+
+## 4. Implementation Steps
+
+> Step 별 의존성 명시. 병렬 가능한 Step 은 같은 column.
+
+| Step | 작업 | 의존성 | 추정 | 검증 방법 |
+|------|------|--------|------|---------|
+| S1 | {DB 마이그레이션 — expand 단계} | - | 1h | 마이그레이션 PR merge + sanity query |
+| S2 | {API 핸들러 구현} | S1 | 4h | unit test |
+| S3 | {Contract test 추가} | S2 | 2h | CDC 통과 |
+| S4 | {feature flag 도입} | S2 | 1h | flag toggle 검증 |
+| S5 | {부하 테스트} | S2, S3 | 2h | NFR1 통과 |
+| S6 | {expand-contract: contract 단계 — 옛 컬럼 제거} | S5 후 안정화 1주 | 30m | 별도 마이그레이션 PR |
+
+**Phase 내 작업 단위는 PR 1-2 개로 압축**. Step 이 5개 이상이면 Phase 를 분할 권장.
+
+---
+
+## 5. Test Strategy
+
+### 5.1 단위 테스트
+
+- {대상 함수 / 클래스} — 시나리오 N 개 (happy / edge / error)
+- 목표 커버리지: 핵심 비즈니스 로직 95%+
+
+### 5.2 통합 테스트
+
+- 외부 의존: {DB / Redis / Kafka} — TestContainers 사용
+- 데이터 시드: {프리셋}
+
+### 5.3 부하 테스트 (NFR 검증 필요 시)
+
+- 도구: {K6 / Gatling / nGrinder}
+- 시나리오: {ramp-up profile, target RPS, 지속 시간}
+- 합격 기준: §2 NFR1 충족
+
+### 5.4 Negative Path / Chaos (선택)
+
+- 외부 의존 실패 시 동작 — `testing/negative-path-coverage.md` skill
+- 다운스트림 지연 / 5xx / timeout
+
+---
+
+## 6. Phase Gates
+
+> 진행 상태 추적. `/phase-start <slug>` 출력과 동일 항목. 각 Gate 완료 시 체크.
+
+- [ ] **Gate 1**: SDD 작성 완료 (이 문서)
+- [ ] **Gate 2**: SDD 리뷰 완료 (code-reviewer 에이전트 + 피드백 반영)
+- [ ] **Gate 3**: 코드 구현 + 코드 리뷰 + 피드백 반영
+- [ ] **Gate 4**: 테스트 작성 + 전체 통과 (§5)
+- [ ] **Gate 5**: PR 생성 + /review-pr + Gemini 비교 + 머지
+
+---
+
+## 7. Risks & Mitigation
+
+| ID | 위험 | 확률 | 영향 | 완화책 |
+|----|------|------|------|--------|
+| R1 | {예: 마이그레이션 중 lock contention} | 중 | 고 | online migration (gh-ost / pg_repack) |
+| R2 | {예: 외부 API rate limit} | 고 | 중 | circuit breaker + retry budget |
+| R3 | {예: 신규 의존성 보안 취약점} | 저 | 고 | govulncheck + dependabot |
+
+---
+
+## 8. Rollback Plan
+
+- **무중단 롤백**: feature flag off
+- **데이터 마이그레이션 롤백**: expand-contract `migration/expand-contract-pattern.md` — contract 단계 되돌리기
+- **PR 단위 롤백**: `git revert <merge-sha>` + 재배포
+- **모니터링**: 롤백 후 정상화 메트릭 확인
+
+---
+
+## 9. References
+
+- 관련 ADR: `docs/adr/{NNNN}-...md`
+- 관련 dev-logs: `docs/dev-logs/{YYYY-MM-DD-...}.md`
+- 관련 skill: `.claude/skills/{도메인}/{이름}.md`
+- 외부 자료: {vendor docs / paper / blog}
