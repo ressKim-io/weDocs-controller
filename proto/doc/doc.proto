@@ -5,7 +5,7 @@ package doc;
 import "common/common.proto";
 
 option java_multiple_files = true;
-option java_package = "io.synapse.proto.doc";
+option java_package = "io.wedocs.proto.doc";
 
 // Doc/Session 서비스: 문서 메타·권한·스냅샷 영속화 (내부 gRPC).
 // 클라이언트向 문서 CRUD·인증은 REST.

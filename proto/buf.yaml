@@ -1,6 +1,6 @@
 # buf 모듈 설정 — proto SSOT.
-# 다운스트림 레포(backend / ai-service / crdt-engine)는 이 디렉터리를 git submodule로 mount하고,
-# 이 buf.yaml(lint/breaking 규칙)을 그대로 공유한다. 코드 생성 플러그인은 각 레포의 buf.gen.yaml.
+# 다운스트림 레포(weDocs-crdt-engine / weDocs-backend)는 이 디렉터리를 buf 원격 git input으로 참조하고(submodule 불필요, ADR-0010),
+# 이 buf.yaml(lint/breaking 규칙)을 그대로 공유한다. 코드 생성은 각 레포(Rust=tonic-prost-build, Java=buf generate).
 version: v2
 modules:
   - path: .

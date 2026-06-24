@@ -5,7 +5,7 @@ package crdt;
 import "common/common.proto";
 
 option java_multiple_files = true;
-option java_package = "io.synapse.proto.crdt";
+option java_package = "io.wedocs.proto.crdt";
 
 // CRDT 엔진: 문서별 yrs 상태 머지 / 스냅샷.
 // docId는 Sync 스트림의 gRPC 메타데이터로 전달 → Istio waypoint consistent-hash 라우팅

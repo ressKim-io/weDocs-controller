@@ -3,7 +3,7 @@ syntax = "proto3";
 package common;
 
 option java_multiple_files = true;
-option java_package = "io.synapse.proto.common";
+option java_package = "io.wedocs.proto.common";
 
 // 문서 권한 역할 (Doc 서비스 권한 모델)
 enum Role {

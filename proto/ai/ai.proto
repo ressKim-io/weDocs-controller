@@ -3,7 +3,7 @@ syntax = "proto3";
 package ai;
 
 option java_multiple_files = true;
-option java_package = "io.synapse.proto.ai";
+option java_package = "io.wedocs.proto.ai";
 
 // 내부 RAG 검색 계약. 클라이언트向 Q&A/요약은 REST + SSE(토큰 스트림)로 별도 — proto 아님.
 // (AI Service는 stateless 텍스트 in/out, CRDT 미인지 — SDD §0.3 / 가드레일)
