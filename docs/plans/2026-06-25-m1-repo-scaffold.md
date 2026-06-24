@@ -3,7 +3,7 @@ date: 2026-06-25
 slug: m1-repo-scaffold
 status: in-progress
 related:
-  - adr/0002-proto-distribution-buf-git-input.md
+  - adr/0010-proto-distribution-buf-git-input.md
   - dev-logs/2026-06-25-m1-repo-scaffold.md
   - dev-logs/2026-06-25-m0-controller-scaffold.md
 ---
@@ -45,16 +45,16 @@ proto 소비자 = crdt-engine + backend 둘뿐. frontend는 gRPC 모름(표준 y
 - [x] `CLAUDE.md` 항상-적용 import에 `@.claude/rules/plan-logging.md` 추가
 - [x] memory `plan-logging-mandatory`(feedback) + `MEMORY.md` 인덱스
 - [x] 이 파일(`docs/plans/2026-06-25-m1-repo-scaffold.md`) 작성
-- [ ] commit `docs(plans): add plan-logging rule and M1 scaffold plan` → **이 커밋 후 Phase A**
+- [x] commit `docs(plans): add plan-logging rule and M1 scaffold plan` (18e5138) → 이 커밋 후 Phase A
 
-### Phase A — controller 반영 (main 직접 커밋 허용)
-- [ ] A1. `io.synapse.proto.*` → `io.wedocs.proto.*` (4 .proto + proto/README 1곳 = 5)
-- [ ] A2. `proto/README.md` + `proto/buf.yaml` 주석: submodule 경고 → buf git-input 메커니즘
-- [ ] A3. `docs/adr/0002-proto-distribution-buf-git-input.md` (대안표: submodule/BSR/별도레포 + 트레이드오프)
-- [ ] A4. SDD `docs/sdd/5-...md` §12/14/15: 레포명 weDocs-*, proto=buf git-input, blocker resolved→ADR-0002
-- [ ] A5. `docs/dev-logs/2026-06-25-m1-repo-scaffold.md` (category: decision)
-- [ ] A6. 검증 `buf lint proto && buf build proto`
-- [ ] A7. commit 분할 (proto rename / adr / sdd / dev-log)
+### Phase A — controller 반영 (main 직접 커밋 허용) ✅
+- [x] A1. `io.synapse.proto.*` → `io.wedocs.proto.*` (4 .proto + proto/README = 5)
+- [x] A2. `proto/README.md` + `proto/buf.yaml`: submodule → buf git-input 메커니즘
+- [x] A3. `docs/adr/0010-proto-distribution-buf-git-input.md` (대안 5종 비교표) + adr/README 인덱스 갱신
+- [x] A4. SDD §12/§15: 레포명 weDocs-*, proto=buf git-input, blocker resolved→ADR-0010
+- [x] A5. `docs/dev-logs/2026-06-25-m1-repo-scaffold.md` (category: decision, status: open)
+- [x] A6. 검증 `buf lint proto && buf build proto` → 통과 ✅ (buf 1.71)
+- [x] A7. commit 분할 (proto / adr / sdd / dev-log+plan)
 
 ### Phase B1 — weDocs-crdt-engine (Rust)
 - [ ] Cargo.toml(edition 2024; yrs/tonic/tonic-prost/prost/tokio + build-dep tonic-prost-build + dev proptest/criterion)
@@ -106,7 +106,7 @@ Gradle 정확 버전(Java25 toolchain), Spring Boot 패치(4.0.6 vs 4.1.0), Vite
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: Phase 0 항목 1-4 (룰·CLAUDE.md·memory·이 파일 작성).
-> **다음**: Phase 0 커밋 → Phase A1(java_package rename)부터 순차.
+> **마지막 완료**: Phase A 전체 (proto rename·ADR-0010·SDD·dev-log; `buf lint/build` 통과).
+> **다음**: Phase B1(weDocs-crdt-engine Rust 골격) → B2(backend) → B3(frontend).
 > **주의**: 외부 작업(Phase C, push/gh)은 건별 승인 전까지 금지. 서비스 레포 골격은 로컬 git init+커밋까지만.
-> **환경 확인 필요**: `buf`/`cargo`/JDK25/`node` 설치 여부 — Phase A6/B 검증 전 `which`로 확인하고 없으면 "미실행" 보고.
+> **환경**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 26 · gh 2.95 설치 확인 → 로컬 빌드 검증 가능.
