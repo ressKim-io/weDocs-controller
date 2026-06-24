@@ -1,0 +1,22 @@
+# buf 코드 생성물 (검증용 — SSOT는 proto/*.proto)
+/gen/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# secrets / 로컬 오버라이드
+.env
+.env.*
+*.local.yaml
+*.local.yml
+
+# terraform state
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+
+# logs
+*.log
