@@ -40,6 +40,7 @@
 @.claude/rules/testing.md
 @.claude/rules/debugging.md
 @.claude/rules/user-approval.md
+@.claude/rules/plan-logging.md
 
 ### 상황별 룰 (해당 작업 시 `.claude/rules/` 참조 — `paths:` frontmatter로 스코프됨)
 - `git.md`·`code-review.md`·`deep-thinking.md` — 커밋/PR/품질 (보편)
