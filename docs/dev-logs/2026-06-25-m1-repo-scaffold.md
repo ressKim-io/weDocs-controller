@@ -53,6 +53,7 @@ related:
 - prost-build는 protoc 바이너리 필요 → `protoc-bin-vendored`로 시스템 설치 없이 해결(ADR-0010 codegen 경로 유지).
 - backend는 Spring BOM이 protobuf-java를 다른 버전으로 관리할 수 있어 **4.34.1 명시 고정**(buf v34.1 정렬, config-contract-audit).
 - proto 소비자는 crdt-engine·backend 둘뿐 — frontend는 y-websocket(gRPC 비소비자).
+- **Linux 재현성 검증**: `.claude`(254: rules/skills198/agents21/templates)·`docs/plans`·lockfile(Cargo.lock·package-lock)·gradle wrapper(실행권한 보존)·protoc-bin-vendored(linux 포함) 전부 커밋 → `git pull`로 따라옴. 유일 gap = user-level `~/.claude/memory`(머신 로컬·홈경로 key) — plan-logging은 룰(`.claude/rules`)로 강제되므로 비핵심. 정리: [onboarding/guide.md](../onboarding/guide.md).
 
 ## 재개
 > `docs/plans/2026-06-25-m1-repo-scaffold.md` 재개 지점 참조. Phase 0/A/B 완료(로컬). Phase C(push/gh/태그)는 사용자 승인 후.
