@@ -1,7 +1,7 @@
 ---
 date: 2026-06-25
 slug: m1-convergence-impl
-status: planned
+status: in-progress
 related:
   - plans/2026-06-25-m1-repo-scaffold.md
   - adr/0010-proto-distribution-buf-git-input.md
@@ -97,18 +97,16 @@ related:
 ### Phase 0 — plan 기록 (controller, main 직접)
 - [x] 이 파일 작성 + commit (82b1f67, 정밀화 갱신 후속 커밋) ← 코드 작업 전 게이트
 
-### Phase 1 — crdt-engine 머지 + fan-out (Rust) ★ 가드레일 게이트
-- [ ] **1.0 write-time 검증**: yrs 0.27 시그니처(§B) 재확인(빌드 직전) + `Doc` Send/Sync 확정 + rust-expert cross-check
-- [ ] 1.1 `engine.rs`: per-doc `{Doc + tokio::sync::broadcast::Sender<Vec<u8>>}`(cap 256).
-      `apply_v1(doc_id,&[u8])->Result`(decode_v1→apply_update) · `snapshot_for(sv)` · `state_vector_v1` · `subscribe`. **락 안 .await 금지**(§D-2)
-- [ ] 1.2 `service.rs`: `Sync` bidi 실구현 — 메타데이터 `doc-id`(§D-1), 구독-후-스냅샷 락순서(§D-2),
-      ClientFrame{sv}→SyncStep2, ClientFrame{update}→apply+broadcast, broadcast→fan-out, Lagged→resync(§D-5). `GetSnapshot`=full v1
-- [ ] 1.3 `tests/convergence_proptest.rs` 본문: N개 독립 update(각 1 insert) 생성 → **임의 순열 적용 시 최종
-      `encode_state_as_update_v1(default)` 동일**(교환) · 같은 update 2회=1회(멱등) · 두 doc 상호 교환→동일(수렴) (가드레일 6)
-- [ ] 1.4 tonic in-process 통합테스트: 2 클라 스트림 concurrent updates → 양쪽 수렴 검증
-- [ ] 1.5 `benches/convergence.rs`: 머지 핫패스 criterion 벤치 (가드레일 5)
-- [ ] VERIFY: `cargo test`(proptest green) + `cargo bench --no-run` 컴파일
-- [ ] branch `feature/m1-merge-fanout` + PR (승인 후 push/create)
+### Phase 1 — crdt-engine 머지 + fan-out (Rust) ★ 가드레일 게이트 — 로컬 구현 완료, push/PR 대기
+- [x] **1.0 write-time 검증**: yrs 0.27 API 전부 docs.rs 검증(§B). `apply_update`/`decode_v1` 모두 `Result`. `Doc` Send=스캐폴드 컴파일로 확인
+- [x] 1.1 `engine.rs`: per-doc `{Doc + broadcast(cap 256)}`. `apply_v1`(decode_v1→apply_update→broadcast) · `diff_v1`(SyncStep2) · `full_state_v1`(resync/snapshot) · `open`(구독-후-스냅샷 락순서 §D-2, 락 안 .await 없음). (1d63689)
+- [x] 1.2 `service.rs`: `Sync` bidi 실구현 — 메타데이터 `doc-id`(§D-1), 초기 SyncStep1, select 루프
+      (ClientFrame{sv}→SyncStep2, ClientFrame{update}→apply+broadcast, broadcast→fan-out, Lagged→full resync §D-5). `GetSnapshot`=full v1. (1d63689)
+- [x] 1.3 `tests/convergence_proptest.rs` 본문: 교환(forward=reversed=sorted) · 멱등(2회=1회) · 두 복제본 수렴 — 3 proptest green (가드레일 6). (e280308)
+- [x] 1.4 ~~tonic in-process~~ → **레지스트리 레벨 fan-out 통합테스트로 대체**(`tests/registry_fanout.rs`): build.rs `build_client(false)`라 in-process gRPC 클라 미생성 → fan-out/diff/손상거부를 엔진 API로 검증. gRPC transport end-to-end는 Phase 3 E2E(실제 게이트웨이). (e280308)
+- [x] 1.5 `benches/convergence.rs`: `apply_256_concurrent_updates` ≈ **1.166 ms**(~4.5µs/update) baseline (가드레일 5). (e280308)
+- [x] VERIFY: `cargo test`(proptest 3 + fanout 3 green) · `cargo bench`(실측) · `cargo clippy --all-targets`(무경고) · `cargo build`
+- [ ] branch `feature/m1-merge-fanout`(로컬 2커밋) → **push + PR 승인 대기** · rust-expert cross-check(선택)
 
 ### Phase 2 — ws-gateway 브리지 (Java) — 최고위험 TDD
 - [ ] **2.0 write-time 검증**: Spring Boot 4 WS API(wildcard path 매핑, `ConcurrentWebSocketSessionDecorator` 존재) 확인
@@ -163,9 +161,8 @@ doc-service·ai-service / 스냅샷 DB 영속화 / Istio 메타데이터 consist
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: plan 정밀화(§B yrs API 검증, §D 정합성 8개 결정 추가). Phase 0 진행 중.
-> **다음 작업**: Phase 0 갱신 커밋 → Phase 1.0 write-time 검증 → Phase 1 crdt-engine(rust-expert)
->   — `engine.rs` per-doc broadcast(구독-후-스냅샷 락순서) + `service.rs` Sync bidi(메타데이터 doc-id, Lagged resync) + proptest 수렴 본문.
-> **주의**: 서비스 레포 3개 branch+PR+건별 승인. proto 불변. 모든 yrs 인코딩 **v1 고정**(§B). 게이트웨이 코덱 TDD 최고위험.
-> **주의(설계)**: ServerFrame{update}=전부 `Update(2)`로 프레이밍 + E2E는 텍스트 폴링(synced 비의존, §D-4). doc_id=gRPC 메타데이터(§D-1).
+> **마지막 완료**: **Phase 1 crdt-engine 로컬 구현 완료** — feature/m1-merge-fanout 2커밋(1d63689 impl, e280308 tests). cargo test green(proptest 3 + fanout 3), clippy 무경고, bench 1.166ms. **push/PR 미실행(승인 대기)**.
+> **다음 작업**: (a) 사용자 승인 후 engine 브랜치 push + PR 생성 → (b) Phase 2 ws-gateway 브리지(java-expert) — lib0 코덱 TDD(최고위험) + `DocWebSocketHandler` 세션당 Sync 스트림(메타데이터 doc-id) + ServerFrame→WS `Update(2)`.
+> **주의**: 서비스 레포 3개 branch+PR+건별 승인. proto 불변. 모든 인코딩 **v1 고정**(§B). 게이트웨이가 gRPC 메타데이터 `doc-id`(=URL room) 세팅해야 엔진이 open 시 doc 식별(§D-1).
+> **주의(설계)**: ServerFrame{update}=전부 `Update(2)`로 프레이밍 + E2E는 텍스트 폴링(synced 비의존, §D-4).
 > **환경**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 26 · gh 2.95.
