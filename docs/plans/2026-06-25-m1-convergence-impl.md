@@ -13,12 +13,13 @@ related:
 스캐폴드(`2026-06-25-m1-repo-scaffold.md`, done)의 빈 스텁을 채워 **두 브라우저가 같은 문서를
 동시 편집하면 동일 상태로 수렴**함을 증명한다. 엔진(Rust yrs) 우선.
 
+> 스코프 확정: **awareness(커서) 연기**(proto bump 회피, M1.5) / **OTel 폴리글랏 trace M1 포함**(Phase 4).
+
 ## Context
 
-### 검증된 와이어 포맷 (공식 출처, 2026-06-25 ✅ verified)
+### A. 검증된 와이어 포맷 — y-protocols/y-websocket (2026-06-25 ✅ verified)
 
-게이트웨이 코덱의 린치핀 — 추측 금지(deep-thinking.md). 출처:
-yjs/y-protocols `master` (`src/sync.js`, `PROTOCOL.md`) · yjs/y-websocket `master` (`src/y-websocket.js`).
+게이트웨이 코덱의 린치핀. 출처: yjs/y-protocols `master`(`src/sync.js`,`PROTOCOL.md`) · yjs/y-websocket `master`(`src/y-websocket.js`).
 
 | 레이어 | 상수 | 프레이밍 |
 |---|---|---|
@@ -27,80 +28,115 @@ yjs/y-protocols `master` (`src/sync.js`, `PROTOCOL.md`) · yjs/y-websocket `mast
 | 클라 접속 시 | y-websocket client는 즉시 `messageSync → SyncStep1(SV)` 송신 | — |
 
 - `varBuffer` = `varUint(len) • bytes` (lib0 `writeVarUint8Array`). 작은 값(0/1/2)은 1바이트 varUint.
-- `writeSyncStep1` → `Y.encodeStateVector`, `writeSyncStep2` → `Y.encodeStateAsUpdate(doc, sv)`, `writeUpdate` → update 그대로.
-  `readSyncMessage`: type0→readSyncStep1(→step2로 응답), type1·2→`Y.applyUpdate`.
+- 클라 `readSyncMessage`: type0=SyncStep1→step2로 응답 / type1·2=`Y.applyUpdate`. **type1·2는 클라에서 동작 동일**.
 
-### 핵심 설계 결정
+### B. 검증된 yrs 0.27 API (docs.rs 0.27.2, 2026-06-25 ✅ verified) — **전부 v1(Yjs 호환)**
 
-**게이트웨이 = 프로토콜 번역기, 엔진 = sync 권위(authority).**
-게이트웨이는 Java라 `Y.Doc`이 없어 SyncStep1에 답할 수 없음 → 엔진이 sync 주도.
+| 용도 | API | 비고 |
+|---|---|---|
+| 인바운드 update 디코드 | `Update::decode_v1(&[u8]) -> Result<Update, Error>` | 실패 가능 → 에러 처리 필수 |
+| 머지 | `TransactionMut::apply_update(Update) -> Result<(), UpdateError>` | **unwrap 금지** |
+| SyncStep2 diff | `ReadTxn::encode_state_as_update_v1(&StateVector) -> Vec<u8>` | 전체 스냅샷 = `StateVector::default()` |
+| SyncStep1 페이로드 | `ReadTxn::state_vector()` → `StateVector::encode_v1()` / `StateVector::decode_v1(&[u8])` | v1 |
+| fan-out 페이로드 | **인바운드 v1 update 바이트 그대로 재전송** | `observe_update_v1` 불필요(yrs 멱등·교환) |
+
+- `Doc` Send: 스캐폴드가 `Arc<Mutex<HashMap<String, Doc>>>`로 컴파일됨 → Send 확인됨(write-time 재확인).
+- **v1 고정이 상호운용의 전제** — v2 메서드 사용 시 Yjs 클라가 디코드 불가. 모든 인코드/디코드는 `_v1`.
+
+### C. 핵심 설계 — 게이트웨이=프로토콜 번역기, 엔진=sync 권위
+
+게이트웨이는 Java라 `Y.Doc`이 없어 SyncStep1에 답할 수 없음 → **엔진이 sync 주도**.
 게이트웨이는 `y-websocket 와이어 ↔ gRPC 프레임` 1:1 번역만. **fan-out은 엔진의 per-doc broadcast 채널**
-(가드레일 5 "엔진이 엔진이다"에 부합 — 게이트웨이는 per-doc 세션 그룹핑 불필요).
+(가드레일 5 "엔진이 엔진이다" 부합 — 게이트웨이는 per-doc 세션 그룹핑 불필요).
 
 ```
-세션당 1 gRPC Sync 스트림
-─ 스트림 open            → 엔진: ServerFrame{state_vector}        (= 클라에 SyncStep1)
-─ ClientFrame{state_vector} → 엔진: ServerFrame{update}           (= SyncStep2 diff)
-─ ClientFrame{update}       → 엔진: apply_update + broadcast.send
-─ broadcast 수신(타 세션)   → 엔진: ServerFrame{update}            (= Update fan-out)
+게이트웨이: WS /ws/doc/{room} 접속 → gRPC Sync 스트림 open + 메타데이터 doc-id={room}
+엔진(스트림당):
+  open               → 메타데이터 doc-id 읽기 → registry.ensure → broadcast 구독(락 안에서, 아래 §D-2)
+                     → ServerFrame{state_vector=sv.encode_v1()}        (옵션: 클라 오프라인분 pull용 SyncStep1)
+  ClientFrame{sv}    → ServerFrame{update=encode_state_as_update_v1(sv)}  (= SyncStep2, late-join 핵심)
+  ClientFrame{update}→ decode_v1 → apply_update(Result 처리) → broadcast.send(원본 v1 바이트)
+  broadcast 수신     → ServerFrame{update}                              (= 타 세션 fan-out)
 ```
 
-매핑(게이트웨이): WS `SyncStep1` → `ClientFrame{state_vector}`; WS `SyncStep2|Update` → `ClientFrame{update}`.
-역방향: `ServerFrame{state_vector}` → WS `SyncStep1`; `ServerFrame{update}` → WS `SyncStep2|Update`.
+매핑(게이트웨이): WS `SyncStep1`→`ClientFrame{state_vector}`; WS `SyncStep2|Update`→`ClientFrame{update}`.
+역방향: `ServerFrame{state_vector}`→WS `SyncStep1(0)`; `ServerFrame{update}`→WS **`Update(2)`**(아래 §D-4).
 
-- **proto 변경 불필요** ✅ — 현 `ClientFrame{update,state_vector}` / `ServerFrame{update,state_vector}`로
-  SyncStep1/2/Update 전부 표현. controller proto bump·새 태그 없음.
-- **doc_id** = M1은 `ClientFrame.doc_id`(URL room)로 라우팅. gRPC 메타데이터 consistent-hash는 infra 마일스톤 연기.
-- **awareness(커서)** = M1 범위 밖(연기). proto에 새 채널 필요 → M1.5. 수렴 증명엔 불필요.
-- **OTel 폴리글랏 trace** = M1 포함(Phase 4, 가드레일 4 + showcase).
+- **proto 변경 불필요** ✅ — 현 `ClientFrame{doc_id,update,state_vector}` / `ServerFrame{update,state_vector}`로
+  SyncStep1/2/Update 전부 표현. controller proto bump·새 태그·다운스트림 재생성 없음.
 
-### 워크플로 제약 (중요)
+### D. 설계 정밀화 — 정합성 디테일 (정밀 검토에서 도출한 결정)
 
-- **controller**: main 직접 commit·push 허용 (CLAUDE.md). Phase 0/5는 직접.
-- **서비스 레포**(crdt-engine/backend/frontend): 일반 룰 = **branch + PR + 건별 승인**. Phase 1~4 각 PR push/create는 사용자 건별 승인 필요(user-approval.md). 에이전트가 직접 push·PR 생성 금지.
+1. **doc_id는 gRPC 메타데이터로** (proto 주석과 일치). open 시점엔 아직 ClientFrame이 안 와서 엔진이 doc를
+   모르는 chicken-egg → 메타데이터 `doc-id`로 open 즉시 해결. `ClientFrame.doc_id`는 첫 프레임 검증용(불일치→reject).
+2. **구독-후-스냅샷을 락 안에서**: 신규 스트림은 (락 획득 → broadcast 구독 → SyncStep2용 현재 상태 스냅샷 → 락 해제)
+   순서. 구독 전에 스냅샷 뜨면 그 사이 들어온 update를 놓치는 lost-update 윈도가 생김. **락 보유 중 .await 금지**(가드: apply→send 동기).
+3. **self-echo 미필터(M1)**: 단일 broadcast라 송신자도 자기 update를 수신 → 클라 applyUpdate 멱등(no-op)이라 무해.
+   트래픽 2배는 M1.5 최적화. (필터하려면 per-stream 채널+sender 레지스트리 → M1 과설계.)
+4. **ServerFrame{update}는 전부 `Update(2)`로 프레이밍**: proto가 SyncStep2 vs Update를 구분 안 함. 클라에선 둘 다
+   applyUpdate로 동일. 단 y-websocket `provider.synced`는 SyncStep2 수신 시만 set → **M1은 'synced' 이벤트 비의존**,
+   E2E는 텍스트 동등성 폴링으로 검증. (synced 라이프사이클 = proto 판별자 필요 → M1.5.)
+5. **broadcast Lagged → 강제 resync**: 느린 수신자가 bounded 채널에서 `RecvError::Lagged(n)` → update 유실 → divergence.
+   → 그 스트림에 전체 상태(`encode_state_as_update_v1(default)`) 재전송으로 재수렴. 채널 cap 예: 256.
+6. **WS 단일 writer 불변식**: 모든 WS send는 gRPC 응답 StreamObserver(스트림당 serial 호출)에서만. 인바운드 핸들러는
+   gRPC로 forward만(WS로 직접 send 금지) → 동시 send 없음 → `WebSocketSession` 비동기 안전. 위반 시 `ConcurrentWebSocketSessionDecorator`.
+7. **awareness/queryAwareness 프레임은 drop**: awareness 연기 상태에서도 클라는 messageAwareness(1)을 보냄.
+   게이트웨이는 type 1·3을 인식해 무시(엔진 미전달, 미러링 X). 미인식 type 에러 금지.
+8. **Doc 미evict(M1)**: 전 세션 disconnect돼도 registry 유지 → 프로세스 내 재접속 시 SyncStep2로 복원. 프로세스 재시작=유실(영속화는 후속).
+
+### E. 워크플로 제약 (중요)
+
+- **controller**: main 직접 commit·push 허용(CLAUDE.md). Phase 0/5는 직접.
+- **서비스 레포**(crdt-engine/backend/frontend): 일반 룰 = **branch + PR + 건별 승인**. Phase 1~4 각 PR push/create는
+  사용자 건별 승인 필요(user-approval.md). 에이전트가 직접 push·PR 생성 금지.
 
 ---
 
 ## 실행 체크리스트
 
 ### Phase 0 — plan 기록 (controller, main 직접)
-- [ ] 이 파일 작성 + commit `docs(plans): M1 convergence impl plan` ← **이 커밋 후 코드 작업 시작**
+- [x] 이 파일 작성 + commit (82b1f67, 정밀화 갱신 후속 커밋) ← 코드 작업 전 게이트
 
 ### Phase 1 — crdt-engine 머지 + fan-out (Rust) ★ 가드레일 게이트
-- [ ] `engine.rs`: `DocRegistry` per-doc `{Doc + tokio::sync::broadcast::Sender<Vec<u8>>}`.
-      `apply_update(doc_id, &[u8])` / `encode_state_as_update(doc_id, sv)` / `encode_state_vector(doc_id)` / `subscribe(doc_id)`
-- [ ] `service.rs`: `Sync` bidi 실구현 — open 시 SyncStep1 송신, `ClientFrame{state_vector}`→SyncStep2,
-      `ClientFrame{update}`→apply+broadcast, broadcast→`ServerFrame{update}` fan-out. `GetSnapshot` = encode_state_as_update 전체
-- [ ] `tests/convergence_proptest.rs`: 본문 — 교환(순서 무관)·멱등·수렴(두 doc 상호 교환→동일). yrs 상태 비교 (가드레일 6)
-- [ ] tonic in-process 통합테스트: 2 클라 스트림 concurrent updates → 수렴 검증
-- [ ] `benches/convergence.rs`: 머지 핫패스 criterion 벤치 (가드레일 5)
-- [ ] VERIFY: `cargo test` (proptest green) + `cargo bench --no-run` 컴파일 → rust-expert cross-check
+- [ ] **1.0 write-time 검증**: yrs 0.27 시그니처(§B) 재확인(빌드 직전) + `Doc` Send/Sync 확정 + rust-expert cross-check
+- [ ] 1.1 `engine.rs`: per-doc `{Doc + tokio::sync::broadcast::Sender<Vec<u8>>}`(cap 256).
+      `apply_v1(doc_id,&[u8])->Result`(decode_v1→apply_update) · `snapshot_for(sv)` · `state_vector_v1` · `subscribe`. **락 안 .await 금지**(§D-2)
+- [ ] 1.2 `service.rs`: `Sync` bidi 실구현 — 메타데이터 `doc-id`(§D-1), 구독-후-스냅샷 락순서(§D-2),
+      ClientFrame{sv}→SyncStep2, ClientFrame{update}→apply+broadcast, broadcast→fan-out, Lagged→resync(§D-5). `GetSnapshot`=full v1
+- [ ] 1.3 `tests/convergence_proptest.rs` 본문: N개 독립 update(각 1 insert) 생성 → **임의 순열 적용 시 최종
+      `encode_state_as_update_v1(default)` 동일**(교환) · 같은 update 2회=1회(멱등) · 두 doc 상호 교환→동일(수렴) (가드레일 6)
+- [ ] 1.4 tonic in-process 통합테스트: 2 클라 스트림 concurrent updates → 양쪽 수렴 검증
+- [ ] 1.5 `benches/convergence.rs`: 머지 핫패스 criterion 벤치 (가드레일 5)
+- [ ] VERIFY: `cargo test`(proptest green) + `cargo bench --no-run` 컴파일
 - [ ] branch `feature/m1-merge-fanout` + PR (승인 후 push/create)
 
 ### Phase 2 — ws-gateway 브리지 (Java) — 최고위험 TDD
-- [ ] lib0 코덱(`varUint`/`varBuffer` 인코드·디코드) — **테스트 먼저**(Red→Green). y-websocket/sync 프레임 파싱·생성
-- [ ] `DocWebSocketHandler`: WS 세션당 `EngineClient.Sync` 스트림 open(StreamObserver). doc_id=URL room.
-      inbound WS→ClientFrame, inbound ServerFrame→WS 프레임. 세션 close 시 스트림 정리
-- [ ] `EngineClient`: `asyncStub.sync(responseObserver)` bidi 연결 진입점 구현. VT 유지·JNI 미사용(가드레일 3)
-- [ ] 테스트: 코덱 단위테스트 + (raw WS 클라 ↔ gateway ↔ 실제 engine) 통합테스트
+- [ ] **2.0 write-time 검증**: Spring Boot 4 WS API(wildcard path 매핑, `ConcurrentWebSocketSessionDecorator` 존재) 확인
+- [ ] 2.1 lib0 코덱(`varUint`/`varBuffer` enc/dec) — **테스트 먼저**(Red→Green). y-websocket+sync 프레임 파싱·생성, 라운드트립 단위테스트
+- [ ] 2.2 `DocWebSocketHandler`: 세션당 `EngineClient.Sync` 스트림 open, 메타데이터 `doc-id`=URL room(§D-1).
+      WS→ClientFrame, ServerFrame→WS `Update(2)`(§D-4). awareness/auth 프레임 drop(§D-7). close 시 스트림 정리
+- [ ] 2.3 `EngineClient`: `asyncStub.sync(responseObserver)` bidi 진입점. VT 유지·JNI 미사용(가드레일 3). WS 단일 writer 불변식(§D-6)
+- [ ] 2.4 통합테스트: raw WS 클라 ↔ gateway ↔ 실제 engine
 - [ ] VERIFY: `./gradlew test` → java-expert cross-check
 - [ ] branch + PR (승인 후)
 
 ### Phase 3 — frontend 검증 + E2E 수렴 (React) — 헤드라인 산출물
-- [ ] `Editor.tsx` 표준 provider 유지. (선택) room=docId 다중 문서
-- [ ] **E2E 수렴 테스트**: 2 클라이언트(2 Y.Doc + provider, 또는 Playwright 두 탭) concurrent edit → 동일 텍스트 assert
-- [ ] VERIFY: `npm run build` + 로컬 engine+gateway 기동 후 E2E green
+- [ ] 3.1 `Editor.tsx` 표준 provider 유지. (선택) room=docId 다중 문서
+- [ ] 3.2 **E2E 수렴 테스트**: 2 클라이언트(Node `y-websocket`+`ws` 폴리필, 또는 Playwright 두 탭) concurrent edit →
+      **텍스트 동등성 폴링**으로 수렴 assert(§D-4, 'synced' 비의존). 로컬 engine+gateway 기동
+- [ ] VERIFY: `npm run build` + E2E green
 - [ ] branch + PR (승인 후)
 
-### Phase 4 — OTel 폴리글랏 trace 전파 (3 repos) 가드레일 4 + showcase
-- [ ] gateway→engine gRPC에 W3C `traceparent` 전파 (Java OTel auto-instr + Rust tonic OTel layer)
-- [ ] 한 편집 요청이 React→Java→Rust **단일 trace**로 보이는지 확인(스크린샷/로그)
-- [ ] VERIFY: trace에 3개 span(브라우저 origin·gateway·engine) 연결 확인 → otel-expert cross-check
+### Phase 4 — OTel 폴리글랏 trace 전파 (gateway+engine) 가드레일 4 + showcase
+- [ ] 4.1 **정직한 스코프**: WS엔 표준 traceparent 채널 없음(프레임 변경 X) → **gateway(Java)→engine(Rust) gRPC
+      메타데이터 `traceparent` 2-hop 전파**가 산출물. 브라우저-origin span은 stretch(M1.5, WS 컨텍스트 주입 필요)
+- [ ] 4.2 Java OTel(자동 계측, grpc 클라가 traceparent 주입) + Rust tonic OTel layer(메타데이터 traceparent 추출→span)
+- [ ] 4.3 한 편집이 Java span→Rust span 단일 trace로 연결되는지 확인(스크린샷/로그) → otel-expert cross-check
 - [ ] branch + PR (승인 후)
 
 ### Phase 5 — 마감 (controller, main 직접)
-- [ ] dev-log: 수렴 증명 결과(Before/After·검증 방법·교훈)
-- [ ] ADR: 엔진 sync/fan-out 브리지 설계(게이트웨이=번역기, 엔진=권위, broadcast fan-out) — 대안 비교표
+- [ ] dev-log: 수렴 증명 결과(Before/After·검증 방법·교훈) + §D 결정들
+- [ ] ADR: 엔진 sync/fan-out 브리지 설계(게이트웨이=번역기, 엔진=권위, broadcast fan-out, v1 고정) — 대안 비교표
 - [ ] 이 plan `status: done` + dev-log 링크 + commit
 
 ---
@@ -110,10 +146,10 @@ yjs/y-protocols `master` (`src/sync.js`, `PROTOCOL.md`) · yjs/y-websocket `mast
 | 대상 | 명령 | 게이트 |
 |---|---|---|
 | engine | `cargo test`(proptest 수렴 green) · `cargo bench --no-run` | 가드레일 5·6 |
-| gateway | `./gradlew test`(코덱 단위 + 통합) | TDD(testing.md) |
-| frontend | `npm run build` + E2E(2클라 수렴) green | 헤드라인 |
-| 전체 | 로컬 engine(50051)+gateway(8080) 기동 → 두 탭에서 `ws://localhost:8080/ws/doc/demo` 동시 편집 → 동일 텍스트 | M1 정의 |
-| OTel | React→Java→Rust 단일 trace 연결 | 가드레일 4 |
+| gateway | `./gradlew test`(코덱 라운드트립 + 통합) | TDD(testing.md) |
+| frontend | `npm run build` + E2E(2클라 텍스트 수렴) green | 헤드라인 |
+| 전체 | 로컬 engine(50051)+gateway(8080) 기동 → 두 탭 `ws://localhost:8080/ws/doc/demo` 동시 편집 → 동일 텍스트 | M1 정의 |
+| OTel | Java span→Rust span 단일 trace 연결 | 가드레일 4 |
 
 - 로컬 환경(buf 1.71·cargo 1.96·java 25.0.3·node 26·gh 2.95) 설치 확인 → 모든 검증 실행 가능.
 - 못 돌린 검증은 "추정 통과" 금지, "미실행" 명시(deep-thinking.md).
@@ -121,14 +157,15 @@ yjs/y-protocols `master` (`src/sync.js`, `PROTOCOL.md`) · yjs/y-websocket `mast
 ## 범위 밖
 
 doc-service·ai-service / 스냅샷 DB 영속화 / Istio 메타데이터 consistent-hash 라우팅 / 멀티-인스턴스 엔진 /
-**awareness(커서) — M1.5 연기**(proto bump 필요) / 인증·인가.
+**awareness(커서) — M1.5**(proto bump) / **'synced' 라이프사이클·self-echo 필터 — M1.5** / **브라우저-origin trace span — M1.5** / 인증·인가.
 
 ---
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: plan 작성(Phase 0 진행 중). 스코프 확정 = awareness 연기 / OTel M1 포함.
-> **다음 작업**: Phase 0 커밋 → Phase 1 crdt-engine(rust-expert) — `engine.rs` per-doc broadcast + `service.rs` Sync bidi 실구현 + proptest 수렴 본문(가드레일 게이트).
-> **주의**: 서비스 레포 3개는 branch+PR+건별 승인. proto 불변(현 계약 충분) → controller proto bump 없음.
-> **주의**: 와이어 상수는 Context 표 참조(검증 완료). 게이트웨이 코덱은 TDD 최고위험.
+> **마지막 완료**: plan 정밀화(§B yrs API 검증, §D 정합성 8개 결정 추가). Phase 0 진행 중.
+> **다음 작업**: Phase 0 갱신 커밋 → Phase 1.0 write-time 검증 → Phase 1 crdt-engine(rust-expert)
+>   — `engine.rs` per-doc broadcast(구독-후-스냅샷 락순서) + `service.rs` Sync bidi(메타데이터 doc-id, Lagged resync) + proptest 수렴 본문.
+> **주의**: 서비스 레포 3개 branch+PR+건별 승인. proto 불변. 모든 yrs 인코딩 **v1 고정**(§B). 게이트웨이 코덱 TDD 최고위험.
+> **주의(설계)**: ServerFrame{update}=전부 `Update(2)`로 프레이밍 + E2E는 텍스트 폴링(synced 비의존, §D-4). doc_id=gRPC 메타데이터(§D-1).
 > **환경**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 26 · gh 2.95.
