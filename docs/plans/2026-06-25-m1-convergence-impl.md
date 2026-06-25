@@ -106,7 +106,8 @@ related:
 - [x] 1.4 ~~tonic in-process~~ → **레지스트리 레벨 fan-out 통합테스트로 대체**(`tests/registry_fanout.rs`): build.rs `build_client(false)`라 in-process gRPC 클라 미생성 → fan-out/diff/손상거부를 엔진 API로 검증. gRPC transport end-to-end는 Phase 3 E2E(실제 게이트웨이). (e280308)
 - [x] 1.5 `benches/convergence.rs`: `apply_256_concurrent_updates` ≈ **1.166 ms**(~4.5µs/update) baseline (가드레일 5). (e280308)
 - [x] VERIFY: `cargo test`(proptest 3 + fanout 3 green) · `cargo bench`(실측) · `cargo clippy --all-targets`(무경고) · `cargo build`
-- [x] branch `feature/m1-merge-fanout` push + PR #1 생성(승인 후) → https://github.com/ressKim-io/weDocs-crdt-engine/pull/1 · rust-expert cross-check(선택, 미실행)
+- [x] branch `feature/m1-merge-fanout` push + PR #1 생성(승인 후) → https://github.com/ressKim-io/weDocs-crdt-engine/pull/1
+- [x] **코드리뷰**(rust-expert + code-reviewer 병렬) → 머지 전 8건 반영(F1~F8: doc_id 검증·full_state 부작용·sync 분리·손상프레임 대칭·테스트강화·fmt·상수주석·bench). 재검증 8 test green / clippy -D warnings / fmt clean. 로컬 커밋 c51029a·b81b6de. 기록: [dev-log](../dev-logs/2026-06-25-m1-engine-code-review.md). **fixes push 승인 대기**
 
 ### Phase 2 — ws-gateway 브리지 (Java) — 최고위험 TDD
 - [ ] **2.0 write-time 검증**: Spring Boot 4 WS API(wildcard path 매핑, `ConcurrentWebSocketSessionDecorator` 존재) 확인
@@ -157,12 +158,14 @@ related:
 doc-service·ai-service / 스냅샷 DB 영속화 / Istio 메타데이터 consistent-hash 라우팅 / 멀티-인스턴스 엔진 /
 **awareness(커서) — M1.5**(proto bump) / **'synced' 라이프사이클·self-echo 필터 — M1.5** / **브라우저-origin trace span — M1.5** / 인증·인가.
 
+리뷰 후속(M1.5/Phase 4, [dev-log](../dev-logs/2026-06-25-m1-engine-code-review.md)): `eprintln!`→`tracing`(Phase 4 OTel 일괄) / 테스트 헬퍼 DRY 공통화 / proptest에 shared-base 동시편집·delete op 케이스 / `lagged_total` 메트릭 / idle 세션 keep-alive.
+
 ---
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: **Phase 1 crdt-engine 완료 + PR #1 생성**(push 승인됨) — feature/m1-merge-fanout 2커밋(1d63689 impl, e280308 tests). cargo test green(proptest 3 + fanout 3), clippy 무경고, bench 1.166ms. PR: ressKim-io/weDocs-crdt-engine#1 (머지 대기).
-> **다음 작업**: Phase 2 ws-gateway 브리지(java-expert) — lib0 코덱 TDD(최고위험) + `DocWebSocketHandler` 세션당 Sync 스트림(메타데이터 doc-id 세팅) + ServerFrame→WS `Update(2)` + awareness/auth 프레임 drop(§D-7).
+> **마지막 완료**: **Phase 1 crdt-engine + 코드리뷰 반영 완료**. feature/m1-merge-fanout 4커밋(1d63689 impl, e280308 tests, c51029a 리뷰fix, b81b6de 테스트fix). 8 test green / clippy -D warnings / fmt clean / bench 1.17ms. PR #1 열림. **리뷰 fixes(c51029a·b81b6de) push 미실행 — 승인 대기**.
+> **다음 작업**: (a) 승인 후 리뷰 fixes를 PR #1에 push (+선택: 리뷰 요약 PR 코멘트) → 머지 → (b) Phase 2 ws-gateway 브리지(java-expert) — lib0 코덱 TDD(최고위험) + `DocWebSocketHandler` 세션당 Sync 스트림(메타데이터 doc-id 세팅) + ServerFrame→WS `Update(2)` + awareness/auth 프레임 drop(§D-7).
 > **주의**: 서비스 레포 3개 branch+PR+건별 승인. proto 불변. 모든 인코딩 **v1 고정**(§B). 게이트웨이가 gRPC 메타데이터 `doc-id`(=URL room) 세팅해야 엔진이 open 시 doc 식별(§D-1).
 > **주의(설계)**: ServerFrame{update}=전부 `Update(2)`로 프레이밍 + E2E는 텍스트 폴링(synced 비의존, §D-4).
 > **환경**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 26 · gh 2.95.
