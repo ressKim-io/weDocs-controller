@@ -110,15 +110,15 @@ related:
 - [x] **코드리뷰**(rust-expert + code-reviewer 병렬) → 머지 전 8건 반영(F1~F8: doc_id 검증·full_state 부작용·sync 분리·손상프레임 대칭·테스트강화·fmt·상수주석·bench). 재검증 8 test green / clippy -D warnings / fmt clean. 기록: [dev-log](../dev-logs/2026-06-25-m1-engine-code-review.md)
 - [x] **PR #1 머지 완료**(merge commit fbd25fe, 2026-06-26) → 원격 브랜치 삭제, 로컬 main 동기화
 
-### Phase 2 — ws-gateway 브리지 (Java) — 최고위험 TDD — 구현+테스트 완료(브랜치 `feature/m1-ws-gateway-bridge`, push/PR 승인 대기)
+### Phase 2 — ws-gateway 브리지 (Java) — 최고위험 TDD — ✅ 구현+테스트+2리뷰 완료, **PR #1 open**(머지 대기)
 - [x] **2.0 write-time 검증**(2026-06-26): Spring Boot 4.1/Framework 7.0.x — `WebSocketConfigurer`/`addHandler(h, String...)` 유지, `BinaryWebSocketHandler` 유지, Ant 와일드카드 `/ws/doc/*`(AntPathMatcher) 지원, `WebSocketSession.getUri()/getId()/sendMessage/isOpen()` 존재(javadoc: JSR-356 동시송신 불가→`ConcurrentWebSocketSessionDecorator`), 생성 stub `CrdtEngineStub.sync(StreamObserver<ServerFrame>)→StreamObserver<ClientFrame>` 확인
 - [x] 2.1 lib0 코덱 `Lib0.java`(varUint=unsigned LEB128 + varUint8Array) — TDD Red→Green. `Lib0Test` 8 pass(경계값·known-byte 벡터·손상프레임 거부)
 - [x] 2.2 `DocWebSocketHandler`: 세션당 Sync 스트림 open(메타데이터 `doc-id`=URL room §D-1), WS→ClientFrame(`YProtocolCodec.decodeInbound`), ServerFrame→WS `Update(2)`(§D-4), awareness/auth/query/미인식 drop(§D-7), close/onError/onCompleted/transportError 전 경로 스트림 정리(bridges ConcurrentHashMap remove 게이팅). `WebSocketConfig` 경로 `/ws/doc/*`
 - [x] 2.3 `EngineClient.openSync(docId, respObs)`: `Metadata doc-id`+`MetadataUtils.newAttachHeadersInterceptor`→`asyncStub.withInterceptors(..).sync(..)`. 엔진 키 `"doc-id"`(service.rs:52) 정합 확인. JNI 미사용 유지
 - [x] 2.4 통합테스트 `DocWebSocketBridgeIntegrationTest`(✅ 결정=fake in-process gRPC 엔진): doc-id 메타데이터 전파+SyncStep1 forward, 2클라 fan-out→WS Update(2). 2 pass. 실제 Rust 엔진 수렴=로컬 스모크+Phase 3
-- [x] VERIFY: `./gradlew :ws-gateway:test`(21 pass: Lib0 9·Codec 9·통합 3) · `make build`(bootJar green)
-- [x] java-expert cross-check 완료·반영(2026-06-26): **Major1** endSession이 remove 반환값 버려 sendBinary 실패 시 gRPC 요청 스트림 누수→`completeQuietly(toEngine)` 추가. **Major2** handleBinaryMessage(get+onNext)↔close(remove+onCompleted) TOCTOU→`computeIfPresent`로 CHM 키락 직렬화. Minor: lib0 63비트 오버플로 거부+회귀테스트·JNI 주석 정확화·테스트 ReentrantLock·teardown 테스트. 재실행 21 pass. backend 브랜치 2 커밋(3507a85 codec, 19d5453 bridge)
-- [ ] branch push + PR (승인 후) — **에이전트 자율 push/PR 금지, 사용자 건별 승인 대기**
+- [x] VERIFY: `./gradlew :ws-gateway:test`(**22 pass**: Lib0 9·Codec 10·통합 3) · `make build`(bootJar green)
+- [x] 2-lens 코드리뷰 완료·전부 반영(2026-06-26~27, 커밋 077db1a): **java-expert**(동시성/생명주기) Major2건 — endSession 스트림 누수→`completeQuietly`, handleBinaryMessage↔close TOCTOU→`computeIfPresent` 직렬화. **code-reviewer**(정합/테스트/가독) Major1건 — `encodeOutbound` both-set 무성 드롭→방어 log.warn+계약주석(verified service.rs:66)+우선순위 테스트. Minor: SLF4J Throwable 전달·roomFromUri null guard·@AfterEach 격리·lib0 오버플로·decode 대칭. 보류: FakeEngine 추출(nit)·Origin 제한(Phase 5)
+- [x] branch push + PR + 리뷰 코멘트 게시(2026-06-27, 사용자 건별 승인): https://github.com/ressKim-io/weDocs-backend/pull/1 (3 커밋: 3507a85 codec, 19d5453 bridge, 077db1a review-fix) — **머지는 사용자**
 
 ### Phase 3 — frontend 검증 + E2E 수렴 (React) — 헤드라인 산출물
 - [ ] 3.1 `Editor.tsx` 표준 provider 유지. (선택) room=docId 다중 문서
@@ -165,8 +165,8 @@ doc-service·ai-service / 스냅샷 DB 영속화 / Istio 메타데이터 consist
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: **Phase 2 ws-gateway 브리지 구현+테스트+리뷰반영 완료**(backend 브랜치 `feature/m1-ws-gateway-bridge`, 2 커밋, **미push**). `Lib0`+`YProtocolCodec`+`EngineClient.openSync`(메타데이터 doc-id)+`DocWebSocketHandler`(세션당 Sync 스트림, 단일 writer §D-6, computeIfPresent 원자화, 전 경로 정리)+`WebSocketConfig`(`/ws/doc/*`). `./gradlew :ws-gateway:test` **21 pass** / `make build` bootJar green. 통합테스트=fake in-process gRPC 엔진. java-expert Major2건+Minor 반영 완료. task 2.0 Spring Boot 4.1 WS API 검증 완료.
-> **다음 작업**: ① **사용자 승인 후** backend `feature/m1-ws-gateway-bridge` push + PR 생성(에이전트 자율 금지, user-approval.md) → ② **Phase 3 frontend E2E 수렴**(2클라 텍스트 폴링, synced 비의존 §D-4) — 로컬 engine(50051)+gateway(8080) 기동, 두 탭 `ws://localhost:8080/ws/doc/demo` 동시편집→동일텍스트.
+> **마지막 완료**: **Phase 2 ws-gateway 브리지 — PR #1 open**(https://github.com/ressKim-io/weDocs-backend/pull/1, 3 커밋, 2-lens 리뷰 반영·코멘트 게시 완료). `Lib0`+`YProtocolCodec`+`EngineClient.openSync`(메타데이터 doc-id)+`DocWebSocketHandler`(세션당 Sync 스트림, 단일 writer §D-6, computeIfPresent 원자화, 전 경로 정리)+`WebSocketConfig`(`/ws/doc/*`). `./gradlew :ws-gateway:test` **22 pass** / `make build` bootJar green. 통합테스트=fake in-process gRPC 엔진. java-expert+code-reviewer Major3건+Minor 전부 반영.
+> **다음 작업**: ① **PR #1 머지(사용자)** → 머지 후 backend main 동기화 → ② **Phase 3 frontend E2E 수렴**(2클라 텍스트 폴링, synced 비의존 §D-4) — 로컬 engine(50051)+gateway(8080) 기동, 두 탭 `ws://localhost:8080/ws/doc/demo` 동시편집→동일텍스트. (frontend 레포도 branch+PR+건별 승인)
 > **주의**: 서비스 레포 branch+PR+건별 승인. proto 불변. 모든 인코딩 **v1 고정**(§B). 엔진 메타데이터 키=`"doc-id"`(service.rs:52) — 게이트웨이 `EngineClient.DOC_ID_KEY`와 정합 확인됨(§D-1). 엔진은 `ClientFrame.doc_id` 비어있지 않으면 메타데이터 room과 일치 요구(불일치=세션 종료) → 코덱이 모든 프레임에 doc_id=room 채움.
 > **주의(설계)**: ServerFrame{update}=전부 `Update(2)`로 프레이밍 + E2E는 텍스트 폴링(synced 비의존, §D-4).
 > **환경**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 26 · gh 2.95.
