@@ -110,7 +110,7 @@ related:
 - [x] **코드리뷰**(rust-expert + code-reviewer 병렬) → 머지 전 8건 반영(F1~F8: doc_id 검증·full_state 부작용·sync 분리·손상프레임 대칭·테스트강화·fmt·상수주석·bench). 재검증 8 test green / clippy -D warnings / fmt clean. 기록: [dev-log](../dev-logs/2026-06-25-m1-engine-code-review.md)
 - [x] **PR #1 머지 완료**(merge commit fbd25fe, 2026-06-26) → 원격 브랜치 삭제, 로컬 main 동기화
 
-### Phase 2 — ws-gateway 브리지 (Java) — 최고위험 TDD — ✅ 구현+테스트+2리뷰 완료, **PR #1 open**(머지 대기)
+### Phase 2 — ws-gateway 브리지 (Java) — 최고위험 TDD — ✅ 완료(PR #1 머지, e0e8277)
 - [x] **2.0 write-time 검증**(2026-06-26): Spring Boot 4.1/Framework 7.0.x — `WebSocketConfigurer`/`addHandler(h, String...)` 유지, `BinaryWebSocketHandler` 유지, Ant 와일드카드 `/ws/doc/*`(AntPathMatcher) 지원, `WebSocketSession.getUri()/getId()/sendMessage/isOpen()` 존재(javadoc: JSR-356 동시송신 불가→`ConcurrentWebSocketSessionDecorator`), 생성 stub `CrdtEngineStub.sync(StreamObserver<ServerFrame>)→StreamObserver<ClientFrame>` 확인
 - [x] 2.1 lib0 코덱 `Lib0.java`(varUint=unsigned LEB128 + varUint8Array) — TDD Red→Green. `Lib0Test` 8 pass(경계값·known-byte 벡터·손상프레임 거부)
 - [x] 2.2 `DocWebSocketHandler`: 세션당 Sync 스트림 open(메타데이터 `doc-id`=URL room §D-1), WS→ClientFrame(`YProtocolCodec.decodeInbound`), ServerFrame→WS `Update(2)`(§D-4), awareness/auth/query/미인식 drop(§D-7), close/onError/onCompleted/transportError 전 경로 스트림 정리(bridges ConcurrentHashMap remove 게이팅). `WebSocketConfig` 경로 `/ws/doc/*`
@@ -118,16 +118,16 @@ related:
 - [x] 2.4 통합테스트 `DocWebSocketBridgeIntegrationTest`(✅ 결정=fake in-process gRPC 엔진): doc-id 메타데이터 전파+SyncStep1 forward, 2클라 fan-out→WS Update(2). 2 pass. 실제 Rust 엔진 수렴=로컬 스모크+Phase 3
 - [x] VERIFY: `./gradlew :ws-gateway:test`(**22 pass**: Lib0 9·Codec 10·통합 3) · `make build`(bootJar green)
 - [x] 2-lens 코드리뷰 완료·전부 반영(2026-06-26~27, 커밋 077db1a): **java-expert**(동시성/생명주기) Major2건 — endSession 스트림 누수→`completeQuietly`, handleBinaryMessage↔close TOCTOU→`computeIfPresent` 직렬화. **code-reviewer**(정합/테스트/가독) Major1건 — `encodeOutbound` both-set 무성 드롭→방어 log.warn+계약주석(verified service.rs:66)+우선순위 테스트. Minor: SLF4J Throwable 전달·roomFromUri null guard·@AfterEach 격리·lib0 오버플로·decode 대칭. 보류: FakeEngine 추출(nit)·Origin 제한(Phase 5)
-- [x] branch push + PR + 리뷰 코멘트 게시(2026-06-27, 사용자 건별 승인): https://github.com/ressKim-io/weDocs-backend/pull/1 (3 커밋: 3507a85 codec, 19d5453 bridge, 077db1a review-fix) — **머지는 사용자**
+- [x] branch push + PR + 리뷰 코멘트 게시(2026-06-27, 사용자 건별 승인): https://github.com/ressKim-io/weDocs-backend/pull/1 (3 커밋: 3507a85 codec, 19d5453 bridge, 077db1a review-fix) → **PR #1 머지 완료**(e0e8277, 2026-06-27), backend main 동기화
 
-### Phase 3 — frontend 검증 + E2E 수렴 (React) — 헤드라인 산출물 — ✅ 구현+검증 완료, **PR #1 open**(머지 대기)
+### Phase 3 — frontend 검증 + E2E 수렴 (React) — 헤드라인 산출물 — ✅ 완료(PR #1 머지)
 - [x] 3.1 `Editor.tsx` 표준 provider 유지 + room=`?room=<id>` 쿼리(미지정 demo)로 다중 문서. (ed4068d)
 - [x] 3.2 **E2E 수렴 테스트** `test/e2e/convergence.e2e.test.ts`(vitest): 2 클라이언트(Node `y-websocket`+`ws` 폴리필,
       `disableBc:true`로 BroadcastChannel 우회 차단→게이트웨이 경로만) concurrent edit → **텍스트 동등성 폴링** 수렴 assert(§D-4, 'synced' 비의존).
       실행마다 고유 room(엔진 미evict §D-8 오염 차단). 연결 타임아웃 10s로 미기동 시 명확 실패. `vitest`+`ws` devDep. (f433d0b)
 - [x] VERIFY(실측, 추정 아님): 로컬 engine(`cargo run`:50051)+gateway(bootJar:8080) 기동 → `npm run test:e2e` **2회 green**(168ms/978ms).
       gateway 로그가 테스트 시각(17:17:48)에 WS 핸들러+gRPC TcpMetrics 초기화 → WS→gateway→gRPC→engine→fan-out 실경로 확인(false positive 아님). `npm run build`(tsc+vite) green.
-- [x] branch `feature/m1-e2e-convergence`(2 커밋: ed4068d editor, f433d0b e2e) push + **PR #1 open**(사용자 승인, 2026-06-28): https://github.com/ressKim-io/weDocs-frontend/pull/1 — **머지는 사용자**
+- [x] branch `feature/m1-e2e-convergence`(2 커밋: ed4068d editor, f433d0b e2e) push + **PR #1 머지 완료**(merge commit e8f0c83, 2026-06-28): https://github.com/ressKim-io/weDocs-frontend/pull/1 → 원격 브랜치 삭제, 로컬 main 동기화
 
 ### Phase 4 — OTel 폴리글랏 trace 전파 (gateway+engine) 가드레일 4 + showcase
 - [ ] 4.1 **정직한 스코프**: WS엔 표준 traceparent 채널 없음(프레임 변경 X) → **gateway(Java)→engine(Rust) gRPC
@@ -167,8 +167,8 @@ doc-service·ai-service / 스냅샷 DB 영속화 / Istio 메타데이터 consist
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: **Phase 3 frontend E2E 수렴 — 구현+실측 검증 완료, PR #1 open**(https://github.com/ressKim-io/weDocs-frontend/pull/1, 2 커밋: ed4068d editor, f433d0b e2e). (Phase 2 PR #1 머지 완료 = e0e8277, backend main 동기화됨.) `Editor.tsx` room=`?room=` 쿼리 + `test/e2e/convergence.e2e.test.ts`(vitest, 2클라 y-websocket+ws, `disableBc:true`, 고유 room, 텍스트 폴링 §D-4). 로컬 engine(`cargo run`:50051)+gateway(bootJar:8080) 기동 → `npm run test:e2e` 2회 green + gateway 로그로 gRPC 실경로 확인 + `npm run build` green.
-> **다음 작업**: ① **frontend PR #1 머지(사용자)** → 머지 후 frontend main 동기화 → ② **Phase 4 OTel 폴리글랏 trace**: gateway(Java)→engine(Rust) gRPC 메타데이터 `traceparent` 2-hop 전파(§4.1). Java OTel 자동계측(grpc 클라 주입) + Rust tonic OTel layer(메타데이터 추출→span). 한 편집이 Java span→Rust span 단일 trace 연결 확인 → otel-expert cross-check. (서비스 레포 = branch+PR+건별 승인)
+> **마지막 완료**: **Phase 3 frontend E2E 수렴 — PR #1 머지 완료**(e8f0c83, frontend main 동기화·브랜치 삭제). Phase 1~3 전부 머지 = **수직 슬라이스 수렴 본체 증명 끝**. (Phase 2 e0e8277, Phase 1 fbd25fe.) `Editor.tsx` room=`?room=` 쿼리 + `test/e2e/convergence.e2e.test.ts`(vitest, 2클라 y-websocket+ws, `disableBc:true`, 고유 room, 텍스트 폴링 §D-4). 로컬 engine+gateway 실기동 → `npm run test:e2e` 2회 green + gateway 로그 gRPC 실경로 확인 + `npm run build` green. (문서 최신화: CLAUDE.md 현재상태 · onboarding §6 · controller README 마일스톤.)
+> **다음 작업**: **Phase 4 OTel 폴리글랏 trace** — gateway(Java)→engine(Rust) gRPC 메타데이터 `traceparent` 2-hop 전파(§4.1). Java OTel 자동계측(grpc 클라 주입) + Rust tonic OTel layer(메타데이터 추출→span). 한 편집이 Java span→Rust span 단일 trace 연결 확인 → otel-expert cross-check. **양쪽 서비스 레포 변경 = branch+PR+건별 승인.** 신규 도구(OTel SDK 버전) write-time spec 검증 필수(workflow.md). 이후 Phase 5 마감(dev-log 수렴 증명 + ADR 브리지 설계 + plan done).
 > **주의(검증된 자산, 변경 금지)**: Phase 1~3 모두 v1 인코딩 고정(§B). 엔진 메타데이터 키=`"doc-id"`(service.rs:52)↔게이트웨이 정합(§D-1). ServerFrame{update}=전부 `Update(2)` 프레이밍 → E2E는 'synced' 비의존 텍스트 폴링(§D-4). E2E는 `disableBc:true` 필수(없으면 BroadcastChannel로 게이트웨이 우회=거짓 green). 엔진 M1 미evict(§D-8) → E2E 실행마다 고유 room.
 > **주의(로컬 검증 기동)**: engine `cd weDocs-crdt-engine && cargo run`(:50051) / gateway `cd weDocs-backend && java -jar ws-gateway/build/libs/ws-gateway-0.1.0.jar`(:8080, 먼저 `make proto-gen && ./gradlew :ws-gateway:bootJar -x test`) / E2E `cd weDocs-frontend && npm run test:e2e`.
 > **환경**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 26 · gh 2.95.
