@@ -31,7 +31,7 @@
 - **Phase 3 ✅ frontend E2E 수렴(React, PR #1 머지, e8f0c83)**: `?room=` 다중문서 + vitest 2클라 y-websocket E2E(`disableBc:true`로 게이트웨이 경로만). 로컬 engine+gateway 실기동 → `WS→gateway→gRPC→engine→fan-out` 수렴 실측 green(gateway 로그로 gRPC 경로 확인). 'synced' 비의존 텍스트 폴링.
 - **다음 = Phase 4 OTel 폴리글랏 trace** — gateway(Java)→engine(Rust) gRPC 메타데이터 `traceparent` 2-hop 전파(Java 자동계측 주입 + Rust tonic OTel layer 추출→span). 한 편집이 Java span→Rust span 단일 trace 연결 확인 → otel-expert cross-check. 이후 Phase 5 마감(dev-log 수렴 증명 · ADR 브리지 설계 · plan done).
 
-> **재개 SSOT**: `docs/plans/2026-06-25-m1-convergence-impl.md` (§A 검증된 y-protocols/y-websocket 와이어 포맷 · §B yrs 0.27 API · §C/§D 설계+정합성 8결정 · 실행 체크리스트 · **재개 지점**). 새 세션은 이 파일부터 열 것. 코드리뷰 기록: `docs/dev-logs/2026-06-25-m1-engine-code-review.md`.
+> **재개 SSOT**: `docs/plans/2026-06-25-m1-convergence-impl.md` (§A 검증된 y-protocols/y-websocket 와이어 포맷 · §B yrs 0.27 API · §C/§D 설계+정합성 8결정 · 실행 체크리스트 · **재개 지점**). 새 세션은 이 파일부터 열 것. 수렴 증명 후향 기록(Phase 1~3·검증·교훈): `docs/dev-logs/2026-06-28-m1-convergence-phase1-3.md`. 엔진 코드리뷰: `docs/dev-logs/2026-06-25-m1-engine-code-review.md`.
 > ⚠️ 서비스 레포(backend/frontend/crdt-engine)는 일반 룰 = branch+PR+**건별 승인**. controller만 main 직접.
 
 ---

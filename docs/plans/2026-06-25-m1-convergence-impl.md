@@ -6,6 +6,7 @@ related:
   - plans/2026-06-25-m1-repo-scaffold.md
   - adr/0010-proto-distribution-buf-git-input.md
   - dev-logs/2026-06-25-m1-repo-scaffold.md
+  - dev-logs/2026-06-28-m1-convergence-phase1-3.md
 ---
 
 # weDocs — M1 본 구현: "두 탭 동시 편집 수렴" 증명
