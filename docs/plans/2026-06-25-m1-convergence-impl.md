@@ -146,7 +146,7 @@ related:
   - ⚠️ **로컬 docker 미설치 확인** → 검증 경로 docker-free로 조정(§4.3)
 - [ ] 4.1 **engine(Rust)**: `main.rs`에 OTLP tracer init(`opentelemetry-otlp`→Jaeger) + `tracing-subscriber` + `TraceContextPropagator` 전역 등록(tracer init 실패해도 서버는 기동). `service.rs::sync`에 `tonic-tracing-opentelemetry` server layer로 traceparent 추출→span. **이참에 `eprintln!`→`tracing` 일괄 전환**(리뷰 후속 해소). proto 변경 X
 - [ ] 4.2 **gateway(Java)**: OTel **javaagent 부착**(기동 커맨드/Makefile/run 스크립트만) — `OTEL_SERVICE_NAME=ws-gateway` · `OTEL_EXPORTER_OTLP_ENDPOINT`(Jaeger) · `OTEL_TRACES_EXPORTER=otlp`. **앱 코드·build.gradle 변경 0**(javaagent=bytecode instrumentation, JNI 아님 → 가드레일 3 무관)
-- [ ] 4.3 **검증(실측, 추정 금지) — docker-free 1차**: gateway javaagent `OTEL_TRACES_EXPORTER=logging`(console) ↔ engine `opentelemetry-stdout`(0.32) console export → 두 탭 편집 시 **gateway CLIENT span ↔ engine SERVER(`sync`) span의 trace_id 일치**를 양쪽 stdout에서 확인(가드레일 4 증명, 외부 의존 0). **선택(showcase)**: docker 또는 **Jaeger all-in-one 바이너리**(OTLP `4317`/UI `16686`)로 단일 trace UI 스크린샷
+- [ ] 4.3 **검증(실측) — ⏸ Linux 환경으로 연기**(Mac docker 미설치, 2026-06-28): trace **live 검증은 Linux(docker+K8s)에서** — gateway javaagent `OTEL_TRACES_EXPORTER=logging` ↔ engine `opentelemetry-stdout` **trace_id 일치**(가드레일 4 증명) + Jaeger all-in-one(docker) 단일 trace UI 스크린샷. **Mac에선 구현+컴파일 검증(`cargo build`/`clippy`/`test`)까지만**, live trace는 **미실행 명시**(deep-thinking: 추정 통과 금지). → **Phase 4 done은 Linux live 검증 후**
 - [ ] 4.4 **otel-expert cross-check**: tracer init·exporter protocol(gRPC vs HTTP 기본값, config-contract-audit)·propagator·샘플링 기본값 정합 검토
 - [ ] branch + PR (engine·backend 각각, 건별 승인)
 
