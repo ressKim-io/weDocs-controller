@@ -25,9 +25,11 @@
 - infra → `infra/` (kustomize · istio ambient · argocd)
 
 ## 현재 상태
-**M1 본 구현 진행 중** — "두 브라우저 동시 편집 수렴" 증명. proto 배포 = buf 원격 git input(ADR-0010, `proto-v0.1.0` 태그). **proto 변경 없이 진행**(현 `ClientFrame`/`ServerFrame`로 SyncStep1/2/Update 표현).
-- **Phase 1 ✅ crdt-engine 완료(PR #1 머지, fbd25fe)**: yrs v1 권위 머지 + `tokio::broadcast` fan-out + gRPC bidi `Sync` 브리지. proptest 수렴(가드레일)·criterion 벤치 통과, 코드리뷰 8건 반영. doc-id=gRPC 메타데이터, 모든 인코딩 lib0 v1(Yjs 호환).
-- **다음 = Phase 2 ws-gateway 브리지(Java, java-expert)** — 최고위험: lib0 코덱(`varUint`/`varBuffer`) TDD + `DocWebSocketHandler` 세션당 Sync 스트림(메타데이터 `doc-id`=URL room) + `ServerFrame`→WS `Update(2)` + awareness/auth 프레임 drop. 이후 Phase 3 frontend E2E 수렴 · Phase 4 OTel 폴리글랏 trace · Phase 5 마감.
+**M1 본 구현 진행 중 — 수직 슬라이스 수렴 증명 완료(Phase 1~3), OTel·마감 남음.** "두 브라우저 동시 편집 수렴". proto 배포 = buf 원격 git input(ADR-0010, `proto-v0.1.0` 태그). **proto 변경 없이 완수**(현 `ClientFrame`/`ServerFrame`로 SyncStep1/2/Update 표현).
+- **Phase 1 ✅ crdt-engine(PR #1 머지, fbd25fe)**: yrs v1 권위 머지 + `tokio::broadcast` fan-out + gRPC bidi `Sync` 브리지. proptest 수렴·criterion 벤치 통과, 코드리뷰 8건 반영. doc-id=gRPC 메타데이터, 모든 인코딩 lib0 v1(Yjs 호환).
+- **Phase 2 ✅ ws-gateway 브리지(Java, PR #1 머지, e0e8277)**: lib0 코덱(`varUint`/`varBuffer`) TDD + `DocWebSocketHandler` 세션당 Sync 스트림(메타데이터 `doc-id`=URL room) + `ServerFrame`→WS `Update(2)` + awareness/auth drop. 22 test pass, java-expert+code-reviewer 2-lens 반영.
+- **Phase 3 ✅ frontend E2E 수렴(React, PR #1 머지, e8f0c83)**: `?room=` 다중문서 + vitest 2클라 y-websocket E2E(`disableBc:true`로 게이트웨이 경로만). 로컬 engine+gateway 실기동 → `WS→gateway→gRPC→engine→fan-out` 수렴 실측 green(gateway 로그로 gRPC 경로 확인). 'synced' 비의존 텍스트 폴링.
+- **다음 = Phase 4 OTel 폴리글랏 trace** — gateway(Java)→engine(Rust) gRPC 메타데이터 `traceparent` 2-hop 전파(Java 자동계측 주입 + Rust tonic OTel layer 추출→span). 한 편집이 Java span→Rust span 단일 trace 연결 확인 → otel-expert cross-check. 이후 Phase 5 마감(dev-log 수렴 증명 · ADR 브리지 설계 · plan done).
 
 > **재개 SSOT**: `docs/plans/2026-06-25-m1-convergence-impl.md` (§A 검증된 y-protocols/y-websocket 와이어 포맷 · §B yrs 0.27 API · §C/§D 설계+정합성 8결정 · 실행 체크리스트 · **재개 지점**). 새 세션은 이 파일부터 열 것. 코드리뷰 기록: `docs/dev-logs/2026-06-25-m1-engine-code-review.md`.
 > ⚠️ 서비스 레포(backend/frontend/crdt-engine)는 일반 룰 = branch+PR+**건별 승인**. controller만 main 직접.

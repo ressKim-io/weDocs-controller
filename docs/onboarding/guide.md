@@ -87,9 +87,11 @@ cd ../weDocs-frontend && npm install && npm run build
 ## 6. 현재 상태 / 다음 (roadmap)
 
 - **M0** ✅ 기획·proto·스캐폴딩.
-- **M1** 🔶 수직 슬라이스 **3레포 골격 완료**(빌드 검증 + GitHub PUBLIC). proto 배포 = buf 원격 git input(ADR-0010, `proto-v0.1.0`).
-  - **다음(M1 본 구현)**: `y-protocols ↔ gRPC bidi 브리지`(ws-gateway) + `yrs 머지`(crdt-engine) + `proptest 수렴` 본체 → **"두 브라우저 동시 편집 수렴"** 증명. crdt-engine 우선(`rust-expert` + `crdt-yrs`/`crdt-convergence-testing` 스킬).
-  - 가드레일: **M1 머지 전 proptest 수렴(commutative/associative/idempotent) 통과 필수**.
+- **M1** 🔶 수직 슬라이스 — **"두 브라우저 동시 편집 수렴" 본체 증명 완료(Phase 1~3 머지)**, OTel·마감 남음. proto 배포 = buf 원격 git input(ADR-0010, `proto-v0.1.0`).
+  - **Phase 1~3 ✅**: `yrs 머지 + tokio::broadcast fan-out`(crdt-engine) ↔ `lib0 코덱 + WS↔gRPC 브리지`(ws-gateway) ↔ `y-websocket E2E 수렴`(frontend). 로컬 engine+gateway 실기동으로 `WS→gateway→gRPC→engine→fan-out` 수렴 실측 green.
+  - **다음(Phase 4~5)**: gateway(Java)→engine(Rust) `traceparent` 2-hop OTel trace(폴리글랏 showcase) → 마감(dev-log·ADR·plan done).
+  - 가드레일: **proptest 수렴(commutative/associative/idempotent) 통과 = Phase 1에서 충족**.
+  - 진행 SSOT: [`docs/plans/2026-06-25-m1-convergence-impl.md`](../plans/2026-06-25-m1-convergence-impl.md) §재개 지점.
 - M2~M6: [SDD §13](../sdd/5-project-milestones-guardrails.md) 참조.
 
 ## 7. 자주 막히는 곳

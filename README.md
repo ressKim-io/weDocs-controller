@@ -52,8 +52,8 @@ controller/
 홈랩 KinD + 로컬 GPU(Ollama, RTX 4060Ti). Istio **Ambient** — ztunnel L4 mTLS 전부 / waypoint L7 = **CRDT Engine만**(docId consistent hash). ArgoCD app-of-apps. → [`infra/`](infra/)
 
 ## 마일스톤 (리스크 우선)
-- **M0** 기획·proto·스캐폴딩 ← *현재*
-- **M1** CRDT 코어: 두 브라우저 동시 편집 수렴 (Yjs↔yrs + bidi) ← **최우선 리스크**
+- **M0** ✅ 기획·proto·스캐폴딩
+- **M1** 🔶 CRDT 코어: 두 브라우저 동시 편집 수렴 (Yjs↔yrs + bidi) ← *현재* — **수렴 본체 증명 완료**(Phase 1~3 머지), OTel·마감 남음
 - M2 영속화·세션 · M3 Presence · M4 AI co-pilot · M5 인프라·관측 · M6 마감
 
 ## 가드레일
