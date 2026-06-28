@@ -138,10 +138,15 @@ related:
 
 **Blast Radius**: 직접변경 = engine `main.rs`·`service.rs`·`Cargo.toml`(+lock) / gateway 기동 스크립트·`Makefile`·문서(**Java 앱 코드 0** — javaagent 런타임 부착). 간접영향 = engine 부팅 경로(tracer init 실패가 부팅 막지 않게 graceful degrade) · gateway 실행 커맨드(`java -jar` → `java -javaagent:… -jar`). 롤백 = 각 서비스 레포 PR revert / controller plan은 main 커밋 revert. 검증 = Jaeger 단일 trace 스크린샷 + 양쪽 trace_id 로그 일치 + **기존 E2E 수렴 회귀 green 유지**. 다운타임 = 로컬 only N/A. 두 서비스 레포 = **branch+PR+건별 승인**.
 
-- [ ] **4.0 write-time 검증(MANDATORY, 코드 전)**: Java OTel agent 최신 patch를 [mvnrepository](https://mvnrepository.com/artifact/io.opentelemetry.javaagent/opentelemetry-javaagent)/GitHub releases로 pin + **VT(Virtual Thread)·Spring Boot 4.1 호환** 확인. Rust crate는 **0.x라 자주 깨짐** → `cargo add` 후 docs.rs로 `tonic-tracing-opentelemetry` server layer·`opentelemetry-otlp` init API 정합 재확인(deep-thinking.md: 추측 코드 금지)
+- [x] **4.0 write-time 검증(2026-06-28 완료)** — 버전 pin + 정합 확인:
+  - **Java**: OTel javaagent **v2.29.0**(2026-06-19, GitHub releases authoritative). grpc 자동계측 W3C traceparent out-of-box(앱 코드 0). VT·Spring Boot 4.1 호환은 agent 부착 후 스모크로 재확인
+  - **Rust 코어(0.32 line 동반 정렬)**: `opentelemetry` 0.32 · `opentelemetry_sdk` 0.32.1 · `opentelemetry-otlp` 0.32(✅ **tonic ^0.14.1 지원** — 엔진 tonic 0.14 정합) · `tracing-opentelemetry` 0.33 · `tracing` 0.1 · `tracing-subscriber` 0.3
+  - **traceparent 추출 2안**: (1) **수동(권장, lean)** — `global::get_text_map_propagator().extract(MetadataExtractor(&MetadataMap))` → `tracing_opentelemetry::OpenTelemetrySpanExt::set_parent`. 코어 crate만 의존·tonic 버전 무관. (2) `tonic-tracing-opentelemetry` **0.38.0**(✅ deps 검증: tonic ^0.14 · opentelemetry ^0.32 · tracing-opentelemetry ^0.33 정합) server layer — 코드 적지만 tower/hyper/http 전이 의존. **최종 선택은 4.4 otel-expert와 함께**
+  - **API 정밀 정합**(exporter init·`TraceContextPropagator` 경로 등)은 engine 브랜치에서 `cargo add` 후 docs.rs 0.32/0.33로 재확인(추측 코드 금지)
+  - ⚠️ **로컬 docker 미설치 확인** → 검증 경로 docker-free로 조정(§4.3)
 - [ ] 4.1 **engine(Rust)**: `main.rs`에 OTLP tracer init(`opentelemetry-otlp`→Jaeger) + `tracing-subscriber` + `TraceContextPropagator` 전역 등록(tracer init 실패해도 서버는 기동). `service.rs::sync`에 `tonic-tracing-opentelemetry` server layer로 traceparent 추출→span. **이참에 `eprintln!`→`tracing` 일괄 전환**(리뷰 후속 해소). proto 변경 X
 - [ ] 4.2 **gateway(Java)**: OTel **javaagent 부착**(기동 커맨드/Makefile/run 스크립트만) — `OTEL_SERVICE_NAME=ws-gateway` · `OTEL_EXPORTER_OTLP_ENDPOINT`(Jaeger) · `OTEL_TRACES_EXPORTER=otlp`. **앱 코드·build.gradle 변경 0**(javaagent=bytecode instrumentation, JNI 아님 → 가드레일 3 무관)
-- [ ] 4.3 **검증(실측, 추정 금지)**: 로컬 Jaeger all-in-one(docker, OTLP `4317` + UI `16686`) → engine+gateway 기동 → 두 탭 편집 → Jaeger UI에서 **1 trace = gateway grpc-client span → engine `sync` server span** 확인(스크린샷) + 양쪽 trace_id 로그 일치 보조 확인
+- [ ] 4.3 **검증(실측, 추정 금지) — docker-free 1차**: gateway javaagent `OTEL_TRACES_EXPORTER=logging`(console) ↔ engine `opentelemetry-stdout`(0.32) console export → 두 탭 편집 시 **gateway CLIENT span ↔ engine SERVER(`sync`) span의 trace_id 일치**를 양쪽 stdout에서 확인(가드레일 4 증명, 외부 의존 0). **선택(showcase)**: docker 또는 **Jaeger all-in-one 바이너리**(OTLP `4317`/UI `16686`)로 단일 trace UI 스크린샷
 - [ ] 4.4 **otel-expert cross-check**: tracer init·exporter protocol(gRPC vs HTTP 기본값, config-contract-audit)·propagator·샘플링 기본값 정합 검토
 - [ ] branch + PR (engine·backend 각각, 건별 승인)
 
