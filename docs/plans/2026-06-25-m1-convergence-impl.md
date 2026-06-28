@@ -14,7 +14,7 @@ related:
 스캐폴드(`2026-06-25-m1-repo-scaffold.md`, done)의 빈 스텁을 채워 **두 브라우저가 같은 문서를
 동시 편집하면 동일 상태로 수렴**함을 증명한다. 엔진(Rust yrs) 우선.
 
-> 스코프 확정: **awareness(커서) 연기**(proto bump 회피, M1.5) / **OTel 폴리글랏 trace M1 포함**(Phase 4).
+> 스코프 확정: **awareness(커서) 연기**(proto bump 회피, M1.5) / **OTel trace M1 포함**(Phase 4 — **thin 2-hop 전파 증명만**, 풀 관측 스택[Collector·샘플링·Grafana]은 **M5**로 명시 연기. 2026-06-28 사용자 결정).
 
 ## Context
 
@@ -130,12 +130,20 @@ related:
       gateway 로그가 테스트 시각(17:17:48)에 WS 핸들러+gRPC TcpMetrics 초기화 → WS→gateway→gRPC→engine→fan-out 실경로 확인(false positive 아님). `npm run build`(tsc+vite) green.
 - [x] branch `feature/m1-e2e-convergence`(2 커밋: ed4068d editor, f433d0b e2e) push + **PR #1 머지 완료**(merge commit e8f0c83, 2026-06-28): https://github.com/ressKim-io/weDocs-frontend/pull/1 → 원격 브랜치 삭제, 로컬 main 동기화
 
-### Phase 4 — OTel 폴리글랏 trace 전파 (gateway+engine) 가드레일 4 + showcase
-- [ ] 4.1 **정직한 스코프**: WS엔 표준 traceparent 채널 없음(프레임 변경 X) → **gateway(Java)→engine(Rust) gRPC
-      메타데이터 `traceparent` 2-hop 전파**가 산출물. 브라우저-origin span은 stretch(M1.5, WS 컨텍스트 주입 필요)
-- [ ] 4.2 Java OTel(자동 계측, grpc 클라가 traceparent 주입) + Rust tonic OTel layer(메타데이터 traceparent 추출→span)
-- [ ] 4.3 한 편집이 Java span→Rust span 단일 trace로 연결되는지 확인(스크린샷/로그) → otel-expert cross-check
-- [ ] branch + PR (승인 후)
+### Phase 4 — OTel 폴리글랏 trace 전파 (gateway+engine) 가드레일 4 — **thin 2-hop 확정(2026-06-28)**
+
+> **스코프 확정**: `traceparent` **2-hop 전파 증명만**(가드레일 4 충족 + 패턴 확립). 풀 관측 스택(Collector·tail 샘플링·Grafana 대시보드)은 **M5로 명시 연기**.
+> **정직한 한계(2026-06-28 검증)**: bidi 스트림의 traceparent는 **stream-open(HTTP/2 헤더) 시 1회** 주입 → 산출물은 "한 *편집*"이 아니라 **"한 WS 세션(스트림 open)이 Java span→Rust span 단일 trace로 연결"**. **per-edit 메시지 span**은 proto field 또는 수동 컨텍스트 전파 필요 → **M1.5/M5**(원 plan 문구 "한 편집이…" 교정).
+> **검증된 접근(2026-06-28 WebSearch)**: Java = **OTel javaagent 2.28.x**(grpc-java 클라 자동계측이 W3C traceparent out-of-box 주입, **앱 코드 변경 0**) / Rust = **`tonic-tracing-opentelemetry` server layer**(메타데이터 traceparent 추출→child span) + `opentelemetry`/`opentelemetry_sdk`/`opentelemetry-otlp`/`tracing-opentelemetry`. 출처: [OTel Java agent](https://opentelemetry.io/docs/zero-code/java/agent/) · [tonic-tracing-opentelemetry](https://crates.io/crates/tonic-tracing-opentelemetry).
+
+**Blast Radius**: 직접변경 = engine `main.rs`·`service.rs`·`Cargo.toml`(+lock) / gateway 기동 스크립트·`Makefile`·문서(**Java 앱 코드 0** — javaagent 런타임 부착). 간접영향 = engine 부팅 경로(tracer init 실패가 부팅 막지 않게 graceful degrade) · gateway 실행 커맨드(`java -jar` → `java -javaagent:… -jar`). 롤백 = 각 서비스 레포 PR revert / controller plan은 main 커밋 revert. 검증 = Jaeger 단일 trace 스크린샷 + 양쪽 trace_id 로그 일치 + **기존 E2E 수렴 회귀 green 유지**. 다운타임 = 로컬 only N/A. 두 서비스 레포 = **branch+PR+건별 승인**.
+
+- [ ] **4.0 write-time 검증(MANDATORY, 코드 전)**: Java OTel agent 최신 patch를 [mvnrepository](https://mvnrepository.com/artifact/io.opentelemetry.javaagent/opentelemetry-javaagent)/GitHub releases로 pin + **VT(Virtual Thread)·Spring Boot 4.1 호환** 확인. Rust crate는 **0.x라 자주 깨짐** → `cargo add` 후 docs.rs로 `tonic-tracing-opentelemetry` server layer·`opentelemetry-otlp` init API 정합 재확인(deep-thinking.md: 추측 코드 금지)
+- [ ] 4.1 **engine(Rust)**: `main.rs`에 OTLP tracer init(`opentelemetry-otlp`→Jaeger) + `tracing-subscriber` + `TraceContextPropagator` 전역 등록(tracer init 실패해도 서버는 기동). `service.rs::sync`에 `tonic-tracing-opentelemetry` server layer로 traceparent 추출→span. **이참에 `eprintln!`→`tracing` 일괄 전환**(리뷰 후속 해소). proto 변경 X
+- [ ] 4.2 **gateway(Java)**: OTel **javaagent 부착**(기동 커맨드/Makefile/run 스크립트만) — `OTEL_SERVICE_NAME=ws-gateway` · `OTEL_EXPORTER_OTLP_ENDPOINT`(Jaeger) · `OTEL_TRACES_EXPORTER=otlp`. **앱 코드·build.gradle 변경 0**(javaagent=bytecode instrumentation, JNI 아님 → 가드레일 3 무관)
+- [ ] 4.3 **검증(실측, 추정 금지)**: 로컬 Jaeger all-in-one(docker, OTLP `4317` + UI `16686`) → engine+gateway 기동 → 두 탭 편집 → Jaeger UI에서 **1 trace = gateway grpc-client span → engine `sync` server span** 확인(스크린샷) + 양쪽 trace_id 로그 일치 보조 확인
+- [ ] 4.4 **otel-expert cross-check**: tracer init·exporter protocol(gRPC vs HTTP 기본값, config-contract-audit)·propagator·샘플링 기본값 정합 검토
+- [ ] branch + PR (engine·backend 각각, 건별 승인)
 
 ### Phase 5 — 마감 (controller, main 직접)
 - [ ] dev-log: 수렴 증명 결과(Before/After·검증 방법·교훈) + §D 결정들
@@ -169,7 +177,7 @@ doc-service·ai-service / 스냅샷 DB 영속화 / Istio 메타데이터 consist
 ## 재개 지점 (Resume)
 
 > **마지막 완료**: **Phase 3 frontend E2E 수렴 — PR #1 머지 완료**(e8f0c83, frontend main 동기화·브랜치 삭제). Phase 1~3 전부 머지 = **수직 슬라이스 수렴 본체 증명 끝**. (Phase 2 e0e8277, Phase 1 fbd25fe.) `Editor.tsx` room=`?room=` 쿼리 + `test/e2e/convergence.e2e.test.ts`(vitest, 2클라 y-websocket+ws, `disableBc:true`, 고유 room, 텍스트 폴링 §D-4). 로컬 engine+gateway 실기동 → `npm run test:e2e` 2회 green + gateway 로그 gRPC 실경로 확인 + `npm run build` green. (문서 최신화: CLAUDE.md 현재상태 · onboarding §6 · controller README 마일스톤.)
-> **다음 작업**: **Phase 4 OTel 폴리글랏 trace** — gateway(Java)→engine(Rust) gRPC 메타데이터 `traceparent` 2-hop 전파(§4.1). Java OTel 자동계측(grpc 클라 주입) + Rust tonic OTel layer(메타데이터 추출→span). 한 편집이 Java span→Rust span 단일 trace 연결 확인 → otel-expert cross-check. **양쪽 서비스 레포 변경 = branch+PR+건별 승인.** 신규 도구(OTel SDK 버전) write-time spec 검증 필수(workflow.md). 이후 Phase 5 마감(dev-log 수렴 증명 + ADR 브리지 설계 + plan done).
+> **다음 작업**: **Phase 4 OTel thin 2-hop trace**(2026-06-28 스코프 확정 — 풀 관측 스택은 M5 연기). gateway(Java OTel **javaagent**, 앱 코드 0)→engine(Rust **`tonic-tracing-opentelemetry`** server layer) gRPC 메타데이터 `traceparent` 전파. **검증된 한계**: stream-open 1회 주입 → "한 WS 세션이 Java span→Rust span 단일 trace 연결"(per-edit span은 M5). 검증 = 로컬 **Jaeger all-in-one**(docker)에서 단일 trace 스크린샷 + trace_id 로그 일치 → otel-expert cross-check. **시작 = §4.0 write-time 검증**(Java agent patch pin + Rust 0.x crate `cargo add`/docs.rs 정합 — 추측 코드 금지). **양쪽 서비스 레포 = branch+PR+건별 승인.** 이후 Phase 5 마감(dev-log 수렴 증명 + ADR 브리지 설계 + plan done) → **M2(영속화·세션·권한, doc-service 신설)**.
 > **주의(검증된 자산, 변경 금지)**: Phase 1~3 모두 v1 인코딩 고정(§B). 엔진 메타데이터 키=`"doc-id"`(service.rs:52)↔게이트웨이 정합(§D-1). ServerFrame{update}=전부 `Update(2)` 프레이밍 → E2E는 'synced' 비의존 텍스트 폴링(§D-4). E2E는 `disableBc:true` 필수(없으면 BroadcastChannel로 게이트웨이 우회=거짓 green). 엔진 M1 미evict(§D-8) → E2E 실행마다 고유 room.
 > **주의(로컬 검증 기동)**: engine `cd weDocs-crdt-engine && cargo run`(:50051) / gateway `cd weDocs-backend && java -jar ws-gateway/build/libs/ws-gateway-0.1.0.jar`(:8080, 먼저 `make proto-gen && ./gradlew :ws-gateway:bootJar -x test`) / E2E `cd weDocs-frontend && npm run test:e2e`.
 > **환경**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 26 · gh 2.95.
