@@ -7,7 +7,7 @@ v1 → v2 변경 요약:
 - AI Service를 **Python(FastAPI + LlamaIndex)** 으로 전환 (Spring AI → Python; "모델 통합"이 아니라 "AI 생태계 깊이"가 목적)
 - Rust를 단순 래퍼가 아니라 **독립 CRDT 엔진**으로 (yrs 위 최적화, bidi streaming, criterion 벤치마크)
 - 레포를 **5개 폴리레포**로 (frontend / backend[Java] / ai-service[Python] / crdt-engine[Rust] / controller)
-- proto는 **buf CLI + controller SSOT + git submodule**
+- proto는 **buf CLI + controller SSOT + buf 원격 git input** (submodule 아님 — ADR-0010)
 - Istio **Ambient** 상세화 (ztunnel L4 / 엔진만 waypoint L7 + consistent hash)
 
 ---

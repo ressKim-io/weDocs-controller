@@ -1,13 +1,13 @@
 # Synapse Controller — 작업 가이드 (Claude Code)
 
 이 레포는 5-repo 폴리레포의 **컨트롤 플레인**(proto SSOT · infra · CI · docs)이다.
-실제 서비스 코드는 별도 레포(`frontend` / `backend` / `ai-service` / `crdt-engine`)에 있다.
+실제 서비스 코드는 별도 레포에 있다 — **현재 존재**: `frontend` / `backend`(ws-gateway) / `crdt-engine`. **미생성(예정)**: `ai-service`(M4) · backend 내 `doc-service`(M2).
 
 ## 진입점
 `docs/PRD.md` (무엇·왜) → `docs/SDD.md` (어떻게) → `docs/adr/` (결정 로그).
 
 ## 불변 규칙 (가드레일) — SDD §14
-1. **proto는 여기서 시작.** 모든 계약 변경은 `proto/`에서 → `buf lint` + `buf breaking` 통과 → 다운스트림 submodule 업데이트 → 3언어 재생성. 다운스트림 레포에서 proto를 직접 고치지 않는다.
+1. **proto는 여기서 시작.** 모든 계약 변경은 `proto/`에서 → `buf lint` + `buf breaking` 통과 → 다운스트림 buf 원격 git input ref bump(ADR-0010, **submodule 아님**) → 3언어 재생성. 다운스트림 레포에서 proto를 직접 고치지 않는다.
 2. **AI Service는 CRDT 의존성을 가질 수 없다.** AI는 stateless 텍스트 in/out. (설계 위반)
 3. **게이트웨이는 native call(JNI)을 도입하지 않는다.** VT pinning 방지.
 4. **서비스 간 호출은 gRPC + OTel propagator를 통과한다.** W3C `traceparent` 통일.

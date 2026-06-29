@@ -4,7 +4,7 @@
 > Polyglot MSA(Java / Python / Rust), 로컬 LLM(Ollama) 우선·클라우드 폴백.
 
 문서 버전: M0 (SDD v2 정렬) / 작성: 기획 단계
-> **변경 노트 (SDD v2 정렬, 2026-06-24)**: 언어 전략 B 반영 — 게이트웨이 Go → **Java Virtual Thread**, AI Service 언어 = **Python**, 모노레포 → **5-repo 폴리레포(buf + submodule)**, 폴리글랏 trace 체인 `Go→Rust→Java` → **`Java→Rust→Python`**. 근거·상세는 `SDD.md` §0·§2·§12 및 `docs/adr/0001-language-strategy-b.md`.
+> **변경 노트 (SDD v2 정렬, 2026-06-24)**: 언어 전략 B 반영 — 게이트웨이 Go → **Java Virtual Thread**, AI Service 언어 = **Python**, 모노레포 → **5-repo 폴리레포(buf 원격 git input, ADR-0010)**, 폴리글랏 trace 체인 `Go→Rust→Java` → **`Java→Rust→Python`**. 근거·상세는 `SDD.md` §0·§2·§12 및 `docs/adr/0001-language-strategy-b.md`.
 
 이 문서의 목적: **Claude Code 및 협업자가 "무엇을, 왜" 만드는지 합의**하는 기준점. "어떻게"는 `SDD.md` 참조.
 

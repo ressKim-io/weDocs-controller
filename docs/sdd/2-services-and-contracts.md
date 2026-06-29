@@ -70,7 +70,7 @@
 
 ## 4. 서비스 간 통신 — proto 계약 + buf
 
-> proto는 `controller/proto/`에 SSOT. 각 레포가 **git submodule**로 참조하고 **buf**로 stub 생성.
+> proto는 `controller/proto/`에 SSOT. 각 레포가 **buf 원격 git input**(`subdir`, ADR-0010)으로 참조하고 **buf**로 stub 생성.
 
 ### 4.1 buf 전략
 - **buf CLI** 사용 (BSR는 옵션; 개인 프로젝트엔 CLI로 충분)

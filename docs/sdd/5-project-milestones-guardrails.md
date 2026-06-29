@@ -11,7 +11,7 @@
    ├── doc-service/  (Spring Boot, Security/JPA — M2+)
    └── buf.gen.yaml  → buf 원격 git input (controller proto, ADR-0010)
 
-③ weDocs-ai-service/ Python (uv/poetry)
+③ weDocs-ai-service/ Python (uv/poetry)        ← M4 신설 예정 (현재 미생성)
    ├── app/          (FastAPI + LlamaIndex)
    ├── indexer/      (Kafka consumer)
    └── buf.gen.yaml  → buf 원격 git input
@@ -29,7 +29,7 @@
    │   ├── argocd/   (app-of-apps)
    │   └── terraform/ (옵션)
    ├── .claude/      (에이전트/스킬)
-   ├── ci/           (buf breaking 게이트 + 다운스트림 트리거)
+   ├── ci/           (README; 실제 buf 게이트=.github/workflows/proto-ci.yml · 다운스트림 트리거=M5 TODO)
    └── docs/         (PRD.md, SDD.md, adr/)
 ```
 - proto SSOT는 controller. gRPC 소비자(②③④)가 **buf 원격 git input**으로 참조해 stub 생성(submodule 아님 — ADR-0010). ①(frontend)은 gRPC 비소비자(y-websocket).
@@ -60,7 +60,7 @@
 - **워크플로우**: PRD → SDD → (서비스별) 구현 → 리뷰
 - **작업 단위**: 마일스톤 단위. M1은 crdt-engine + ws-gateway(최소) + frontend(최소)를 하나의 수직 슬라이스로.
 - **불변 규칙 (에이전트 가드레일)**:
-  - proto 변경은 `controller/proto`에서 시작 → `buf breaking` 통과 → submodule 업데이트 → 3언어 재생성
+  - proto 변경은 `controller/proto`에서 시작 → `buf breaking` 통과 → 다운스트림 buf git-input ref bump(submodule 아님 — ADR-0010) → 3언어 재생성
   - AI Service는 CRDT 의존성을 가질 수 없다(설계 위반)
   - 게이트웨이는 native call(JNI)을 도입하지 않는다(VT pinning 방지)
   - 서비스 간 호출은 gRPC + OTel propagator를 통과한다
