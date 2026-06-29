@@ -18,7 +18,7 @@ related:
 - **왜**: M1 plan은 구현·검증 견고하나 "무엇을"만 담아 ①4.2/4.3/5 "어떻게" ②M2~M6 로드맵 ③NFR/DoD 측정·추적 ④문서 자기모순이 비어 "대략적".
 - **방법**: `Workflow` 5차원 병렬 리뷰 + 자체 적대검증(Verify 토큰리밋 중단 → Claude 직접 검증, dev-log §방법 참조).
 - **확정 사실**(추측 아님, 코드 확인):
-  - `crdt-engine/src/telemetry.rs:67-73` — endpoint를 exporter에 안 넘김(`.with_endpoint()` 부재) = M1R-09 실버그.
+  - `crdt-engine/src/telemetry.rs:67-73` — endpoint를 exporter에 명시 전달 안 함. ~~M1R-09 실버그~~ → **2026-06-30 검증 기각**: opentelemetry-otlp 0.32 `with_tonic().build()`가 `OTEL_EXPORTER_OTLP_ENDPOINT` 자동 읽음 → 기능 정상, 코드 변경 불요(`.with_endpoint()` 추가는 signal-specific override 덮어쓰는 회귀).
   - `crdt-engine/build.rs` `.build_client(false)` — 엔진 outbound gRPC 클라이언트 stub 부재 = M2F-02 blocker.
   - `submodule` 표현 6곳(CLAUDE.md:10·SDD.md:10·sdd/2:73·sdd/5:63·prd/2:64) vs ADR-0010 = M1D-01 자기모순.
   - infra/ = 스캐폴드 9파일(resources:[]), 서비스레포 Dockerfile/CI 0건. ai-service 레포 미생성(4 레포만).
@@ -31,23 +31,21 @@ related:
 ### Phase 0 — 기록 (controller, main 직접) ✅
 - [x] 감사 dev-log 작성 (`docs/dev-logs/2026-06-30-m1-plan-audit.md`, 40건 보존)
 - [x] 이 plan 작성 ← 코드/문서 변경 전 게이트
-- [ ] 두 문서 commit (논리단위 분할)
+- [x] 두 문서 commit (dev-log 1344fc6 · plan fb7060f)
 
-### T1 — M1 마감 구체화 🔴 (즉시, 다음 실행단계 추측 제거)
+### T1 — M1 마감 구체화 🔴 — ✅ 계획 구체화 완료(2026-06-30), 실제 4.2/4.3/5 실행은 convergence plan으로
 
-> 산출물 = 기존 `2026-06-25-m1-convergence-impl.md`의 Phase 4.2/4.3/5를 "어떻게"로 재작성 + engine 수정.
+> 산출물 = `2026-06-25-m1-convergence-impl.md`의 Phase 4.2/4.3/5를 "어떻게"로 재작성(완료) + spec 검증 + Jaeger compose 생성.
+> 이 트랙은 **계획 구체화**가 목표 — 실제 backend javaagent 부착(4.2 PR)·live 검증 실행(4.3)·마감 문서(5)는 이제 구체화된 convergence plan을 따라 진행.
 
-- [ ] **T1-1 (M1R-09, engine PR)** `telemetry.rs` exporter에 `.with_endpoint(endpoint)` 추가 + opentelemetry-otlp 0.32
-      `with_tonic`의 `OTEL_EXPORTER_OTLP_ENDPOINT` 자동읽기 여부 docs.rs 확인(자동이면 주석으로 의도 명시, 아니면 1줄 수정). **4.3 전 필수.** branch+PR+승인.
-- [ ] **T1-2 (M1R-01/02)** 4.2 체크리스트에 javaagent 배선 박기: ①jar 취득(GitHub releases v2.29.0 URL + sha256, 또는 gradle task로 받아 복사)
-      ②배치경로(`weDocs-backend/tools/opentelemetry-javaagent-2.29.0.jar`) ③.gitignore 정책(권장: 미커밋 + Makefile이 받음)
-      ④`make run-otel` target = `java -javaagent:tools/...jar -jar build/libs/ws-gateway-0.1.0.jar` + `OTEL_SERVICE_NAME`/`OTEL_EXPORTER_OTLP_ENDPOINT`/`OTEL_TRACES_EXPORTER` export 위치.
-- [ ] **T1-3 (M1R-03/04)** 4.3에 Jaeger 구체화: `infra/`(또는 backend)에 `docker-compose.otel.yml`(Jaeger all-in-one 태그핀·OTLP gRPC 4317·UI 16686·OTLP enable env)
-      + gateway/engine env 세트 + docker-free stdout 경로(gateway `OTEL_TRACES_EXPORTER=logging` ↔ engine 기본 stdout) + trace_id 추출 grep 절차(동일 room 1회 접속→양쪽 grep→string equal). **WebFetch로 Jaeger 현행 docs 검증 후 박기.**
-- [ ] **T1-4 (M1R-05)** 4.2 끝에 체크박스: 'javaagent 부착 gateway 기동 → `npm run test:e2e` 2회 green(회귀)'. 4.3 done 게이트 = 수렴 E2E green + 단일 trace 둘 다.
-- [ ] **T1-5 (M1R-06, DOC-01, PDD-01/03)** Phase 5 재작성: ①ADR 번호확정(0011 또는 0004 슬롯) + 대안 3개(단일broadcast vs per-stream / v1고정 vs v2 / 메타데이터 doc-id vs 첫프레임)
-      ②Phase 4.1 engine OTel 후향 dev-log ③M1 retrospective(`docs/retrospective/2026-..-m1-convergence.md`) ④SDD §15 미해결5 확정/이월 갱신.
-- [ ] **T1-VERIFY** plan 갱신 후 재개지점·검증표 일관성 확인. engine PR은 `cargo test`/`clippy -D warnings`/`fmt` green.
+- [x] **T1-1 (M1R-09)** ✅ **검증 완료 — engine 코드 변경 불필요**. docs.rs opentelemetry-otlp 0.32: `with_tonic().build()`가
+      `OTEL_EXPORTER_OTLP_ENDPOINT`(+signal-specific `_TRACES_ENDPOINT` 우선) **자동 읽음** → 현 telemetry.rs 기능 정상.
+      리뷰어 원권장 `.with_endpoint()` 추가는 **회귀**(env override 덮어씀)라 기각. engine PR 불요(사이클 절약). convergence plan §4.3·재개지점에 기록.
+- [x] **T1-2 (M1R-01/02)** ✅ convergence plan §4.2에 javaagent 배선 전부 명세 — jar URL(v2.29.0, 다운로드 구문 검증)+sha256·`tools/` 배치·`tools/*.jar` gitignore·`make run-otel`(java -jar 직접) target+env 3개. (실제 backend 파일 변경=4.2 실행 PR)
+- [x] **T1-3 (M1R-03/04)** ✅ `infra/local/docker-compose.jaeger.yml` 생성(Jaeger v2 2.19.0, 4317/4318/16686, v2 OTLP 기본활성 검증). convergence plan §4.3에 기동순서·단일trace 검증·docker-free grep 절차 명세.
+- [x] **T1-4 (M1R-05)** ✅ convergence plan §4.3에 '4.3-회귀' 체크박스 추가(`npm run test:e2e` 2회 green) + 'done 게이트=단일trace+수렴 둘 다' 명시.
+- [x] **T1-5 (M1R-06, DOC-01, PDD-01/03)** ✅ convergence plan Phase 5 재작성 — ADR 0011+대안 3축·Phase4 후향 dev-log·M1 retrospective·SDD §15 정리.
+- [x] **T1-VERIFY** ✅ convergence plan 재개지점·환경표기(node 24·docker 추가) 갱신. **남은 실행**: 4.2(backend PR)·4.3(live 실측)·5(마감) = convergence plan 따라 진행.
 
 ### T2 — 문서 부채 quick win 🟠 (controller, main 직접 — 저위험)
 
@@ -98,7 +96,7 @@ related:
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: Phase 0 — 감사 dev-log(`2026-06-30-m1-plan-audit.md`, 40건 보존) + 이 plan 작성. **커밋 직전.**
-> **다음 작업**: 두 문서 commit(controller main 직접, 논리단위 분할) → 사용자에게 트랙 실행순서 확인. 권장 1순위 = **T1(M1 마감 구체화)** — 특히 T1-1(M1R-09 engine `.with_endpoint` 수정, 4.3 전 필수)·T1-2/3(javaagent·Jaeger 구체화).
-> **주의(검증된 사실, 변경 금지 전제)**: telemetry.rs:67-73 endpoint 미전달(T1-1) · build_client(false)로 엔진→doc-service 호출불가(T3-1 blocker) · submodule 6곳(T2-1) — 전부 코드/grep 확인됨. engine·backend·frontend 변경은 branch+PR+건별 승인. controller(plan/docs/CLAUDE.md/PRD/SDD)는 main 직접.
+> **마지막 완료**: **T1 계획 구체화 완료**(2026-06-30) — Phase 0 기록 커밋(dev-log 1344fc6·plan fb7060f) + T1 전체: spec 검증(opentelemetry-otlp 0.32·Jaeger v2·javaagent 2.29), convergence plan §4.2/4.3/5 구체화, `infra/local/docker-compose.jaeger.yml` 생성, M1R-09 검증(engine 변경 불요).
+> **다음 작업**: T1 커밋(controller main 직접) → **4.2/4.3/5 실제 실행**은 구체화된 [convergence plan](2026-06-25-m1-convergence-impl.md) 따라 — 4.2(backend javaagent, branch+PR+승인) → 4.3(이 Linux서 `docker compose ... jaeger` live 검증) → Phase 5 마감. 또는 **T2(문서 부채 quick win, controller main 직접)** 먼저 처리 가능.
+> **주의(검증된 사실, 변경 금지 전제)**: ~~telemetry.rs endpoint 미전달~~ → **M1R-09 기각**(0.32 env 자동읽기 검증, 코드 정상·`.with_endpoint` 추가 금지). build_client(false)로 엔진→doc-service 호출불가(T3-1 blocker, 유효) · submodule 6곳(T2-1, 유효) — grep 확인됨. engine·backend·frontend 변경은 branch+PR+건별 승인. controller는 main 직접.
 > **환경**: rust 1.96 · java 25.0.3 · node 24 · docker 29.6 · buf 1.71 · gh 2.95 (전부 Linux 설치 완료). 전체 40건 근거는 dev-log appendix.
