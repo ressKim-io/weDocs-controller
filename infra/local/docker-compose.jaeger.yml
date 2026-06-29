@@ -1,0 +1,23 @@
+# Local Jaeger all-in-one — M1 Phase 4.3 폴리글랏 trace live 검증용.
+#
+# engine(cargo run, :50051)·gateway(make run-otel, :8080)는 호스트에서 실행하고
+# OTLP/gRPC(4317)로 이 컨테이너에 전송 → Jaeger UI(16686)에서 단일 trace 확인.
+#
+# 사용:
+#   docker compose -f infra/local/docker-compose.jaeger.yml up -d
+#   # engine·gateway 기동 후 WS 1회 접속 → http://localhost:16686
+#   docker compose -f infra/local/docker-compose.jaeger.yml down
+#
+# 검증(2026-06-30, deep-thinking/workflow 신규도구 spec 확인):
+#   - Jaeger v2(cr.jaegertracing.io/jaegertracing/jaeger)는 OTel Collector 기반 →
+#     OTLP receiver(4317/4318) **기본 활성**. v1의 COLLECTOR_OTLP_ENABLED=true 불요.
+#   - 출처: https://www.jaegertracing.io/docs/latest/getting-started/
+services:
+  jaeger:
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.19.0  # 버전핀(config-contract-audit)
+    container_name: wedocs-jaeger
+    ports:
+      - "16686:16686"   # Web UI
+      - "4317:4317"     # OTLP gRPC (engine·gateway 송신 대상)
+      - "4318:4318"     # OTLP HTTP (보조)
+    restart: unless-stopped

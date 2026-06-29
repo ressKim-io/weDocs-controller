@@ -145,15 +145,36 @@ related:
   - **API 정밀 정합**(exporter init·`TraceContextPropagator` 경로 등)은 engine 브랜치에서 `cargo add` 후 docs.rs 0.32/0.33로 재확인(추측 코드 금지)
   - ⚠️ **로컬 docker 미설치 확인** → 검증 경로 docker-free로 조정(§4.3)
 - [ ] 4.1 **engine(Rust)**: `main.rs`에 OTLP tracer init(`opentelemetry-otlp`→Jaeger) + `tracing-subscriber` + `TraceContextPropagator` 전역 등록(tracer init 실패해도 서버는 기동). `service.rs::sync`에 `tonic-tracing-opentelemetry` server layer로 traceparent 추출→span. **이참에 `eprintln!`→`tracing` 일괄 전환**(리뷰 후속 해소). proto 변경 X
-- [ ] 4.2 **gateway(Java)**: OTel **javaagent 부착**(기동 커맨드/Makefile/run 스크립트만) — `OTEL_SERVICE_NAME=ws-gateway` · `OTEL_EXPORTER_OTLP_ENDPOINT`(Jaeger) · `OTEL_TRACES_EXPORTER=otlp`. **앱 코드·build.gradle 변경 0**(javaagent=bytecode instrumentation, JNI 아님 → 가드레일 3 무관)
-- [ ] 4.3 **검증(실측) — ⏸ Linux 환경으로 연기**(Mac docker 미설치, 2026-06-28): trace **live 검증은 Linux(docker+K8s)에서** — gateway javaagent `OTEL_TRACES_EXPORTER=logging` ↔ engine `opentelemetry-stdout` **trace_id 일치**(가드레일 4 증명) + Jaeger all-in-one(docker) 단일 trace UI 스크린샷. **Mac에선 구현+컴파일 검증(`cargo build`/`clippy`/`test`)까지만**, live trace는 **미실행 명시**(deep-thinking: 추정 통과 금지). → **Phase 4 done은 Linux live 검증 후**
+- [ ] 4.2 **gateway(Java) — OTel javaagent 부착**(backend 레포 = branch+PR+건별 승인. 앱 코드·build.gradle 변경 0):
+  - **jar 취득(버전핀+체크섬, M1R-01)**: `opentelemetry-javaagent.jar` v2.29.0 — `https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.29.0/opentelemetry-javaagent.jar` (✅ 2026-06-30 다운로드 구문·`-javaagent:경로` 검증). 최초 받을 때 `sha256sum` 기록.
+  - **배치·gitignore**: `weDocs-backend/tools/opentelemetry-javaagent-2.29.0.jar`. **jar 미커밋** — backend `.gitignore`에 `tools/*.jar` 추가, Makefile이 없으면 받음.
+  - **Makefile `run-otel` target 신규(M1R-02)** — bootRun 아닌 `java -jar` 직접(javaagent는 실제 기동 JVM에 붙음):
+    ```makefile
+    OTEL_AGENT := tools/opentelemetry-javaagent-2.29.0.jar
+    run-otel: proto-gen
+    	@test -f $(OTEL_AGENT) || curl -sSL -o $(OTEL_AGENT) https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.29.0/opentelemetry-javaagent.jar
+    	OTEL_SERVICE_NAME=ws-gateway OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 OTEL_TRACES_EXPORTER=otlp \
+    	java -javaagent:$(OTEL_AGENT) -jar ws-gateway/build/libs/ws-gateway-0.1.0.jar
+    ```
+  - JNI 아님(bytecode instrumentation) → 가드레일 3 무관. javaagent 기본 OTLP endpoint=`http://localhost:4317`(엔진과 동일 기본값). docker-free 대조 시 `OTEL_TRACES_EXPORTER=logging`로 콘솔 span 출력(§4.3).
+- [ ] 4.3 **live 검증(실측) — Linux에서 실행 가능**(2026-06-30 docker 29.6·java 25·cargo 1.96·node 24 설치 확인. 더 이상 연기 아님):
+  - **Jaeger 기동**: `docker compose -f infra/local/docker-compose.jaeger.yml up -d` (Jaeger v2 `cr.jaegertracing.io/jaegertracing/jaeger:2.19.0`, OTLP gRPC 4317·HTTP 4318·UI 16686. ✅ 2026-06-30 검증: v2는 OTLP receiver **기본 활성**, `COLLECTOR_OTLP_ENABLED`는 v1 한정 불요).
+  - **기동 순서**: ①Jaeger(docker) ②engine `OTEL_TRACES_EXPORTER=otlp OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 cargo run`(:50051) ③gateway `make run-otel`(:8080).
+  - **endpoint 검증(M1R-09 해소, 2026-06-30 docs.rs 0.32)**: `with_tonic().build()`가 `OTEL_EXPORTER_OTLP_ENDPOINT`(+ signal-specific `_TRACES_ENDPOINT` 우선)를 **자동 읽음** → 현 `telemetry.rs` 기능 정상, **코드 변경 불필요**. ⚠️ `.with_endpoint()` 추가 **금지**(프로그래밍 설정이 env보다 우선이라 signal-specific override를 덮어씀). 로그가 generic 변수만 표시하는 미세 drift만 선택적 주석 정리(별도 PR).
+  - **단일 trace 검증(가드레일 4)**: 한 WS 세션(`ws://localhost:8080/ws/doc/<uniq>`) 접속 → Jaeger UI(http://localhost:16686)에서 trace 1건에 **`ws-gateway` span → `wedocs-crdt-engine` span** 연결 확인 + 스크린샷.
+  - **docker-free 대조(보조)**: gateway `OTEL_TRACES_EXPORTER=logging` + engine stdout → 각 콘솔에서 `grep -oE 'trace_id[\":= ]+[0-9a-f]{32}'` 두 값 string equal.
+  - **batch delay 단축**: otlp 검증 시 `OTEL_BSP_SCHEDULE_DELAY=1000`(엔진 기본 5s, 4.4 팁).
+- [ ] 4.3-회귀(M1R-05): javaagent 부착 gateway(`make run-otel`)로 기동 → `cd weDocs-frontend && npm run test:e2e` **2회 green**(바이트코드 계측이 VT·WS 경로 안 깬 것 확인). **Phase 4 done 게이트 = 단일 trace + E2E 수렴 green 둘 다.**
 - [x] **4.1 engine 구현+로컬검증 완료**(2026-06-29, 커밋 3f02722, **PR 대기**): `telemetry.rs`(propagator+OTLP/stdout 익스포터, degrade) · `service.rs`(MetadataExtractor→span.set_parent→instrument) · `main.rs`(spawn_blocking shutdown flush) · `eprintln!`→`tracing` 4곳. `cargo build`/`clippy -D warnings`/`fmt`/`test`(8 pass) green
 - [x] 4.4 **otel-expert cross-check(2026-06-29 완료)**: 7항목 정합 — tracer init/propagator/추출시점/샘플러(parentbased_always_on, 2-hop 적합) **correct**. 반영: ① `shutdown()`→`spawn_blocking`(blocking 스레드 join이 async 워커 막지 않게, 공식 권장) ② OTLP endpoint 시작 로그 ③ gRPC path 함정 주석·샘플러 기본값 주석. C1(`set_parent` Result)=빌드 통과로 해소. m3(세션 태스크 span 유실)=M5. **검증 팁**: otlp 검증 시 `OTEL_BSP_SCHEDULE_DELAY=1000`(기본 5s batch delay). **rt-tokio**: 배치=전용스레드라 불요 가능성이나 otlp/tonic export 비동기 경로 Mac 미실측 → 보수적 유지, Linux 실측서 재확인
 - [x] branch push + **PR #2 머지 완료**(2026-06-29, merge commit f2cdea2): https://github.com/ressKim-io/weDocs-crdt-engine/pull/2 → 원격 브랜치 삭제, engine main 동기화. 4.2 게이트웨이(javaagent 기동 설정)는 별도 PR
 
 ### Phase 5 — 마감 (controller, main 직접)
-- [ ] dev-log: 수렴 증명 결과(Before/After·검증 방법·교훈) + §D 결정들
-- [ ] ADR: 엔진 sync/fan-out 브리지 설계(게이트웨이=번역기, 엔진=권위, broadcast fan-out, v1 고정) — 대안 비교표
+- [ ] **dev-log: Phase 4 engine OTel 후향 기록**(PDD-01 — 4.1만 dev-log 누락) — `docs/dev-logs/2026-06-..-m1-phase4-otel.md`(category:decision, importance:major). 수동 traceparent 추출·shutdown spawn_blocking·degrade 전략·**endpoint env 자동읽기 검증(M1R-09)** 기록.
+- [ ] **dev-log: M1 수렴 증명 종합**(Before/After·검증 방법·교훈) + §D 결정들. (Phase1~3은 `2026-06-28-m1-convergence-phase1-3.md` 존재 → Phase 4 합본 또는 별도 마감 로그)
+- [ ] **retrospective(M1R-07/PDD-03)**: `docs/retrospective/2026-06-..-m1-convergence.md` — 폴리글랏 수렴 리스크 검증 회고(Yjs↔yrs 와이어 호환·lib0 v1 통일·thin 2-hop 교훈, Before/After).
+- [ ] **ADR: 엔진 sync/fan-out 브리지 설계**(M1R-06) — 번호 **0011**(0002~0009는 M6 일괄 분리, 권위=SDD §15). 대안 비교표 3축: ①fan-out(단일 broadcast vs per-stream 채널+sender 레지스트리) ②인코딩(v1 고정 vs v2) ③doc-id 전달(gRPC 메타데이터 vs 첫 ClientFrame). §D 결정 1·3 근거 인용. documentation.md ADR 검증 5항목 충족.
+- [ ] **SDD §15 미해결 5건 확정/이월**(DOC-01): 복원·outbox·인증=M2 / consistent-hash=M3 / AI SLO=M4. ADR README 중복 제거(SDD §15 단일 권위).
 - [ ] 이 plan `status: done` + dev-log 링크 + commit
 
 ---
@@ -168,7 +189,7 @@ related:
 | 전체 | 로컬 engine(50051)+gateway(8080) 기동 → 두 탭 `ws://localhost:8080/ws/doc/demo` 동시 편집 → 동일 텍스트 | M1 정의 |
 | OTel | Java span→Rust span 단일 trace 연결 | 가드레일 4 |
 
-- 로컬 환경(buf 1.71·cargo 1.96·java 25.0.3·node 26·gh 2.95) 설치 확인 → 모든 검증 실행 가능.
+- 로컬 환경(Linux: buf 1.71·cargo 1.96·java 25.0.3·node 24.15·docker 29.6·gh 2.95) 설치 확인 → 모든 검증(4.3 live trace 포함) 실행 가능.
 - 못 돌린 검증은 "추정 통과" 금지, "미실행" 명시(deep-thinking.md).
 
 ## 범위 밖
@@ -183,7 +204,8 @@ doc-service·ai-service / 스냅샷 DB 영속화 / Istio 메타데이터 consist
 ## 재개 지점 (Resume)
 
 > **마지막 완료**: **Phase 3 frontend E2E 수렴 — PR #1 머지 완료**(e8f0c83, frontend main 동기화·브랜치 삭제). Phase 1~3 전부 머지 = **수직 슬라이스 수렴 본체 증명 끝**. (Phase 2 e0e8277, Phase 1 fbd25fe.) `Editor.tsx` room=`?room=` 쿼리 + `test/e2e/convergence.e2e.test.ts`(vitest, 2클라 y-websocket+ws, `disableBc:true`, 고유 room, 텍스트 폴링 §D-4). 로컬 engine+gateway 실기동 → `npm run test:e2e` 2회 green + gateway 로그 gRPC 실경로 확인 + `npm run build` green. (문서 최신화: CLAUDE.md 현재상태 · onboarding §6 · controller README 마일스톤.)
-> **다음 작업**: **Phase 4.2 게이트웨이 OTel**(engine 4.1 = **PR #2 머지 완료** f2cdea2, engine main 동기화). OTel **javaagent** 기동 설정만 = `-javaagent:opentelemetry-javaagent.jar`(v2.29.0) + `OTEL_SERVICE_NAME=ws-gateway`/`OTEL_EXPORTER_OTLP_ENDPOINT`/`OTEL_TRACES_EXPORTER=otlp`, **앱 코드·build.gradle 변경 0**(javaagent=bytecode instrumentation, JNI 아님). backend 별도 PR+건별 승인. → **4.3 live 검증은 Linux**(docker+Jaeger, `OTEL_BSP_SCHEDULE_DELAY=1000`로 5s delay 단축, gateway↔engine trace_id 일치+단일 trace UI) → Phase 5 마감 → **M2(영속화·세션·권한, doc-service 신설)**. **검증된 한계**: stream-open 1회 → "한 WS 세션이 Java span→Rust span"(per-edit=M5).
+> **다음 작업(2026-06-30 구체화 완료 — [감사 plan](2026-06-30-plan-audit-improvements.md) T1)**: **Phase 4.2 게이트웨이 OTel**(engine 4.1 = **PR #2 머지 완료** f2cdea2). §4.2에 javaagent 배선 전부 박힘 — jar URL(v2.29.0)+sha256·`tools/` 배치·`tools/*.jar` gitignore·`make run-otel`(java -jar 직접) target·env 3개. backend branch+PR+건별 승인. → **4.3 live 검증 = 이제 이 Linux에서 실행 가능**(docker 29.6 설치): `infra/local/docker-compose.jaeger.yml`(Jaeger v2 2.19.0)로 Jaeger 기동 → engine+gateway 송신 → Jaeger UI 단일 trace(ws-gateway→wedocs-crdt-engine) + 회귀 E2E green(둘 다 = done 게이트). → Phase 5 마감(dev-log 4.1 후향·M1 회고·ADR 0011·SDD §15 정리) → **M2([T3 readiness](2026-06-30-plan-audit-improvements.md))**. **검증된 한계**: stream-open 1회 → "한 WS 세션이 Java span→Rust span"(per-edit=M5).
+> **★M1R-09 해소(2026-06-30 docs.rs 0.32 검증)**: `telemetry.rs`는 `with_tonic().build()`가 `OTEL_EXPORTER_OTLP_ENDPOINT` 자동 읽음 → **기능 정상, engine 코드 변경 불필요**. `.with_endpoint()` 추가 **금지**(signal-specific override 덮어씀). 리뷰어 원권장(`.with_endpoint` 추가)은 검증 결과 회귀라 기각.
 > **주의(검증된 자산, 변경 금지)**: Phase 1~3 모두 v1 인코딩 고정(§B). 엔진 메타데이터 키=`"doc-id"`(service.rs:52)↔게이트웨이 정합(§D-1). ServerFrame{update}=전부 `Update(2)` 프레이밍 → E2E는 'synced' 비의존 텍스트 폴링(§D-4). E2E는 `disableBc:true` 필수(없으면 BroadcastChannel로 게이트웨이 우회=거짓 green). 엔진 M1 미evict(§D-8) → E2E 실행마다 고유 room.
 > **주의(로컬 검증 기동)**: engine `cd weDocs-crdt-engine && cargo run`(:50051) / gateway `cd weDocs-backend && java -jar ws-gateway/build/libs/ws-gateway-0.1.0.jar`(:8080, 먼저 `make proto-gen && ./gradlew :ws-gateway:bootJar -x test`) / E2E `cd weDocs-frontend && npm run test:e2e`.
-> **환경**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 26 · gh 2.95.
+> **환경(Linux)**: buf 1.71 · cargo 1.96 · java 25.0.3 · node 24.15 · docker 29.6 · gh 2.95.
