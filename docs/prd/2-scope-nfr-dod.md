@@ -47,19 +47,21 @@
 
 ## 7. 성공 기준 (Definition of Done)
 
-- [ ] 두 브라우저에서 같은 문서를 동시 편집해 충돌 없이 수렴한다
-- [ ] 재접속 후 문서 상태가 복원된다
-- [ ] 타 사용자 커서·선택이 실시간 표시된다
-- [ ] 문서 근거 기반 AI 답변이 스트리밍으로 출력된다
-- [ ] 로컬 GPU 과부하 시 클라우드로 폴백된다
-- [ ] Java→Rust→Python 호출이 단일 trace로 관측된다
-- [ ] K8s(홈랩)에 GitOps로 배포된다
-- [ ] CRDT 수렴이 property-based 테스트로 검증된다
-- [ ] README에 아키텍처 결정(언어 분리 근거 포함)이 문서화된다
+> 각 항목 끝에 **달성 마일스톤** 태그. 진척 추적 상세는 [개선 plan T4](../plans/2026-06-30-plan-audit-improvements.md) `docs/status/dod-tracker.md`(예정).
+
+- [x] 두 브라우저에서 같은 문서를 동시 편집해 충돌 없이 수렴한다 — **M1 ✅** (E2E green `e8f0c83`)
+- [ ] 재접속 후 문서 상태가 복원된다 — **M2**
+- [ ] 타 사용자 커서·선택이 실시간 표시된다 — **M3** (awareness=M1.5 연기)
+- [ ] 문서 근거 기반 AI 답변이 스트리밍으로 출력된다 — **M4**
+- [ ] 로컬 GPU 과부하 시 클라우드로 폴백된다 — **M4**
+- [~] Java→Rust→Python 호출이 단일 trace로 관측된다 — **M1 = 2-hop(Java→Rust) thin 증명 ✅ / 3-hop(+Python) = M4**
+- [ ] K8s(홈랩)에 GitOps로 배포된다 — **M5**
+- [x] CRDT 수렴이 property-based 테스트로 검증된다 — **M1 ✅** (`proptest`)
+- [ ] README에 아키텍처 결정(언어 분리 근거 포함)이 문서화된다 — **M6**
 
 ## 8. 핵심 가정 / 리스크
 
 - **가정**: 클라이언트 Yjs ↔ 서버 yrs(Rust)가 동일 binary wire format으로 상호운용된다 → M1에서 최우선 검증
 - **리스크(상)**: Rust/CRDT 학습 곡선 → M1에 리스크 집중 배치(가장 먼저 검증)
-- **리스크(중)**: 폴리글랏 빌드/CI 복잡도 → 5-repo 폴리레포 + buf submodule + controller 오케스트레이션으로 완화
+- **리스크(중)**: 폴리글랏 빌드/CI 복잡도 → 5-repo 폴리레포 + buf 원격 git input(ADR-0010) + controller 오케스트레이션으로 완화
 - **리스크(중)**: 단일 GPU 동시 추론 한계 → 추론 큐 + 폴백을 설계에 내장

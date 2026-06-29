@@ -3,7 +3,7 @@
 다른 머신(Linux 등)에서 `git clone`/`git pull` 후 **Mac 개발 환경과 동일하게** 빌드·작업하기 위한 가이드.
 "무엇이 git으로 따라오고, 무엇이 머신 로컬인지"를 명확히 한다.
 
-> 진입점: [PRD](../PRD.md) → [SDD](../SDD.md) → [ADR](../adr/) → 현재 plan [`plans/2026-06-25-m1-repo-scaffold.md`](../plans/2026-06-25-m1-repo-scaffold.md).
+> 진입점: [PRD](../PRD.md) → [SDD](../SDD.md) → [ADR](../adr/) → 진행 SSOT [`plans/2026-06-25-m1-convergence-impl.md`](../plans/2026-06-25-m1-convergence-impl.md) §재개 지점 (+ 개선 트랙 [`plans/2026-06-30-plan-audit-improvements.md`](../plans/2026-06-30-plan-audit-improvements.md)).
 
 ---
 

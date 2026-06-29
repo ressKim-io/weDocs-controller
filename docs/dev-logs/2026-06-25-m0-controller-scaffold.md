@@ -1,13 +1,13 @@
 ---
 date: 2026-06-25
 category: meta
-tier: 1
+tier: 2
 importance: major
-status: open
+status: resolved
 tags: [m0, scaffold, proto, buf, crdt, agents, rules, session-handoff]
 related:
   - adr/0001-language-strategy-b.md
-  - dev-logs/2026-06-25-m0-controller-scaffold.md
+  - adr/0010-proto-distribution-buf-git-input.md
 ---
 
 # M0 — controller 스캐폴딩 + 에이전트 도입 + Rust/CRDT 자산 (세션 핸드오프)

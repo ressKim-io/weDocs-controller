@@ -12,7 +12,7 @@
   - ⚠️ **health probe**: Ambient에서 노드 발 kubelet probe가 ztunnel 우회 가능 → **in-pod gRPC/HTTP probe** 사용
 - **GitOps**: ArgoCD app-of-apps (controller 관리)
 - **GPU 스케줄링**: AI Service만 GPU node affinity. CRDT Engine·게이트웨이는 일반 노드.
-- **Rust 이미지 빌드**: 멀티스테이지 + **cargo-chef**로 의존성 레이어 캐싱(컴파일 느림 완화), distroless 런타임.
+- **Rust 이미지 빌드(M5 — 현재 미구현)**: 멀티스테이지 + **cargo-chef**로 의존성 레이어 캐싱(컴파일 느림 완화), distroless 런타임. (서비스 레포 Dockerfile/CI 전반 = M5)
 
 ---
 
@@ -35,7 +35,7 @@
 - **CRDT 수렴 (최중요)**: property-based testing(Rust `proptest`) — 랜덤 연산 시퀀스를 여러 순서로 적용해 모든 replica 동일 수렴을 수천 회 검증.
 - **엔진 성능**: `criterion` 벤치마크 — 머지/diff/스냅샷 처리량, "단순 래퍼 대비" 비교 수치.
 - **Yjs ↔ yrs 상호운용 (M1 필수)**: 클라 Yjs update를 서버 yrs가 적용·복원, 역방향도.
-- **gRPC 계약**: `buf breaking` + 통합 테스트(Testcontainers: PG/Redis/Kafka).
-- **AI**: RAG 검색 정확도(고정 코퍼스), 폴백 트리거(GPU 포화 모킹), SSE 스트림 무결성.
+- **gRPC 계약**: `buf breaking`(M1 ✅, controller proto-ci) + 통합 테스트(Testcontainers: PG/Redis/Kafka) **(M2)**.
+- **AI (M4)**: RAG 검색 정확도(고정 코퍼스), 폴백 트리거(GPU 포화 모킹), SSE 스트림 무결성.
 
 ---
