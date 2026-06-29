@@ -87,9 +87,10 @@ cd ../weDocs-frontend && npm install && npm run build
 ## 6. 현재 상태 / 다음 (roadmap)
 
 - **M0** ✅ 기획·proto·스캐폴딩.
-- **M1** 🔶 수직 슬라이스 — **"두 브라우저 동시 편집 수렴" 본체 증명 완료(Phase 1~3 머지)**, OTel·마감 남음. proto 배포 = buf 원격 git input(ADR-0010, `proto-v0.1.0`).
+- **M1** 🔶 수직 슬라이스 — **수렴 증명(Phase 1~3) + OTel engine(Phase 4.1) 머지**, 게이트웨이 OTel·live 검증·마감 남음. proto 배포 = buf 원격 git input(ADR-0010, `proto-v0.1.0`).
   - **Phase 1~3 ✅**: `yrs 머지 + tokio::broadcast fan-out`(crdt-engine) ↔ `lib0 코덱 + WS↔gRPC 브리지`(ws-gateway) ↔ `y-websocket E2E 수렴`(frontend). 로컬 engine+gateway 실기동으로 `WS→gateway→gRPC→engine→fan-out` 수렴 실측 green.
-  - **다음(Phase 4~5)**: gateway(Java)→engine(Rust) `traceparent` 2-hop OTel trace(폴리글랏 showcase) → 마감(dev-log·ADR·plan done).
+  - **Phase 4.1 ✅**: engine OTel(Rust, PR #2 머지 f2cdea2) — `traceparent` 수동 추출→span, **thin 2-hop(세션 레벨)**, otel-expert cross-check 반영.
+  - **다음**: 4.2 게이트웨이 javaagent(앱 코드 0) → 4.3 **live 검증은 Linux**(docker+Jaeger, trace_id 일치) → Phase 5 마감(dev-log·ADR·plan done).
   - 가드레일: **proptest 수렴(commutative/associative/idempotent) 통과 = Phase 1에서 충족**.
   - 진행 SSOT: [`docs/plans/2026-06-25-m1-convergence-impl.md`](../plans/2026-06-25-m1-convergence-impl.md) §재개 지점.
 - M2~M6: [SDD §13](../sdd/5-project-milestones-guardrails.md) 참조.
