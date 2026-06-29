@@ -49,12 +49,14 @@ related:
 
 ### T2 — 문서 부채 quick win 🟠 (controller, main 직접 — 저위험)
 
-- [ ] **T2-1 (M1D-01)** `submodule` 6곳 → `buf 원격 git input(ADR-0010)` 일괄 치환. 특히 CLAUDE.md:10 가드레일① = '다운스트림 buf git-input ref bump → 3언어 재생성'. `grep -rn submodule docs/ CLAUDE.md` 잔존0 확인.
-- [ ] **T2-2 (M1D-02)** CLAUDE.md:4 = '현재 존재: backend/crdt-engine/frontend(+controller). ai-service=M4·doc-service=M2 신설 예정'. SDD §12 트리에 '(M2/M4 신설)' 마커.
-- [ ] **T2-3 (M1D-03/04)** SDD §12 'ci/' → '.github/workflows/(buf 게이트; 다운스트림 트리거=M5 TODO)' 정정. ADR README 0002~0009에 'M6 분리, SDD §15 권위' 마커 + 미해결5 중복 제거(SDD §15 단일권위).
-- [ ] **T2-4 (PDD-06/07)** M0 dev-log `status: open→resolved` + tier 재산출 + self-loop 제거. onboarding guide:6 '현재 plan' → convergence plan §재개지점.
-- [ ] **T2-5 (M1D-05/06, TEST-01)** PRD §7 DoD 9개에 마일스톤 태그(수렴→M1 / 복원→M2 / 커서→M3 / AI→M4 / GitOps→M5). SDD §9/§11에 '(M5)/(M2)/(M4)' 마커.
-- [ ] **T2-VERIFY** `grep -rn submodule` 0건, 문서 상호참조 모순 없음.
+### T2 — ✅ 완료(2026-06-30, 커밋 f10ac70·50cad61)
+
+- [x] **T2-1 (M1D-01)** submodule 오도 6곳(CLAUDE.md 가드레일①·SDD.md·sdd/2·sdd/5·PRD.md·prd/2) → `buf 원격 git input(ADR-0010)`. ADR/dev-log 역사 기록은 보존.
+- [x] **T2-2 (M1D-02)** CLAUDE.md:4 레포 존재/미생성 마커(ai-service=M4·doc-service=M2). SDD §12 트리 ai-service '(M4 신설)' 마커.
+- [x] **T2-3 (M1D-03/04)** SDD §12 ci/ → '.github/workflows/(M5 트리거 TODO)' 정정. ADR README 0011 슬롯·0002~0009 'M6 분리·SDD §15 권위' 마커·미해결5 소유 마일스톤(M2/M3/M4) 중복 제거.
+- [x] **T2-4 (PDD-06/07)** M0 dev-log status open→resolved·tier 2·self-loop 제거. onboarding 진입점 → convergence plan §재개지점.
+- [x] **T2-5 (M1D-05/06, TEST-01)** PRD §7 DoD 9개 마일스톤 태그(M1 완료분 마킹). SDD §9 cargo-chef(M5)·§11 Testcontainers(M2)/AI(M4) 마커.
+- [x] **T2-VERIFY** ✅ `grep submodule` 활성문서 0건(역사 기록만 보존). 마크다운 링크 대상 존재 확인.
 
 ### T3 — M2 readiness 🟡 (M2 착수 전 확정 — plan·ADR 선기록)
 
@@ -96,7 +98,7 @@ related:
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: **T1 계획 구체화 완료**(2026-06-30) — Phase 0 기록 커밋(dev-log 1344fc6·plan fb7060f) + T1 전체: spec 검증(opentelemetry-otlp 0.32·Jaeger v2·javaagent 2.29), convergence plan §4.2/4.3/5 구체화, `infra/local/docker-compose.jaeger.yml` 생성, M1R-09 검증(engine 변경 불요).
-> **다음 작업**: T1 커밋(controller main 직접) → **4.2/4.3/5 실제 실행**은 구체화된 [convergence plan](2026-06-25-m1-convergence-impl.md) 따라 — 4.2(backend javaagent, branch+PR+승인) → 4.3(이 Linux서 `docker compose ... jaeger` live 검증) → Phase 5 마감. 또는 **T2(문서 부채 quick win, controller main 직접)** 먼저 처리 가능.
+> **마지막 완료**: **T1·T2 완료**(2026-06-30). T1(M1 구체화: §4.2/4.3/5·Jaeger compose·M1R-09 검증, 커밋 a369130·f99cf88). T2(문서부채: submodule 6곳·레포 마커·DoD 태그·ADR README·M0/onboarding, 커밋 f10ac70·50cad61). Phase 0 기록 1344fc6·fb7060f.
+> **다음 작업**: **남은 T1 실행 = M1 live 마감** — 4.2(backend javaagent 부착, branch+PR+건별 승인) → 4.3(이 Linux서 `docker compose -f infra/local/docker-compose.jaeger.yml up -d` + engine + `make run-otel` → Jaeger UI 단일 trace + E2E 회귀) → Phase 5(dev-log 4.1 후향·M1 회고·ADR 0011·SDD §15 정리). 그다음 **T3(M2 readiness — M2F-02 blocker ADR 먼저)** / **T4(횡단)**.
 > **주의(검증된 사실, 변경 금지 전제)**: ~~telemetry.rs endpoint 미전달~~ → **M1R-09 기각**(0.32 env 자동읽기 검증, 코드 정상·`.with_endpoint` 추가 금지). build_client(false)로 엔진→doc-service 호출불가(T3-1 blocker, 유효) · submodule 6곳(T2-1, 유효) — grep 확인됨. engine·backend·frontend 변경은 branch+PR+건별 승인. controller는 main 직접.
 > **환경**: rust 1.96 · java 25.0.3 · node 24 · docker 29.6 · buf 1.71 · gh 2.95 (전부 Linux 설치 완료). 전체 40건 근거는 dev-log appendix.
