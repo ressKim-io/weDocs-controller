@@ -1,7 +1,7 @@
 ---
 date: 2026-06-30
 slug: m2-persistence-session
-status: planned
+status: in-progress
 related:
   - plans/2026-06-30-plan-audit-improvements.md
   - prd/4-data-and-permission-model.md
@@ -66,7 +66,11 @@ outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published
 
 > 각 Phase = 해당 서비스 레포 branch+PR+승인. Phase 경계마다 이 plan 재개지점 갱신.
 
-- **Phase 1 — doc-service 스켈레톤 + 스키마** (backend): Spring Boot 모듈 신설, JPA 엔티티 + Flyway 마이그레이션(위 7테이블), gRPC 서버(`DocService` 4 RPC), REST(페이지 CRUD·workspace·멤버 초대). 로컬 Postgres compose(`infra/local/`) + Testcontainers 통합테스트.
+- **Phase 1 — doc-service 스켈레톤 + 스키마** (backend, `weDocs-backend` 레포) — 3 PR로 분할(PR ≤400줄):
+  - **1a 데이터 레이어** (착수): `settings.gradle.kts`에 `doc-service` 모듈 추가 + `doc-service/build.gradle.kts`(Spring Boot 4.1.0 BOM·Java 25·JPA·PostgreSQL·Flyway·Testcontainers) + `DocServiceApplication` + `application.yml` + **Flyway `V1__init_page_tree.sql`(7테이블)** + JPA 엔티티 7종·Repository + **Testcontainers 영속 테스트**(스키마 마이그레이션·page-tree 저장·snapshot UPSERT). TDD(테스트 먼저). 코드=`io.wedocs.doc.*`.
+  - **1b gRPC 서버**: `DocService` 4 RPC(`CheckPermission` 권한 상속 해석·`SaveSnapshot` UPSERT·`LoadSnapshot` 신규=빈 blob·`GetDocMeta`). proto 소비=`buf.gen.yaml` 로컬 경로(태그 push 불요). Testcontainers + grpc 통합 테스트.
+  - **1c REST + 인증 발급**: 페이지 CRUD(트리 이동 사이클 검사)·workspace·멤버 초대 REST + JWT 발급(로그인). (검증 발급=1c, gateway 검증=Phase 2)
+  - 로컬 Postgres compose(`infra/local/`)는 1a에서 추가(또는 Testcontainers만으로 충분 시 후속).
 - **Phase 2 — 인증/인가** (backend doc-service + gateway): doc-service JWT 발급/검증, gateway WS 핸드셰이크 인증(`Sec-WebSocket-Protocol` 서브프로토콜), connect 시 `CheckPermission`, **viewer write-block = gateway 1차(client→server update drop) + 엔진 방어**(D-5), 인가 실패 close code.
 - **Phase 3 — 엔진 영속화 (save)** (crdt-engine): `build.rs` `build_client(true)` flip, 엔진→`doc-service.SaveSnapshot` 트리거(N updates/T초, ADR-0013), 트랜잭션 경계·중복저장 방지. rust-expert 리뷰.
 - **Phase 4 — 복원 (restore)** (crdt-engine + doc-service): doc ensure 시 엔진→`LoadSnapshot`→`decode_v1`→apply→SyncStep2. 장애 재라우팅 복원. 보장 경계 = 최종 스냅샷(in-flight 유실 허용, Redis 버퍼=M5).
@@ -100,6 +104,7 @@ outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: **T3 readiness 게이트 전체 완료**(2026-06-30) — PRD D-1~6 확정(`390a84b`) + ADR 0012~0015(`fa33ba6`) + proto-v0.2.0(`99213c3`, 태그 `proto-v0.2.0` 로컬) + SDD §5/§15 갱신(`03e5945`) + plan-audit T3 마감. M2F-02 blocker 해소.
-> **다음(M2 구현 착수)**: **Phase 1 = doc-service 스켈레톤 + page-tree 스키마**(backend 레포 `weDocs-backend`, branch+PR+승인). Spring Boot 모듈·JPA·Flyway(7테이블)·gRPC 서버(DocService 4 RPC)·REST·로컬 Postgres compose+Testcontainers.
-> **주의**: 엔진 `build_client(false)→true` flip은 Phase 3(crdt-engine PR). **proto 태그 push·다운스트림 `ref` bump = 승인 게이트**(서비스 레포 buf git-input을 `proto-v0.2.0`로 올릴 때). 서비스 레포(backend/crdt-engine/frontend)는 전부 건별 승인. controller만 main 직접.
+> **마지막 완료**: T3 readiness 게이트 완료(2026-06-30) + **Phase 1a 착수**(backend `feature/m2-doc-service-skeleton` 브랜치).
+> **진행 중**: **Phase 1a 데이터 레이어**(TDD) — doc-service 모듈 + Flyway 7테이블 + JPA 엔티티 + Testcontainers 영속 테스트. 위 Phase 1 분해 참조. 환경 확인됨(Docker 29.6·Gradle 9.1·JVM 25, `buf.gen.yaml` 로컬 경로라 proto 태그 push 불요).
+> **다음**: 1a green → 커밋(브랜치)·PR(승인) → 1b gRPC 서버 → 1c REST/JWT.
+> **주의**: 엔진 `build_client(false)→true` flip은 Phase 3(crdt-engine PR). **proto 태그 push·다운스트림 `ref` bump = 승인 게이트**. 서비스 레포(backend/crdt-engine/frontend)는 전부 건별 승인(브랜치·PR). controller만 main 직접. 게이트 트랙(T3 done·T4) = [plan-audit](2026-06-30-plan-audit-improvements.md).
