@@ -58,16 +58,16 @@ related:
 - [x] **T2-5 (M1D-05/06, TEST-01)** PRD §7 DoD 9개 마일스톤 태그(M1 완료분 마킹). SDD §9 cargo-chef(M5)·§11 Testcontainers(M2)/AI(M4) 마커.
 - [x] **T2-VERIFY** ✅ `grep submodule` 활성문서 0건(역사 기록만 보존). 마크다운 링크 대상 존재 확인.
 
-### T3 — M2 readiness 🟡 (M2 착수 전 확정 — plan·ADR 선기록)
+### T3 — M2 readiness 🟡 — ✅ 완료(2026-06-30) — M2 착수 가능
 
-> blocker(M2F-02) 미해결 시 M2 첫 줄 불가. 이 트랙 완료 = M2 plan 작성 가능 상태.
+> blocker(M2F-02) 해소 + 4 ADR + proto-v0.2.0 + M2 plan 확정 = M2 코드 PR 착수 가능 상태.
 
-- [ ] **T3-1 (M2F-02, blocker)** ADR 'CRDT 스냅샷 영속화 트리거 방향' — 대안 A(엔진 push, build_client(true)) / B(doc-service pull) / C(게이트웨이) 비교표(가드레일5 정합·멀티인스턴스 중복저장·트랜잭션경계). 권장 A + 트리거 임계(N updates/T초) 수치.
-- [ ] **T3-2 (M2F-05, SEC-01)** ADR '인증/인가 경계' — JWT 발급(doc-service)·검증(게이트웨이) 위치, WS 토큰 전달방식(Sec-WebSocket-Protocol vs 쿼리 vs 첫메시지, write-time 검증), VIEWER 쓰기차단 게이트 위치, 실패 close code.
-- [ ] **T3-3 (M2F-06)** ADR 'outbox 방식' — Debezium vs 앱레벨 transactional outbox 비교(홈랩 KinD 리소스). 권장 앱레벨, 테이블/트랜잭션은 M2 선반영·릴레이는 M4.
-- [ ] **T3-4 (M2F-03/04)** M2 복원 시퀀스 설계(엔진 ensure→스냅샷 로드→decode_v1→apply→SyncStep2) + 'M2 보장경계=마지막 스냅샷, in-flight 유실허용(Redis=M5)' + proto 영향분석(LoadSnapshot 신설 vs GetSnapshot 재사용 / CheckPermission 토큰필드). 변경시 proto Phase0 분리 + proto-v0.2.0.
-- [ ] **T3-5 (M2F-01)** `docs/plans/2026-..-m2-persistence-session.md` 선기록(Context=T3-1~4 확정결과, Phase분해, Blast Radius, 재개지점). 커밋 후 코드 착수.
-- [ ] **T3-6 (M2F-08, DOC-01)** SDD §15 미해결5 소유 마일스톤 재배정(복원·outbox·인증=M2 / consistent-hash=M3 / AI SLO=M4) + 경량 로드맵 결정소유권 맵.
+- [x] **T3-1 (M2F-02, blocker)** ✅ [ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md) — **엔진 push 채택**(build_client(true)), A/B/C 비교표(가드레일5·멀티인스턴스 중복저장·트랜잭션경계·who-is-dirty). 트리거 임계 T=10s/N=100 정량근거. `fa33ba6`
+- [x] **T3-2 (M2F-05, SEC-01)** ✅ [ADR-0014](../adr/0014-auth-authz-boundary.md) — JWT 발급=doc-service·검증=gateway, WS 토큰=Sec-WebSocket-Protocol(3축 비교), viewer write-block=gateway 1차+엔진 방어, close code 4401/4403. `fa33ba6`
+- [x] **T3-3 (M2F-06)** ✅ [ADR-0015](../adr/0015-outbox-app-level.md) — **앱레벨 채택**(Debezium 기각=KinD 리소스), 테이블/트랜잭션=M2·relay=M4. `fa33ba6`
+- [x] **T3-4 (M2F-03/04)** ✅ ADR-0013 복원 시퀀스(ensure→LoadSnapshot→decode_v1→apply→SyncStep2) + 보장경계=최신 스냅샷. proto 영향=**LoadSnapshot 신설**(GetSnapshot 재사용 불가) + CheckPermission 토큰필드 미추가 → proto-v0.2.0(`99213c3`, 태그 로컬). `fa33ba6`
+- [x] **T3-5 (M2F-01)** ✅ [m2-persistence-session plan](2026-06-30-m2-persistence-session.md) 선기록(결정·Phase 1~6·Blast Radius·재개지점). 코드 착수 전 커밋. `ee0bbba`
+- [x] **T3-6 (M2F-08, DOC-01)** ✅ SDD §15 미해결 M2 3건(복원·outbox·인증) ADR로 해소 마킹 + ADR README 갱신. consistent-hash=M3 / AI SLO=M4 유지. `03e5945`
 
 ### T4 — 횡단 프로그램 🟢 (마일스톤 관통 — 한 번에 안 끝남, 선등록)
 
@@ -98,7 +98,7 @@ related:
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: **M1 전체 완료**(2026-06-30) — T1·T2 + Phase 4 live(단일 trace traceID eb852a8d, 가드레일 4) + **Phase 5 마감**(Phase 4 dev-log·M1 회고·ADR-0011·SDD §15 소유 마일스톤·CLAUDE/README 최신화·convergence plan status:done). 5트랙 중 T1·T2 완료, M1 본체 종료.
-> **다음 작업 = M2 진입 = T3(M2 readiness)**: 착수 전 확정할 결정 ADR 먼저 — **T3-1 M2F-02(blocker)**: 스냅샷 영속화 트리거 방향(엔진 `build_client(false)`라 doc-service 호출 불가, push vs pull ADR). 이어 T3-2 인증/인가·T3-3 outbox·T3-4 복원/proto 영향·T3-5 M2 plan 선기록. 그다음 **T4(횡단: NFR/DoD 트래커·서비스 CI·관측 콜사이트·ADR 0002~0009 승격)**. T3/T4 상세 = 이 문서 위 체크리스트.
+> **마지막 완료**: **T3(M2 readiness) 전체 완료**(2026-06-30) — 4 ADR(0012~0015) + proto-v0.2.0(LoadSnapshot·page-tree, 로컬 태그) + PRD D-1~6 확정 + [M2 plan](2026-06-30-m2-persistence-session.md) 선기록 + SDD §5/§15 갱신. **M2F-02 blocker 해소**(엔진 push, build_client(true)=ADR-0013). M1 본체는 앞서 종료(T1·T2 완료).
+> **다음 작업 = ① M2 구현 착수**([M2 plan](2026-06-30-m2-persistence-session.md) Phase 1=doc-service 스켈레톤+스키마, backend 레포 branch+PR) **② T4(횡단)**: NFR/DoD 트래커·서비스 CI(T4-3은 M2 전 권장)·관측 콜사이트·ADR 0002~0009 승격. T4 상세 = 이 문서 위 체크리스트.
 > **주의(검증된 사실, 변경 금지 전제)**: ~~telemetry.rs endpoint 미전달~~ → **M1R-09 기각**(0.32 env 자동읽기 검증, 코드 정상·`.with_endpoint` 추가 금지). build_client(false)로 엔진→doc-service 호출불가(T3-1 blocker, 유효) · submodule 6곳(T2-1, 유효) — grep 확인됨. engine·backend·frontend 변경은 branch+PR+건별 승인. controller는 main 직접.
 > **환경**: rust 1.96 · java 25.0.3 · node 24 · docker 29.6 · buf 1.71 · gh 2.95 (전부 Linux 설치 완료). 전체 40건 근거는 dev-log appendix.

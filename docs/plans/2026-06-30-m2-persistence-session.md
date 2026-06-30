@@ -43,7 +43,7 @@ related:
 ## proto 계약 — `proto-v0.2.0` (이 게이트에서 확정)
 
 `proto/doc/doc.proto` (additive → `buf breaking` FILE 통과):
-- **추가** `DocService.LoadSnapshot(LoadSnapshotRequest{doc_id}) → Snapshot` — 엔진 복원 pull-on-ensure. (기존 `CrdtEngine.GetSnapshot`은 엔진 in-memory 읽기라 재시작 후 복원에 재사용 불가.)
+- **추가** `DocService.LoadSnapshot(LoadSnapshotRequest{doc_id}) → LoadSnapshotResponse{snapshot, version}` — 엔진 복원 pull-on-ensure. 신규 페이지 = `version=0`·빈 blob(ADR-0013). (기존 `CrdtEngine.GetSnapshot`은 엔진 in-memory 읽기라 재시작 후 복원에 재사용 불가.)
 - **확장** `DocMeta`에 `workspace_id`, `parent_id` (page-tree).
 - `CheckPermissionRequest` 토큰 필드 **미추가** — gateway가 JWT 검증 후 `user_id` 전달(proto 최소화, ADR-0014).
 - 페이지 트리 CRUD·인증은 **REST**(클라이언트向), 내부 gRPC는 권한체크·스냅샷 저장/로드·메타 한정.
@@ -54,10 +54,10 @@ related:
 users(id, email, password_hash, display_name, created_at)
 workspaces(id, name, owner_id, created_at)
 workspace_members(workspace_id, user_id, role)          role: owner | member
-pages(id, workspace_id, parent_id, title, position, archived, created_at, updated_at)   -- self-tree
+pages(id, workspace_id, parent_id, title, position, archived, created_at, updated_at)   -- self-tree (parent_id NULL=루트)
 page_permissions(page_id, user_id, level)               level: editor | viewer   (override, 상속)
-page_snapshots(page_id, snapshot bytea, version, created_at)
-outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published_at)
+page_snapshots(page_id PK, snapshot bytea, version bigint, created_at)   -- 최신 1행 UPSERT(ADR-0013, 엔진 권위 버전)
+outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published_at)   -- aggregate_id=page_id, 멱등키=id(ADR-0015)
 ```
 - **CRDT 경계**(ADR-0012): 페이지 *내용* 동시성 = CRDT(엔진), 페이지 *트리* 동시성 = 관계형(doc-service 트랜잭션, 이동 시 사이클 검사). PRD §3.
 - 유효 권한 = 명시 PagePermission > 조상 상속 > workspace baseline > 거부 (PRD §4.2). member 기본 = editor (D-3).
@@ -100,7 +100,6 @@ outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: 탐색 3종 + T3 결정 확정(trigger=engine push / model=page-tree / scope=full T3) + 이 plan 선기록.
-> **다음**: T3 게이트 산출물 작성 — ① PRD §4 D-1~6 확정 ② ADR 0012~0015 ③ proto-v0.2.0 변경+buf 검증 ④ SDD §5/§15 갱신 ⑤ 게이트 마감(plan-audit T3 체크·CLAUDE 상태·dev-log). 상세 = [plan-audit T3](2026-06-30-plan-audit-improvements.md).
-> **그다음(M2 구현)**: Phase 1(doc-service 스켈레톤+스키마)부터 — backend 레포 branch+PR.
-> **주의**: 엔진 `build_client(false)` flip은 Phase 3(crdt-engine PR). proto 태그 push·다운스트림 ref bump = 승인 게이트(서비스 레포 착수 시점). 서비스 레포는 전부 건별 승인.
+> **마지막 완료**: **T3 readiness 게이트 전체 완료**(2026-06-30) — PRD D-1~6 확정(`390a84b`) + ADR 0012~0015(`fa33ba6`) + proto-v0.2.0(`99213c3`, 태그 `proto-v0.2.0` 로컬) + SDD §5/§15 갱신(`03e5945`) + plan-audit T3 마감. M2F-02 blocker 해소.
+> **다음(M2 구현 착수)**: **Phase 1 = doc-service 스켈레톤 + page-tree 스키마**(backend 레포 `weDocs-backend`, branch+PR+승인). Spring Boot 모듈·JPA·Flyway(7테이블)·gRPC 서버(DocService 4 RPC)·REST·로컬 Postgres compose+Testcontainers.
+> **주의**: 엔진 `build_client(false)→true` flip은 Phase 3(crdt-engine PR). **proto 태그 push·다운스트림 `ref` bump = 승인 게이트**(서비스 레포 buf git-input을 `proto-v0.2.0`로 올릴 때). 서비스 레포(backend/crdt-engine/frontend)는 전부 건별 승인. controller만 main 직접.
