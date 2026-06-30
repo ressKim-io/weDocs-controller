@@ -104,7 +104,6 @@ outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: T3 readiness 게이트 완료(2026-06-30) + **Phase 1a 착수**(backend `feature/m2-doc-service-skeleton` 브랜치).
-> **진행 중**: **Phase 1a 데이터 레이어**(TDD) — doc-service 모듈 + Flyway 7테이블 + JPA 엔티티 + Testcontainers 영속 테스트. 위 Phase 1 분해 참조. 환경 확인됨(Docker 29.6·Gradle 9.1·JVM 25, `buf.gen.yaml` 로컬 경로라 proto 태그 push 불요).
-> **다음**: 1a green → 커밋(브랜치)·PR(승인) → 1b gRPC 서버 → 1c REST/JWT.
-> **주의**: 엔진 `build_client(false)→true` flip은 Phase 3(crdt-engine PR). **proto 태그 push·다운스트림 `ref` bump = 승인 게이트**. 서비스 레포(backend/crdt-engine/frontend)는 전부 건별 승인(브랜치·PR). controller만 main 직접. 게이트 트랙(T3 done·T4) = [plan-audit](2026-06-30-plan-audit-improvements.md).
+> **마지막 완료**: **Phase 1a 데이터 레이어 green**(backend `feature/m2-doc-service-skeleton`, 커밋 `1089ec8`) — doc-service 모듈 + Flyway 7테이블 + 핵심 엔티티 4종 + Testcontainers 영속 테스트 3건(마이그레이션·page-tree·snapshot UPSERT) 통과. 함정 2건(Spring Boot 4.x autoconfig 모듈화·TC 2.x 좌표) = [dev-log](../dev-logs/2026-06-30-m2-doc-service-1a-version-traps.md).
+> **다음**: 1a **PR push 승인** 대기 → 머지 후 **1b gRPC 서버**(`DocService` 4 RPC: CheckPermission 권한상속·SaveSnapshot UPSERT·LoadSnapshot 신규=빈blob·GetDocMeta; member/permission 엔티티 추가) → 1c REST/JWT.
+> **주의**: 엔진 `build_client(false)→true` flip은 Phase 3(crdt-engine PR). **proto 태그 push·다운스트림 `ref` bump = 승인 게이트**(1b에서 buf.gen 로컬 경로로 충분, CI 정합 시 push). 서비스 레포는 전부 건별 승인(브랜치·PR). controller만 main 직접. 1a 미매핑(member/permission/outbox 엔티티)은 해당 Phase에서 추가(스키마엔 이미 존재). 게이트 트랙 = [plan-audit](2026-06-30-plan-audit-improvements.md).
