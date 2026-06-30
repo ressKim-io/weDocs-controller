@@ -13,8 +13,11 @@ service DocService {
   // 게이트웨이/AI가 호출하는 인가 체크
   rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
 
-  // CRDT 엔진 스냅샷 영속화 오케스트레이션
+  // CRDT 엔진 스냅샷 영속화 오케스트레이션 (엔진 push, ADR-0013)
   rpc SaveSnapshot(SaveSnapshotRequest) returns (SaveSnapshotResponse);
+
+  // 엔진이 doc ensure(첫 구독) 시 복원용으로 호출 (ADR-0013)
+  rpc LoadSnapshot(LoadSnapshotRequest) returns (LoadSnapshotResponse);
 
   rpc GetDocMeta(common.DocRef) returns (DocMeta);
 }
@@ -39,10 +42,22 @@ message SaveSnapshotResponse {
   int64 version = 1;
 }
 
+message LoadSnapshotRequest {
+  string doc_id = 1;
+}
+
+// 스냅샷 부재(신규 페이지) = snapshot 빈 바이트 + version 0 → 엔진은 빈 Doc로 시작
+message LoadSnapshotResponse {
+  bytes snapshot = 1; // lib0 v1 encode_state_as_update 결과
+  int64 version = 2;
+}
+
 message DocMeta {
   string doc_id = 1;
   string title = 2;
   string owner_id = 3;
   int64 created_at = 4; // epoch millis
   int64 updated_at = 5; // epoch millis
+  string workspace_id = 6; // page-tree (ADR-0012)
+  string parent_id = 7;    // 빈 문자열 = 루트 페이지
 }
