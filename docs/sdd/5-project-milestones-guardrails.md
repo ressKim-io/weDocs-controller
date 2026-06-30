@@ -81,9 +81,12 @@
 8. **vector store=pgvector** — 별도 DB 미도입.
 9. **배포 메인=홈랩 KinD + 로컬 GPU**. 멀티클라우드 생략.
 
-### 미해결 (M1~M2에서 확정)
-- [ ] CRDT Engine 장애 시 복원 절차 상세
-- [ ] AI Service SLO 정량 정의(큐 대기 + 추론)
-- [ ] outbox 구현(Debezium vs 애플리케이션 레벨)
-- [ ] 인증 서비스 분리 시점
-- [ ] consistent hash 키 전달 상세(gRPC 메타데이터 ↔ waypoint 설정)
+### 결정 로그 진행
+- M1: 엔진 sync/fan-out 브리지 = [ADR-0011](../adr/0011-engine-sync-fanout-bridge.md) Accepted. proto 배포 = [ADR-0010](../adr/0010-proto-distribution-buf-git-input.md). 0002~0009 정식 분리 = M6(그 전까지 위 1~9 본문이 권위).
+
+### 미해결 (소유 마일스톤 재배정, 2026-06-30)
+- [ ] CRDT Engine 장애 복원 절차 상세 → **M2** (스냅샷 복원, [M2F-02/03](../plans/2026-06-30-plan-audit-improvements.md))
+- [ ] outbox 구현 (Debezium vs 앱레벨) → **M2** (테이블/트랜잭션 경계는 M2 스키마, 릴레이는 M4)
+- [ ] 인증 서비스 분리 시점 → **M2** (M2는 doc-service 내장 발급/검증, 분리는 후속)
+- [ ] consistent hash 키 전달 상세 (gRPC 메타데이터 ↔ waypoint) → **M3** (멀티인스턴스 라우팅)
+- [ ] AI Service SLO 정량 정의 (큐 대기 + 추론) → **M4**

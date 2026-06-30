@@ -25,14 +25,17 @@
 - infra → `infra/` (kustomize · istio ambient · argocd)
 
 ## 현재 상태
-**M1 본 구현 진행 중 — 수렴 증명(Phase 1~3) + OTel engine(Phase 4.1) 머지 완료, 게이트웨이 OTel·live 검증·마감 남음.** "두 브라우저 동시 편집 수렴". proto 배포 = buf 원격 git input(ADR-0010, `proto-v0.1.0` 태그). **proto 변경 없이 완수**(현 `ClientFrame`/`ServerFrame`로 SyncStep1/2/Update 표현).
+**M1 ✅ 완료(2026-06-30) — "두 브라우저 동시 편집 수렴"(Phase 1~3) + 폴리글랏 단일 trace(Phase 4) + 마감(Phase 5) 전부 달성.** 다음 = **M2(영속화·세션·권한, doc-service 신설)**. proto 배포 = buf 원격 git input(ADR-0010, `proto-v0.1.0` 태그). **proto 변경 없이 완수**(현 `ClientFrame`/`ServerFrame`로 SyncStep1/2/Update 표현).
 - **Phase 1 ✅ crdt-engine(PR #1 머지, fbd25fe)**: yrs v1 권위 머지 + `tokio::broadcast` fan-out + gRPC bidi `Sync` 브리지. proptest 수렴·criterion 벤치 통과, 코드리뷰 8건 반영. doc-id=gRPC 메타데이터, 모든 인코딩 lib0 v1(Yjs 호환).
 - **Phase 2 ✅ ws-gateway 브리지(Java, PR #1 머지, e0e8277)**: lib0 코덱(`varUint`/`varBuffer`) TDD + `DocWebSocketHandler` 세션당 Sync 스트림(메타데이터 `doc-id`=URL room) + `ServerFrame`→WS `Update(2)` + awareness/auth drop. 22 test pass, java-expert+code-reviewer 2-lens 반영.
 - **Phase 3 ✅ frontend E2E 수렴(React, PR #1 머지, e8f0c83)**: `?room=` 다중문서 + vitest 2클라 y-websocket E2E(`disableBc:true`로 게이트웨이 경로만). 로컬 engine+gateway 실기동 → `WS→gateway→gRPC→engine→fan-out` 수렴 실측 green(gateway 로그로 gRPC 경로 확인). 'synced' 비의존 텍스트 폴링.
 - **Phase 4.1 ✅ engine OTel(Rust, PR #2 머지, f2cdea2)**: W3C `traceparent` 수동 추출(`MetadataExtractor`→`span.set_parent`→`.instrument`) + OTLP/stdout 익스포터(구성 실패 시 콘솔만 degrade) + `eprintln!`→`tracing`. otel-expert cross-check 반영(shutdown→`spawn_blocking`·endpoint 로그·샘플러 주석). **thin 2-hop**: stream-open 1회 전파 → "한 WS 세션이 Java span→Rust span"(per-edit span·풀 관측 스택=M5). build/clippy -D warnings/fmt/test 8 pass.
-- **다음 = Phase 4.2 게이트웨이 OTel** — OTel **javaagent** 기동 설정만(`-javaagent`+`OTEL_SERVICE_NAME`/`OTEL_EXPORTER_OTLP_ENDPOINT`/`OTEL_TRACES_EXPORTER=otlp`, **앱 코드 0**, backend 별도 PR) → **4.3 live 검증은 Linux**(docker+Jaeger, trace_id 일치+단일 trace UI) → Phase 5 마감(dev-log·ADR·plan done) → **M2(영속화·세션, doc-service 신설)**.
+- **Phase 4.2 ✅ gateway OTel javaagent(Java, backend PR #2 머지, 30e0aca)**: `make run-otel`(jar v2.29.0→`java -javaagent -jar`), **앱 코드·build.gradle 0**. live서 javaagent 2.x 기본 OTLP=http/protobuf 함정 발견→`OTEL_EXPORTER_OTLP_PROTOCOL=grpc` 수정(c8374d5, config-contract-audit 사례).
+- **Phase 4.3 ✅ live 단일 trace 실측(Linux+docker Jaeger v2)**: traceID `eb852a8d…` — `[ws-gateway] crdt.CrdtEngine/Sync`(root) → `[wedocs-crdt-engine] crdt.sync`(child), 같은 trace(가드레일 4). 회귀 E2E 수렴 green. M1R-09(endpoint) 검증 기각=engine 무변경. `infra/local/docker-compose.jaeger.yml`.
+- **Phase 5 ✅ 마감**: Phase 4 dev-log·M1 회고(`docs/retrospective/`)·ADR-0011(엔진 브리지)·SDD §15 미해결 소유 마일스톤 재배정.
+- **다음 = M2(영속화·세션·권한, doc-service 신설)** — 착수 전 확정: 스냅샷 트리거 방향(M2F-02 blocker, 엔진 `build_client(false)`)·JWT 인가·outbox·복원 절차. 개선 트랙 plan = `docs/plans/2026-06-30-plan-audit-improvements.md`(T3/T4).
 
-> **재개 SSOT**: `docs/plans/2026-06-25-m1-convergence-impl.md` (§A 검증된 y-protocols/y-websocket 와이어 포맷 · §B yrs 0.27 API · §C/§D 설계+정합성 8결정 · 실행 체크리스트 · **재개 지점**). 새 세션은 이 파일부터 열 것. 수렴 증명 후향 기록(Phase 1~3·검증·교훈): `docs/dev-logs/2026-06-28-m1-convergence-phase1-3.md`. 엔진 코드리뷰: `docs/dev-logs/2026-06-25-m1-engine-code-review.md`.
+> **재개 SSOT(M2 진입)**: M1 종료. 다음 작업 진입점 = `docs/plans/2026-06-30-plan-audit-improvements.md`(T3 M2 readiness·T4 횡단). M1 본체 plan = `docs/plans/2026-06-25-m1-convergence-impl.md`(status: done, §A~D 설계·재개지점). 후향 기록: 수렴 Phase 1~3 = `docs/dev-logs/2026-06-28-m1-convergence-phase1-3.md` · Phase 4 OTel = `docs/dev-logs/2026-06-30-m1-phase4-otel.md` · 계획 감사 40건 = `docs/dev-logs/2026-06-30-m1-plan-audit.md` · 엔진 코드리뷰 = `docs/dev-logs/2026-06-25-m1-engine-code-review.md`. M1 회고 = `docs/retrospective/2026-06-30-m1-convergence.md`. 엔진 설계 = `docs/adr/0011-engine-sync-fanout-bridge.md`.
 > ⚠️ 서비스 레포(backend/frontend/crdt-engine)는 일반 룰 = branch+PR+**건별 승인**. controller만 main 직접.
 
 ---

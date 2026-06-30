@@ -1,12 +1,15 @@
 ---
 date: 2026-06-25
 slug: m1-convergence-impl
-status: in-progress
+status: done
 related:
   - plans/2026-06-25-m1-repo-scaffold.md
+  - plans/2026-06-30-plan-audit-improvements.md
   - adr/0010-proto-distribution-buf-git-input.md
-  - dev-logs/2026-06-25-m1-repo-scaffold.md
+  - adr/0011-engine-sync-fanout-bridge.md
   - dev-logs/2026-06-28-m1-convergence-phase1-3.md
+  - dev-logs/2026-06-30-m1-phase4-otel.md
+  - retrospective/2026-06-30-m1-convergence.md
 ---
 
 # weDocs — M1 본 구현: "두 탭 동시 편집 수렴" 증명
@@ -167,13 +170,13 @@ related:
 - [x] 4.4 **otel-expert cross-check(2026-06-29 완료)**: 7항목 정합 — tracer init/propagator/추출시점/샘플러(parentbased_always_on, 2-hop 적합) **correct**. 반영: ① `shutdown()`→`spawn_blocking`(blocking 스레드 join이 async 워커 막지 않게, 공식 권장) ② OTLP endpoint 시작 로그 ③ gRPC path 함정 주석·샘플러 기본값 주석. C1(`set_parent` Result)=빌드 통과로 해소. m3(세션 태스크 span 유실)=M5. **검증 팁**: otlp 검증 시 `OTEL_BSP_SCHEDULE_DELAY=1000`(기본 5s batch delay). **rt-tokio**: 배치=전용스레드라 불요 가능성이나 otlp/tonic export 비동기 경로 Mac 미실측 → 보수적 유지, Linux 실측서 재확인
 - [x] branch push + **PR #2 머지 완료**(2026-06-29, merge commit f2cdea2): https://github.com/ressKim-io/weDocs-crdt-engine/pull/2 → 원격 브랜치 삭제, engine main 동기화. 4.2 게이트웨이(javaagent 기동 설정)는 별도 PR
 
-### Phase 5 — 마감 (controller, main 직접)
-- [ ] **dev-log: Phase 4 engine OTel 후향 기록**(PDD-01 — 4.1만 dev-log 누락) — `docs/dev-logs/2026-06-..-m1-phase4-otel.md`(category:decision, importance:major). 수동 traceparent 추출·shutdown spawn_blocking·degrade 전략·**endpoint env 자동읽기 검증(M1R-09)** 기록.
-- [ ] **dev-log: M1 수렴 증명 종합**(Before/After·검증 방법·교훈) + §D 결정들. (Phase1~3은 `2026-06-28-m1-convergence-phase1-3.md` 존재 → Phase 4 합본 또는 별도 마감 로그)
-- [ ] **retrospective(M1R-07/PDD-03)**: `docs/retrospective/2026-06-..-m1-convergence.md` — 폴리글랏 수렴 리스크 검증 회고(Yjs↔yrs 와이어 호환·lib0 v1 통일·thin 2-hop 교훈, Before/After).
-- [ ] **ADR: 엔진 sync/fan-out 브리지 설계**(M1R-06) — 번호 **0011**(0002~0009는 M6 일괄 분리, 권위=SDD §15). 대안 비교표 3축: ①fan-out(단일 broadcast vs per-stream 채널+sender 레지스트리) ②인코딩(v1 고정 vs v2) ③doc-id 전달(gRPC 메타데이터 vs 첫 ClientFrame). §D 결정 1·3 근거 인용. documentation.md ADR 검증 5항목 충족.
-- [ ] **SDD §15 미해결 5건 확정/이월**(DOC-01): 복원·outbox·인증=M2 / consistent-hash=M3 / AI SLO=M4. ADR README 중복 제거(SDD §15 단일 권위).
-- [ ] 이 plan `status: done` + dev-log 링크 + commit
+### Phase 5 — 마감 (controller, main 직접) ✅ 완료(2026-06-30)
+- [x] **dev-log: Phase 4 OTel 후향 기록**(PDD-01) — `docs/dev-logs/2026-06-30-m1-phase4-otel.md`. 2-hop 설계·단일 trace 실측(traceID eb852a8d)·OTLP protocol=grpc 함정·M1R-09 검증 기각.
+- [x] **M1 회고**(M1R-07/PDD-03) — `docs/retrospective/2026-06-30-m1-convergence.md`. Before/After·Keep/Improve·정량지표·DoD 진척·M2 action. (Phase 1~3 수렴 종합 = `2026-06-28-m1-convergence-phase1-3.md` 기존)
+- [x] **ADR-0011 엔진 브리지**(M1R-06) — `docs/adr/0011-engine-sync-fanout-bridge.md`. 대안 3축(fan-out·인코딩·doc-id) 비교표, Accepted. ADR README 0011 링크.
+- [x] **SDD §15 미해결 소유 마일스톤**(DOC-01) — 복원·outbox·인증=M2 / consistent-hash=M3 / AI SLO=M4. SDD §15 단일 권위.
+- [x] **현재상태 최신화** — CLAUDE.md(M1 완료·재개 SSOT=M2)·README 마일스톤·submodule 잔존(README 2곳) 정리.
+- [x] 이 plan `status: done` + commit
 
 ---
 

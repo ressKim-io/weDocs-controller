@@ -98,7 +98,7 @@ related:
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: **T1·T2 + M1 Phase 4 live 마감 완료**(2026-06-30). T1(M1 구체화 a369130·f99cf88). T2(문서부채 f10ac70·50cad61). **M1 Phase 4.2 gateway javaagent PR #2 머지**(backend 30e0aca) + **4.3 live 단일 trace 실측 성공**(traceID eb852a8d…, ws-gateway→wedocs-crdt-engine 부모-자식, 가드레일 4) + 회귀 E2E green. live서 OTLP protocol=grpc 함정 발견·수정(c8374d5).
-> **다음 작업**: **M1 Phase 5 마감**(convergence plan §Phase 5) — Phase 4 후향 dev-log(PDD-01)·M1 회고(M1R-07/PDD-03)·ADR 0011(M1R-06)·SDD §15 정리(DOC-01)·plan status:done. 그다음 **T3(M2 readiness — M2F-02 blocker ADR 먼저)** → **T4(횡단: NFR/DoD 트래커·서비스 CI·관측 콜사이트·ADR 승격)**.
+> **마지막 완료**: **M1 전체 완료**(2026-06-30) — T1·T2 + Phase 4 live(단일 trace traceID eb852a8d, 가드레일 4) + **Phase 5 마감**(Phase 4 dev-log·M1 회고·ADR-0011·SDD §15 소유 마일스톤·CLAUDE/README 최신화·convergence plan status:done). 5트랙 중 T1·T2 완료, M1 본체 종료.
+> **다음 작업 = M2 진입 = T3(M2 readiness)**: 착수 전 확정할 결정 ADR 먼저 — **T3-1 M2F-02(blocker)**: 스냅샷 영속화 트리거 방향(엔진 `build_client(false)`라 doc-service 호출 불가, push vs pull ADR). 이어 T3-2 인증/인가·T3-3 outbox·T3-4 복원/proto 영향·T3-5 M2 plan 선기록. 그다음 **T4(횡단: NFR/DoD 트래커·서비스 CI·관측 콜사이트·ADR 0002~0009 승격)**. T3/T4 상세 = 이 문서 위 체크리스트.
 > **주의(검증된 사실, 변경 금지 전제)**: ~~telemetry.rs endpoint 미전달~~ → **M1R-09 기각**(0.32 env 자동읽기 검증, 코드 정상·`.with_endpoint` 추가 금지). build_client(false)로 엔진→doc-service 호출불가(T3-1 blocker, 유효) · submodule 6곳(T2-1, 유효) — grep 확인됨. engine·backend·frontend 변경은 branch+PR+건별 승인. controller는 main 직접.
 > **환경**: rust 1.96 · java 25.0.3 · node 24 · docker 29.6 · buf 1.71 · gh 2.95 (전부 Linux 설치 완료). 전체 40건 근거는 dev-log appendix.

@@ -28,7 +28,7 @@
 | `crdt-engine` | Rust | yrs 엔진 + tonic gRPC (bidi streaming) |
 | **`controller`** ← 이 레포 | proto · infra · ci · docs | 컨트롤 플레인 / proto SSOT |
 
-`proto/`가 **단일 진실 공급원(SSOT)**. ①②③④가 이 디렉터리를 git submodule로 mount하고 각자 `buf generate`로 stub 생성.
+`proto/`가 **단일 진실 공급원(SSOT)**. gRPC 소비자(②③④)가 **buf 원격 git input**(ADR-0010, submodule 아님)으로 이 디렉터리를 참조해 stub 생성(①frontend은 y-websocket = gRPC 비소비자).
 
 ## 레포 구조
 ```
@@ -45,7 +45,7 @@ controller/
 ## proto + buf 워크플로우
 1. 모든 proto 변경은 **여기 `proto/`에서 시작**.
 2. `buf lint proto` + `buf breaking proto --against <main>` 통과.
-3. 다운스트림 submodule 업데이트 → 3언어 재생성(`buf generate`).
+3. 다운스트림 buf git-input ref bump(ADR-0010, submodule 아님) → 3언어 재생성(`buf generate`).
 - CI 게이트: [`.github/workflows/proto-ci.yml`](.github/workflows/proto-ci.yml).
 
 ## 인프라
@@ -53,8 +53,8 @@ controller/
 
 ## 마일스톤 (리스크 우선)
 - **M0** ✅ 기획·proto·스캐폴딩
-- **M1** 🔶 CRDT 코어: 두 브라우저 동시 편집 수렴 (Yjs↔yrs + bidi) ← *현재* — **수렴 증명(Phase 1~3) + OTel engine(Phase 4.1) 머지**, 게이트웨이 OTel·live 검증·마감 남음
-- M2 영속화·세션 · M3 Presence · M4 AI co-pilot · M5 인프라·관측 · M6 마감
+- **M1** ✅ CRDT 코어: 두 브라우저 동시 편집 수렴(Yjs↔yrs + bidi) + 폴리글랏 단일 trace(Java→Rust, 가드레일 4) — Phase 1~5 완료(2026-06-30)
+- **M2** ← *다음*: 영속화·세션·권한(doc-service 신설) · M3 Presence · M4 AI co-pilot · M5 인프라·관측 · M6 마감
 
 ## 가드레일
 [`CLAUDE.md`](CLAUDE.md): proto는 여기서 시작 · AI는 CRDT 의존 금지 · 게이트웨이 JNI 금지 · 서비스 간 gRPC+OTel · CRDT는 "엔진"(최적화+벤치) · M1 머지 전 proptest 통과.
