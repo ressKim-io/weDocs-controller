@@ -3,13 +3,17 @@
 
 ## 5. 데이터 모델 / 저장소
 
-### PostgreSQL (Doc 서비스)
+### PostgreSQL (Doc 서비스) — page-tree + workspace (M2, [PRD §4 D-1](../prd/4-data-and-permission-model.md), [ADR-0012](../adr/0012-crdt-boundary-content-vs-tree.md))
 ```
-documents(id, title, owner_id, created_at, updated_at)
-document_members(doc_id, user_id, role)
-document_snapshots(doc_id, snapshot bytea, version, created_at)
-users(id, email, password_hash, created_at)
+users(id, email, password_hash, display_name, created_at)
+workspaces(id, name, owner_id, created_at)
+workspace_members(workspace_id, user_id, role)        -- role: owner | member
+pages(id, workspace_id, parent_id, title, position, archived, created_at, updated_at)  -- self-tree(parent_id)
+page_permissions(page_id, user_id, level)             -- level: editor | viewer (override, 트리 상속)
+page_snapshots(page_id, snapshot bytea, version, created_at)  -- CRDT blob(lib0 v1)
+outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published_at)  -- 앱레벨(ADR-0015)
 ```
+> 평면 `documents` 구조를 대체(M1 전제). 페이지 *내용* 동시성=CRDT(page_snapshots), 페이지 *트리* 동시성=관계형(pages, doc-service 트랜잭션·사이클 검사). 유효 권한 = 명시 page_permissions > 조상 상속 > workspace baseline(member 기본=editor) > 거부.
 ### Redis (게이트웨이/AI 공용)
 - `presence:{docId}` — 접속자·커서 (TTL)
 - pub/sub `doc:{docId}` — update·awareness fan-out
@@ -44,17 +48,18 @@ client: 로컬 Yjs 적용(즉시 편집 가능)
 ### 6.3 수평 확장
 - CRDT Engine: docId consistent hashing(같은 문서 = 같은 인스턴스). Istio waypoint + DestinationRule.
 - WS Gateway: 무상태, 크로스-인스턴스 전파는 Redis pub/sub.
-- 장애: 엔진 인스턴스 down → 문서 재라우팅 → 최신 스냅샷 + Redis 버퍼 복원 (M2/M5 구체화)
+- 장애: 엔진 인스턴스 down → 문서 재라우팅 → 복원. **M2 보장경계 = 최신 스냅샷**(엔진 ensure→`LoadSnapshot`→`decode_v1`→apply→SyncStep2, [ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md)). 무손실(Redis 버퍼) = M5.
 
 ---
 
 ## 7. AI 파이프라인 (Python)
 
-### 7.1 인덱싱 (쓰기, 비동기)
+### 7.1 인덱싱 (쓰기, 비동기) — outbox=[ADR-0015](../adr/0015-outbox-app-level.md)
 ```
-문서 변경 → Doc outbox → Kafka(doc.updated)
+문서 변경 → Doc 앱레벨 outbox(트랜잭션 동봉) → [relay] → Kafka(doc.updated)
   → Indexing Consumer(Python): LlamaIndex 청킹 → 임베딩(Ollama) → pgvector upsert
 ```
+> M2 = outbox 테이블 + 트랜잭션 쓰기(traceparent 주입)만. relay 발행·Kafka·소비 = **M4**. Debezium은 홈랩 KinD 리소스로 기각.
 ### 7.2 질의 (읽기, 스트리밍)
 ```
 POST /ai/qa {docId, query}
@@ -70,9 +75,11 @@ SSE 중단 처리: 추론 실패 시 error 이벤트 + 폴백 재시도.
 
 ---
 
-## 8. 인증 / 인가
-- **인증**: JWT(Doc 서비스 발급), WS 핸드셰이크·REST 검증
-- **인가**: 문서 권한 = `DocService.CheckPermission`(gRPC), 게이트웨이·AI가 호출
-- **서비스 간**: Istio Ambient ztunnel mTLS (코드 무관)
+## 8. 인증 / 인가 ([ADR-0014](../adr/0014-auth-authz-boundary.md))
+- **인증**: JWT 발급=Doc 서비스(REST 로그인). 검증=게이트웨이(WS 핸드셰이크)·Doc 서비스(REST). M2는 doc-service 내장(분리=후속).
+- **WS 토큰 전달**: `Sec-WebSocket-Protocol` 서브프로토콜(브라우저 헤더 커스텀 불가 우회, query param 로그유출 회피).
+- **인가**: connect 시 `DocService.CheckPermission(user_id, page_id)` → effective level(상속 해석). 게이트웨이가 JWT 검증 후 user_id 전달(proto 토큰필드 불요).
+- **viewer write-block**: 게이트웨이 1차(client→server update drop) + 엔진 방어(D-5). 실패 close: 인증=4401·인가=4403.
+- **서비스 간**: Istio Ambient ztunnel mTLS (코드 무관). 게이트웨이→doc-service user_id 신뢰의 전제.
 
 ---

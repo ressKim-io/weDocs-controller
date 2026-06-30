@@ -82,11 +82,13 @@
 9. **배포 메인=홈랩 KinD + 로컬 GPU**. 멀티클라우드 생략.
 
 ### 결정 로그 진행
-- M1: 엔진 sync/fan-out 브리지 = [ADR-0011](../adr/0011-engine-sync-fanout-bridge.md) Accepted. proto 배포 = [ADR-0010](../adr/0010-proto-distribution-buf-git-input.md). 0002~0009 정식 분리 = M6(그 전까지 위 1~9 본문이 권위).
+- M1: 엔진 sync/fan-out 브리지 = [ADR-0011](../adr/0011-engine-sync-fanout-bridge.md) Accepted. proto 배포 = [ADR-0010](../adr/0010-proto-distribution-buf-git-input.md).
+- **M2 readiness 게이트(2026-06-30)**: [ADR-0012](../adr/0012-crdt-boundary-content-vs-tree.md) CRDT 경계 · [ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md) 스냅샷 영속화(엔진 push) · [ADR-0014](../adr/0014-auth-authz-boundary.md) 인증/인가 · [ADR-0015](../adr/0015-outbox-app-level.md) outbox. proto-v0.2.0.
+- 0002~0009 정식 분리 = M6(그 전까지 위 1~9 본문이 권위).
 
-### 미해결 (소유 마일스톤 재배정, 2026-06-30)
-- [ ] CRDT Engine 장애 복원 절차 상세 → **M2** (스냅샷 복원, [M2F-02/03](../plans/2026-06-30-plan-audit-improvements.md))
-- [ ] outbox 구현 (Debezium vs 앱레벨) → **M2** (테이블/트랜잭션 경계는 M2 스키마, 릴레이는 M4)
-- [ ] 인증 서비스 분리 시점 → **M2** (M2는 doc-service 내장 발급/검증, 분리는 후속)
+### 미해결 (소유 마일스톤 재배정, 2026-06-30 / M2분 게이트서 해소)
+- [x] CRDT Engine 장애 복원 절차 상세 → **M2** ✅ [ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md) (보장경계=최신 스냅샷, Redis 버퍼=M5)
+- [x] outbox 구현 (Debezium vs 앱레벨) → **M2** ✅ [ADR-0015](../adr/0015-outbox-app-level.md) (앱레벨, 테이블/트랜잭션=M2·릴레이=M4)
+- [x] 인증 서비스 분리 시점 → **M2** ✅ [ADR-0014](../adr/0014-auth-authz-boundary.md) (M2=doc-service 내장 발급/검증, 분리=후속)
 - [ ] consistent hash 키 전달 상세 (gRPC 메타데이터 ↔ waypoint) → **M3** (멀티인스턴스 라우팅)
 - [ ] AI Service SLO 정량 정의 (큐 대기 + 추론) → **M4**

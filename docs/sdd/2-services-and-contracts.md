@@ -44,18 +44,18 @@
   - 동시 다문서 처리 (문서별 격리)
   - **criterion 벤치마크**로 "Java 단순 래퍼 대비 N배" 정량 증명
 - **상태/확장**:
-  - 문서별 yrs `Doc` 인메모리 + 주기/임계 스냅샷을 PostgreSQL에 영속화
+  - 문서별 yrs `Doc` 인메모리 + 주기/임계 스냅샷을 PostgreSQL에 영속화 (**엔진 push**, `build.rs` `build_client(true)`, [ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md))
   - **수평 확장**: docId **consistent hashing** → 같은 문서 = 같은 인스턴스 (인메모리 일관성). Istio waypoint + DestinationRule(consistentHash by header)로 라우팅, docId는 gRPC 메타데이터에.
 - **동기화 메커니즘**:
   - 신규 접속: 클라 state vector → `encode_diff` → 최소 diff만 전송
-  - 스냅샷: update N개/T초마다 `encode_state_as_update` → blob 저장. 복원 시 적용.
+  - 스냅샷(M2): 엔진이 update N개/T초(제안 100/10s)마다 `encode_state_as_update` → `DocService.SaveSnapshot`. 복원=`DocService.LoadSnapshot`→`decode_v1`→apply. ([ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md))
   - GC: yrs가 인접 struct 병합·삭제 콘텐츠 비움으로 tombstone 메타 축소(완전 삭제 불가, 완화)
 
-### 3.3 Doc/Session 서비스 (Java)
-- **책임**: 문서 메타데이터·권한·멤버십, 룸 lifecycle, 스냅샷 영속화 오케스트레이션, JWT 발급/검증
-- **I/F**: REST(클라이언트: 문서 CRUD, 인증) + gRPC(내부: 권한 체크, 스냅샷 저장)
-- **저장소**: PostgreSQL
-- **이벤트**: 문서 변경을 Kafka로 발행(인덱싱 트리거) — **outbox 패턴**(트랜잭션 정합). ⚠️ Kafka는 async 경계라 OTel context를 메시지 페이로드에 주입해야 trace가 이어짐.
+### 3.3 Doc/Session 서비스 (Java) — M2 신설
+- **책임**: 워크스페이스·페이지 트리 메타·권한(상속)·멤버십, 룸 lifecycle, 스냅샷 영속화(저장·로드), JWT 발급/검증
+- **I/F**: REST(클라이언트: 페이지 CRUD·워크스페이스·멤버 초대·인증) + gRPC(내부: `CheckPermission`·`SaveSnapshot`·`LoadSnapshot`·`GetDocMeta`)
+- **저장소**: PostgreSQL (page-tree 스키마 §5). 트리 이동=트랜잭션·사이클 검사([ADR-0012](../adr/0012-crdt-boundary-content-vs-tree.md))
+- **이벤트**: 페이지 변경을 **앱레벨 transactional outbox**로([ADR-0015](../adr/0015-outbox-app-level.md)) — DB 트랜잭션 동봉. relay·Kafka 발행=M4. ⚠️ OTel context(traceparent)를 payload에 주입해야 trace가 이어짐.
 
 ### 3.4 AI Service (Python / FastAPI)
 - **책임**: RAG Q&A, 요약/리라이트. 추론 큐잉·백프레셔·폴백.
@@ -96,16 +96,17 @@ message ClientFrame { string doc_id=1; bytes update=2; bytes state_vector=3; }
 message ServerFrame { bytes update=1; bytes state_vector=2; }
 message Snapshot { string doc_id=1; bytes data=2; }
 
-// doc/doc.proto
+// doc/doc.proto (proto-v0.2.0, M2)
 service DocService {
   rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
   rpc SaveSnapshot(SaveSnapshotRequest) returns (SaveSnapshotResponse);
-  rpc GetDocMeta(DocRef) returns (DocMeta);
+  rpc LoadSnapshot(LoadSnapshotRequest) returns (LoadSnapshotResponse);  // M2 신설(복원)
+  rpc GetDocMeta(DocRef) returns (DocMeta);  // DocMeta에 workspace_id/parent_id 추가
 }
 
 // ai/ai.proto (내부 RAG 검색; 클라이언트는 REST/SSE)
 service RagRetriever { rpc Retrieve(RetrieveRequest) returns (RetrieveResponse); }
 ```
-> v1 대비 변경: CrdtEngine을 단발 `ApplyUpdate`에서 **bidi `Sync` 스트림**으로 (네트워크 홉 최소화). docId는 스트림 메타데이터로 전달해 consistent hash 라우팅.
+> v1(M1) 대비: CrdtEngine을 단발 `ApplyUpdate`에서 **bidi `Sync` 스트림**으로(홉 최소화), docId는 스트림 메타데이터(consistent hash). **v0.2.0(M2)**: DocService에 `LoadSnapshot` 추가(엔진 복원) + DocMeta page-tree 필드. 전부 additive(buf breaking 통과). 태그 `proto-v0.1.0`→`proto-v0.2.0`.
 
 ---
