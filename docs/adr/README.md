@@ -15,13 +15,17 @@ SDD §15 결정 로그를 개별 ADR로 분리한다. 형식: **1 결정 = 1 파
 | 0009 | 배포 = 홈랩 KinD + 로컬 GPU | SDD §15.9 — 분리 예정 |
 | [0010](0010-proto-distribution-buf-git-input.md) | proto 배포 = buf 원격 git input (submodule 불가 → `subdir` input) | **Accepted** |
 | [0011](0011-engine-sync-fanout-bridge.md) | 엔진 sync/fan-out 브리지 (게이트웨이=번역기·엔진=권위·broadcast fan-out·v1 고정) | **Accepted** |
+| [0012](0012-crdt-boundary-content-vs-tree.md) | CRDT 경계 (내용=CRDT·트리=관계형) | **Accepted** |
+| [0013](0013-snapshot-persistence-lifecycle.md) | 스냅샷 영속화 라이프사이클 (엔진 push·N updates/T초·복원) | **Accepted** |
+| [0014](0014-auth-authz-boundary.md) | 인증/인가 경계 (JWT 발급=doc-service·검증=gateway·viewer write-block) | **Accepted** |
+| [0015](0015-outbox-app-level.md) | outbox = 앱레벨 transactional outbox (Debezium 기각·relay=M4) | **Accepted** |
 
-> **번호 공백(0002~0009)**: 0010(proto 배포 블로커)을 먼저 확정해 점프. 0002~0009 정식 분리는 **M6 일괄**(또는 해당 마일스톤 착수 시) — 그 전까지 **권위 = SDD §15 본문**. 0011 = M1 마감 산출물.
+> **번호 공백(0002~0009)**: 0010(proto 배포 블로커)을 먼저 확정해 점프. 0002~0009 정식 분리는 **M6 일괄**(또는 해당 마일스톤 착수 시) — 그 전까지 **권위 = SDD §15 본문**. 0011 = M1 마감 산출물. 0012~0015 = M2 readiness 게이트 산출물.
 
 ## 미해결 (소유 마일스톤 — 권위=SDD §15, 여기는 링크만)
 > SDD §15와 중복 관리 금지. 상세·갱신은 [SDD §15](../sdd/5-project-milestones-guardrails.md).
-- CRDT Engine 장애 복원 절차 → **M2**
-- outbox 구현 (Debezium vs 앱레벨) → **M2**
-- 인증 서비스 분리 시점 → **M2**
+- ~~CRDT Engine 장애 복원 절차 → M2~~ ✅ [ADR-0013](0013-snapshot-persistence-lifecycle.md)
+- ~~outbox 구현 (Debezium vs 앱레벨) → M2~~ ✅ [ADR-0015](0015-outbox-app-level.md) (relay=M4)
+- ~~인증 서비스 분리 시점 → M2~~ ✅ [ADR-0014](0014-auth-authz-boundary.md) (M2=doc-service 내장, 분리=후속)
 - consistent hash 키 전달 상세 (gRPC 메타데이터 ↔ waypoint) → **M3**
 - AI Service SLO 정량 정의 (큐 대기 + 추론) → **M4**
