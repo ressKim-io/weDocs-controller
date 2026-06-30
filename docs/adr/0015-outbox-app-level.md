@@ -20,6 +20,8 @@ SDD §3.3: 문서 변경 → Kafka(`doc.updated`) → 인덱싱 consumer(AI). DB
 3. **M2 범위 = 테이블 + 트랜잭션 쓰기만.** relay(outbox 폴링 → Kafka 발행) + 소비(인덱싱) = **M4**. M2엔 이벤트가 테이블에 쌓이고, 발행 인프라(Kafka)는 M4에 구성.
 
 `outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published_at)` — `published_at` NULL = 미발행. relay가 `published_at IS NULL`을 순서(`id`)대로 발행 후 마킹(M4).
+- `aggregate_id` = 이벤트 대상 식별자. `event_type="page.updated"` → `aggregate_id`=`page_id`.
+- **소비자 멱등 키 = `outbox.id`**(M4 인덱서가 dedupe). at-least-once 발행이라 필수.
 
 ## 대안 비교
 

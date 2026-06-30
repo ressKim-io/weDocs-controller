@@ -17,8 +17,9 @@ M1은 인증이 없다 — 누구나 어떤 room이든 접속. M2 = JWT 인증 +
 2. **WS 토큰 전달 = `Sec-WebSocket-Protocol` 서브프로토콜** — 브라우저 `WebSocket`이 헤더 커스텀 불가하므로 subprotocol 값으로 토큰 전달(서버가 echo). query param·첫 메시지 대비 우수(아래 비교).
 3. **연결시 인가**: gateway → `DocService.CheckPermission(user_id, page_id)` → effective level(상속 해석은 doc-service). `none` → 연결 거부.
    - **proto에 토큰 필드 미추가** — gateway가 JWT를 검증해 `user_id`를 추출·전달. doc-service는 `user_id`만 받음(proto 최소화, mTLS로 gateway 신뢰).
-4. **viewer write 차단 = gateway 1차 + 엔진 방어**(D-5): gateway가 viewer 스트림의 `client→server update`를 **drop**(server→client만 통과), 엔진도 read-only 플래그로 방어. 클라이언트 read-only 플래그만 신뢰 금지(보안).
+4. **viewer write 차단 = gateway 1차 + 엔진 방어**(D-5): gateway가 viewer 스트림의 `client→server update`를 **drop**(server→client만 통과). **엔진 방어 = Sync 스트림 open 시 gateway가 `role`을 gRPC 메타데이터로 전달**(doc-id와 동일 채널, [ADR-0011](0011-engine-sync-fanout-bridge.md) 결정 4) → 엔진이 viewer 스트림에 도착한 write 프레임을 거부. **proto 변경 불요**(메타데이터 out-of-band). 클라이언트 read-only 플래그만 신뢰 금지(보안).
 5. **실패 close code**: 인증 실패(토큰 없음/만료/무효) = **4401**, 인가 실패(권한 없음) = **4403** (RFC 6455 application range 4000–4999, HTTP 401/403 미러링). 표준 정책위반은 1008 병용.
+6. **JWT TTL** = `T`(초기 제안 **24h** — 예상 편집 세션보다 길게). 연결 중 만료는 **재접속 시 재검증**으로 대응(MLP — 권한 강등 비전파와 동일 정책). 연결 중 토큰 주기 재검증은 후속.
 
 매핑: PRD §4.4 시퀀스(`connect(pageId, JWT)` → `CheckPermission` → viewer=read-only / editor=양방향 / none=거부)에 그대로 끼워진다.
 

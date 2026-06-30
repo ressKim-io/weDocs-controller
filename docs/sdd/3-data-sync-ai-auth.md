@@ -8,9 +8,9 @@
 users(id, email, password_hash, display_name, created_at)
 workspaces(id, name, owner_id, created_at)
 workspace_members(workspace_id, user_id, role)        -- role: owner | member
-pages(id, workspace_id, parent_id, title, position, archived, created_at, updated_at)  -- self-tree(parent_id)
+pages(id, workspace_id, parent_id, title, position, archived, created_at, updated_at)  -- self-tree(parent_id NULL=루트; proto DocMeta는 ""로 매핑)
 page_permissions(page_id, user_id, level)             -- level: editor | viewer (override, 트리 상속)
-page_snapshots(page_id, snapshot bytea, version, created_at)  -- CRDT blob(lib0 v1)
+page_snapshots(page_id PK, snapshot bytea, version bigint, created_at)  -- CRDT blob(lib0 v1), 최신 1행 UPSERT(ADR-0013)
 outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published_at)  -- 앱레벨(ADR-0015)
 ```
 > 평면 `documents` 구조를 대체(M1 전제). 페이지 *내용* 동시성=CRDT(page_snapshots), 페이지 *트리* 동시성=관계형(pages, doc-service 트랜잭션·사이클 검사). 유효 권한 = 명시 page_permissions > 조상 상속 > workspace baseline(member 기본=editor) > 거부.
@@ -48,7 +48,7 @@ client: 로컬 Yjs 적용(즉시 편집 가능)
 ### 6.3 수평 확장
 - CRDT Engine: docId consistent hashing(같은 문서 = 같은 인스턴스). Istio waypoint + DestinationRule.
 - WS Gateway: 무상태, 크로스-인스턴스 전파는 Redis pub/sub.
-- 장애: 엔진 인스턴스 down → 문서 재라우팅 → 복원. **M2 보장경계 = 최신 스냅샷**(엔진 ensure→`LoadSnapshot`→`decode_v1`→apply→SyncStep2, [ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md)). 무손실(Redis 버퍼) = M5.
+- 장애: 엔진 인스턴스 down → 문서 재라우팅 → 복원. **M2 보장경계 = 최신 스냅샷**(엔진 ensure→`LoadSnapshot`→`apply_update_v1`(신규=빈 Doc)→SyncStep2, [ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md)). 무손실(Redis 버퍼) = M5.
 
 ---
 
