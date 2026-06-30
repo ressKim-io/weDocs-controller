@@ -34,6 +34,8 @@
 - **재연결**: heartbeat + exponential backoff + state reconciliation(서버 state vector와 diff). ⚠️ Istio ztunnel 업그레이드가 long-lived 연결을 리셋할 수 있어 day-one 필수.
 
 ### 3.2 CRDT Engine (Rust) — ★핵심 엔진
+> 📖 **심화 설계서**: [docs/design/crdt-engine.md](../design/crdt-engine.md) — 산업 비교(OT vs CRDT, Figma/Zed/Yjs), INTERNALS(YATA·state vector·tombstone), 동시성 모델, 최적화 로드맵, 벤치 방법론. 이 §3.2는 요약, 상세는 설계서.
+
 - **책임**: 문서별 yrs 상태, update 머지, state vector diff, 스냅샷 생성/적용, tombstone GC
 - **I/F**: gRPC(server), **bidi streaming** (게이트웨이와 연결 유지, 매 update마다 새 호출 X)
 - **엔진 깊이 (단순 래퍼와 차별)**:
