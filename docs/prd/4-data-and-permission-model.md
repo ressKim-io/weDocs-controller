@@ -2,7 +2,7 @@
 > [← 인덱스](../PRD.md) · 선행: [3. 정보구조·UX](3-information-architecture-ux.md)
 
 > 이 문서는 **제품 관점의 모델**이다(무엇을·왜). 테이블 DDL·인덱스·트랜잭션 경계 같은 "어떻게"는 SDD §5 / M2 doc-service 설계에서 확정한다.
-> ⚠️ **현 SDD §5는 평면 `documents` 구조**(workspace·트리 없음)다. 본 문서가 정의하는 모델은 SDD §5를 **확장·대체**한다 → SDD 갱신은 [결정 필요 D-1](#결정-필요) 참조.
+> ✅ **D-1 확정(2026-06-30)**: 본 문서의 page-tree+workspace 모델이 SDD §5 평면 `documents` 구조를 **대체**한다. SDD §5 갱신은 M2 readiness 게이트에서 수행([§6 결정 로그](#6-결정-로그-decisions) · [M2 plan](../plans/2026-06-30-m2-persistence-session.md)).
 
 ---
 
@@ -149,15 +149,15 @@ gateway → doc-service: CheckPermission(user, pageId)
 
 ---
 
-## 6. 결정 필요 (Decisions)
+## 6. 결정 로그 (Decisions)
 
-기획 확정 전에 너의 선택이 필요한 항목. 각각 M2 doc-service 스키마에 직접 영향을 준다.
+> **2026-06-30 전부 확정** (M2 readiness 게이트, 사용자 승인). 각각 M2 doc-service 스키마·proto·권한 알고리즘에 직접 반영. 상세 = [M2 plan](../plans/2026-06-30-m2-persistence-session.md) · 관련 ADR.
 
-| ID | 결정 | 옵션 / 기본 제안 |
-|---|---|---|
-| **D-1** | SDD §5 갱신 범위 | `documents`→`pages` 개명 + workspace/parent_id/page_permissions 추가. **제안: 채택** |
-| **D-2** | CRDT 경계 ADR 작성 | `0012-crdt-boundary-content-vs-tree`. **제안: 작성** |
-| **D-3** | 워크스페이스 `member`의 기본 레벨 | editor(개방·위키스럽다) vs viewer(보수적). **제안: editor** — 사내 위키는 "누구나 고침"이 자연 |
-| **D-4** | editor가 페이지 삭제·이동 가능? | 편집의 일부로 허용 vs owner만. **제안: 허용**(아카이브는 되돌릴 수 있으니) |
-| **D-5** | viewer write 차단 위치 | 게이트웨이 강제(권장) vs 엔진 강제. **제안: 게이트웨이 1차 차단 + 엔진 방어** |
-| **D-6** | 멀티 워크스페이스 | MLP는 1워크스페이스 고정 vs N개. **제안: 데이터는 N 지원, UI는 1개로 시작** |
+| ID | 결정 | ✅ 확정 | 근거 |
+|---|---|---|---|
+| **D-1** | SDD §5 갱신 범위 | **page-tree 채택** — `documents`→`pages` 개명 + workspace/parent_id/page_permissions 추가, SDD §5 평면 구조 대체 | 제품 1문장(§1)이 트리·워크스페이스를 요구 |
+| **D-2** | CRDT 경계 ADR | **작성** — [ADR-0012](../adr/0012-crdt-boundary-content-vs-tree.md) (내용=CRDT, 트리=관계형) | §3 경계가 가드레일과 일치 |
+| **D-3** | 워크스페이스 `member` 기본 레벨 | **editor** | 사내 위키는 "누구나 고침"이 자연. (보수 운영 시 viewer로 전환 가능 — 상수 1개) |
+| **D-4** | editor의 페이지 삭제·이동 | **허용** (편집의 일부) | 아카이브는 되돌릴 수 있음. 영구삭제는 owner만 |
+| **D-5** | viewer write 차단 위치 | **게이트웨이 1차(client→server update drop) + 엔진 방어** | 클라이언트 플래그만 신뢰 불가(보안). [ADR-0014](../adr/0014-auth-authz-boundary.md) |
+| **D-6** | 멀티 워크스페이스 | **데이터는 N 지원, UI는 1개로 시작** | 스키마는 확장 비용 0, UI만 MLP 축소 |
