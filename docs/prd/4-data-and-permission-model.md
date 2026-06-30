@@ -24,7 +24,7 @@ User ──┬─< WorkspaceMember >── Workspace ──< Page (self-tree: pa
 
 | 엔티티 | 의미 | 핵심 속성 (제품 관점) |
 |---|---|---|
-| **User** | 계정 주체 | email, 표시이름 |
+| **User** | 계정 주체 | email, 표시이름, `system_role`(`user`\|`system_admin`, 전역 운영 역할 — D-7) |
 | **Workspace** | 팀 지식의 경계. 모든 페이지의 최상위 컨테이너 | name, owner |
 | **WorkspaceMember** | User가 Workspace에 속한 관계 | `role`: `owner` \| `member` |
 | **Page** | 위키의 한 페이지 = 한 CRDT 문서. **자기참조 트리**(`parent_id`) | title, parent_id, position(형제 정렬), archived |
@@ -114,7 +114,19 @@ Workspace (member 기본 = viewer 라고 가정)
 | **editor** | ✅ | ✅ | ❌ | ✅(편집의 일부로 볼지 D-4) |
 | **workspace owner** | ✅ | ✅ | ✅ | ✅ |
 
-> MLP는 3단계로 충분(viewer/editor/owner). 페이지별 "owner" 같은 4번째 레벨은 복잡도 대비 효용이 낮아 **비범위**.
+> 워크스페이스 내 권한은 3단계(viewer/editor/owner). 페이지별 "owner" 같은 4번째 레벨은 복잡도 대비 효용이 낮아 **비범위**.
+
+#### 시스템 관리자 (system_admin) — 워크스페이스 직교(orthogonal) 전역 역할 (D-7, [ADR-0016](../adr/0016-system-admin-role.md))
+
+위 3단계는 **한 워크스페이스 안**의 권한이다. 이와 **별개로** 플랫폼 운영자(시스템 관리자)가 존재한다. 워크스페이스 멤버십과 무관하게 전 인스턴스를 운영(워크스페이스 생성/삭제·계정 정지·장애 대응)하는 **사람 단위 전역 속성** → `User.system_role` (`user` | `system_admin`, 기본 `user`).
+
+| 속성 | 워크스페이스 역할(owner/member·editor/viewer) | 시스템 관리자(system_admin) |
+|---|---|---|
+| 모델링 | **관계형**(workspace_members / page_permissions) — 사람×워크스페이스마다 다름 | **User 전역 컬럼**(`system_role`) — 사람 단위 단일 |
+| 범위 | 한 워크스페이스 / 페이지 트리 | 전 인스턴스(cross-workspace) |
+| 부여 | 워크스페이스 owner가 공유·초대 | 시스템 부트스트랩 / 다른 system_admin (M2 범위 밖 = 수동 시드) |
+
+> MLP에서 system_admin은 **데이터 모델(컬럼) + enum 제약**까지만 확정한다. 실제 admin 전용 API·UI·승격 플로우는 후속. 인가 강제(엔드포인트 가드)는 1c 인증과 함께.
 
 ### 4.4 게이트웨이 연동 (기존 SDD §6.2/§8과 정합)
 

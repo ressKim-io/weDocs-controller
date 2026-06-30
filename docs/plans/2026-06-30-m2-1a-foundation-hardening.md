@@ -1,7 +1,7 @@
 ---
 date: 2026-06-30
 slug: m2-1a-foundation-hardening
-status: planned
+status: in-progress
 related:
   - plans/2026-06-30-m2-persistence-session.md
   - adr/0014-auth-authz-boundary.md
@@ -43,9 +43,9 @@ related:
 ## 실행 체크리스트
 
 ### Part 1 — controller (시스템 admin 설계, main 직접)
-- [ ] `docs/adr/0016-system-admin-role.md` — 전역 시스템 admin 결정(대안: User 전역 role vs 별도 admin 테이블 vs 외부 IdP). PRD §4.3 권한표에 `system_admin` 티어 추가 근거
-- [ ] `docs/prd/4-data-and-permission-model.md` §4.3 권한 레벨표에 시스템 admin 행 추가 + §2 엔티티표 User에 `system_role` 속성
-- [ ] (plan 커밋은 ★ 먼저 — 아래 라이프사이클)
+- [x] `docs/adr/0016-system-admin-role.md` — 전역 시스템 admin 결정(대안: User 전역 role vs 별도 admin 테이블 vs 외부 IdP) + ADR README 인덱스
+- [x] `docs/prd/4-data-and-permission-model.md` §4.3 시스템 admin 직교 역할 + §2 엔티티표 User에 `system_role` 속성
+- [x] plan 커밋(★ 먼저 — 43e0c4a)
 
 ### Part 2 — backend 1a 브랜치 (건별 승인·push 승인)
 - [ ] `V1__init_page_tree.sql` 수정: users/workspaces에 `updated_at` 추가 · users에 `system_role varchar(16) not null default 'user'` + CHECK · workspace_members.role CHECK · page_permissions.level CHECK
@@ -67,8 +67,8 @@ cd ../weDocs-backend && ./gradlew :doc-service:test
 - validate 통과만으로 정합 판단 금지(이번 사고의 교훈) — 감사 필드는 **값 검증 테스트**로 확인.
 
 ## 재개 지점 (Resume)
-- **마지막 완료**: plan 작성(이 파일).
-- **다음**: Part 1 controller ADR-0016 + PRD §4.3 → 커밋(main). 이어 Part 2 backend 브랜치 작업(건별 승인).
+- **마지막 완료**: Part 1 controller 설계 문서(ADR-0016 + PRD §4.3 + README, 커밋 예정).
+- **다음**: Part 2 backend 1a 브랜치 구현(V1 수정 → BaseTimeEntity/Auditing/enum → 엔티티 상속 → 테스트). 로컬 구현·테스트 후 diff 제시 → **커밋/push 건별 승인**.
 - **주의**: backend = 서비스 레포 → 커밋/push 건별 승인. V1 직접 수정(미머지라 안전). created_by/UUIDv7/Lombok은 **이 plan 범위 밖**(후속).
 
 ## 범위 밖

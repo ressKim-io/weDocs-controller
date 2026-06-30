@@ -19,6 +19,7 @@ SDD §15 결정 로그를 개별 ADR로 분리한다. 형식: **1 결정 = 1 파
 | [0013](0013-snapshot-persistence-lifecycle.md) | 스냅샷 영속화 라이프사이클 (엔진 push·N updates/T초·복원) | **Accepted** |
 | [0014](0014-auth-authz-boundary.md) | 인증/인가 경계 (JWT 발급=doc-service·검증=gateway·viewer write-block) | **Accepted** |
 | [0015](0015-outbox-app-level.md) | outbox = 앱레벨 transactional outbox (Debezium 기각·relay=M4) | **Accepted** |
+| [0016](0016-system-admin-role.md) | 시스템 관리자 전역 역할 (`User.system_role`·워크스페이스 직교·enum+CHECK) | **Accepted** |
 
 > **번호 공백(0002~0009)**: 0010(proto 배포 블로커)을 먼저 확정해 점프. 0002~0009 정식 분리는 **M6 일괄**(또는 해당 마일스톤 착수 시) — 그 전까지 **권위 = SDD §15 본문**. 0011 = M1 마감 산출물. 0012~0015 = M2 readiness 게이트 산출물.
 
