@@ -80,24 +80,48 @@ commit 2·3 추가: `cargo bench --no-run`. 전체 후 `make check && make test`
 
 ---
 
-## Phase C — crdt-engine `sync()` 함수 분해 (layering P1) · **PR #4 머지 후 별도 PR**
+## Phase C 사전검토 — 외부 아키텍처 제안(Arena+jemalloc+write-behind) 리뷰 (2026-07-01)
+
+Phase C 착수 직전 사용자가 외부에서 받은 성능 아키텍처 제안(bumpalo Arena+jemalloc 하이브리드 할당, dirty-flag+mpsc+debounce write-behind)을 crdt-engine 실제 코드·yrs 0.27.2 소스 기준으로 검증(rust-expert 서브에이전트 교차검증 포함).
+
+- **bumpalo Arena — 영구 반려**. 전제("병합=짧은 수명 트리, 끝나면 일괄 폐기")가 yrs 실제 동작과 상충. `apply_update`→`update.integrate`→`Box<Item>` move→`ClientBlockList`(영속 store) 소유권 이전 체인 확인(`transaction.rs:820`·`update.rs:324`·`block_store.rs:18`). 디코드 블록은 폐기되지 않고 영속 Doc 구조로 move-in. `ItemPtr(NonNull<Item>)` raw pointer 사용 + crate 전체 `allocator_api` 0건 → `&'bump T`로 대체 시 라이프타임상 컴파일 불가.
+- **jemalloc — 후보(보류)**. 근거(criterion A/B 벤치) 없이 도입 시 가드레일 5 위반. 채택하려면 `benches/convergence.rs` 하니스로 전/후 실측 별도 스파이크 필요. **사용자 결정: Phase C 먼저, jemalloc 벤치는 별도 후속.**
+- **write-behind(dirty flag+mpsc+debounce) — 이미 [ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md)(Accepted)과 정합**. T=10초 유휴 OR N=100 update 상한 트리거로 이미 결정됨(사용자 제안보다 N 상한이 있어 starvation 방지 우위). 단 crdt-engine에 DB 의존성 자체가 없음(Cargo.toml 확인) → **M2 Phase 3(`build_client(true)`) 몫, 지금 액션 아님.** 훅 지점만 확정: `DocRegistry::apply_v1` 성공 직후 mpsc로 DocId 전달(락 아님) → 워커 debounce → 재락 `full_state_v1` 동기 스냅샷 → 락 해제 후 async DB write.
+
+**Phase C 스코프에는 영향 없음** — 아래 원래 계획대로 진행.
+
+---
+
+## Phase C — crdt-engine `sync()` 함수 분해 (layering P1) · **착수**
+
+레포: `/home/ressbe/my-file/weDocs/weDocs-crdt-engine`. 브랜치: `refactor/sync-fn-decomposition`(신규).
 
 `service.rs::sync()`가 73줄(그 중 `tokio::spawn` 클로저 37줄)로 layering-readability P1(≈40줄)·clean-code(50줄 초과 분할) 초과 + 추상화 수준 혼재(SLAP). 동작 불변 리팩토링.
 - 세션 루프(step1 전송 + `loop{select!{inbound,fanout}}`)를 `async fn run_session(...)`로 추출 → `sync()`는 셋업+spawn만(~30줄).
 - (선택) traceparent/doc-id 파싱을 `extract_*` 헬퍼로.
 - 이미 있는 `handle_inbound`/`handle_broadcast`와 같은 분해 방향(일관성).
 - **PR #4와 분리 이유**: PR #4=동작 불변 기계적 치환(리뷰 쉬움) vs 함수 분해=로직 이동(동작 동일성 별도 검증). git.md 하나의 목적=하나의 PR.
-- 검증: 로직 이동만 → 기존 테스트 그대로 green. `make check && make test`.
+
+### 실행 체크리스트
+- [ ] `cd crdt-engine && git checkout main && git pull` → 새 브랜치 `refactor/sync-fn-decomposition`.
+- [ ] `run_session(registry, doc_id, inbound, fanout, out_tx, subscription_state_vector)` 추출 — `sync()`의 `tokio::spawn(async move {...}.instrument(span))` 클로저 본문을 그대로 이동(로직 변경 없음).
+- [ ] (선택) traceparent 추출(`opentelemetry::global::get_text_map_propagator` 블록)·doc-id 파싱(`request.metadata().get("doc-id")...`)을 각각 `extract_trace_context`/`extract_doc_id` 헬퍼로.
+- [ ] `sync()` 본문이 ~30줄 내로 축소되는지 확인(셋업 + spawn만 남김).
+- [ ] 검증: `cargo build --all-targets && cargo clippy --all-targets -- -D warnings && cargo fmt --check && cargo test` — 로직 이동만이므로 기존 테스트(§`inbound_rejects_doc_id_mismatch`·`inbound_accepts_empty_doc_id` 포함) 그대로 green. `make check && make test`.
+- [ ] push + PR 생성 승인 요청. → **STOP**.
 
 ---
 
 ## 재개 지점 (Resume)
-- **마지막 완료** = Phase B **머지 완료**([backend PR #4](https://github.com/ressKim-io/weDocs-backend/pull/4), squash `18e1aa1`). backend origin/main 최신화 완료(로컬도 fast-forward, feature 브랜치 원격 삭제됨).
-- **다음(이 세션 clear 후 시작점)** = **Phase C(crdt-engine `sync()` 함수 분해)** — crdt-engine 레포에서 새 브랜치, §Phase C 설명대로 `run_session` 추출. PR #4(craft-standards-alignment) 머지됐으니 독립 착수 가능.
+- **마지막 완료** = Phase B **머지 완료**([backend PR #4](https://github.com/ressKim-io/weDocs-backend/pull/4), squash `18e1aa1`) + Phase C 사전검토(bumpalo 반려·jemalloc 보류·write-behind는 ADR-0013 정합 확인, 사용자 결정 = jemalloc 벤치는 별도 후속·Phase C 먼저).
+- **다음(이 세션 clear 후 시작점)** = **Phase C(crdt-engine `sync()` 함수 분해) 착수** — crdt-engine 레포 `refactor/sync-fn-decomposition` 브랜치, 위 §Phase C 체크리스트대로 `run_session` 추출.
+- **그 다음** = jemalloc criterion A/B 벤치 스파이크(사용자 보류 결정, 별도 작업으로 재요청 시).
 - **주의** = 서비스 레포는 branch+PR+**건별 승인**·push 승인. controller만 main 직접.
 
 ## 범위 밖
 - error-handling P4 full(원인 체인 `#[source]`) — yrs 에러 2타입 분할 필요, 별도 후속.
 - concurrency Actor(Level-2, 락 프리) 리팩터 = M2/M3 벤치 트랙.
+- bumpalo Arena — 영구 반려(yrs 소유권 모델과 상충, §Phase C 사전검토 참조).
+- jemalloc criterion A/B 벤치 — 후보로 보류, 이번 세션 범위 아님.
 - backend equals/hashCode 도입, REST `@RestControllerAdvice`(= Phase 1c).
 - frontend(React) — 대상 표준 아님. proto 변경 없음.
