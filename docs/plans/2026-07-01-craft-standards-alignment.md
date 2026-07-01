@@ -58,12 +58,20 @@ commit 2·3 추가: `cargo bench --no-run`. 전체 후 `make check && make test`
 
 **성격**: blocking 위반 없음. layering-readability `[A]` advisory(엔티티 수기 getter/생성자 → Lombok)만. 우선순위 낮음.
 
+### 대상 파일 (경로 SSOT — 재도출 불필요)
+루트 `/home/ressbe/my-file/weDocs/weDocs-backend`, 모듈 `doc-service`.
+- 빌드: `doc-service/build.gradle.kts` (현재 Lombok 없음, JDK 25 toolchain, Spring Boot 4.1.0 BOM)
+- 엔티티/베이스: `doc-service/src/main/java/io/wedocs/doc/domain/` 아래
+  `Page.java`(getter 6·`rename()` 유지) · `Workspace.java`(3) · `User.java`(5·`@Convert systemRole`) · `PageSnapshot.java`(3) · `BaseTimeEntity.java`(`getUpdatedAt`) · `BaseCreatedEntity.java`(`getCreatedAt`)
+- 검증 테스트(변경 없어야 함, 통과 확인용): `doc-service/src/test/java/io/wedocs/doc/PageTreePersistenceTest.java` — `new User(...)`/`new Page(...)` 등 비즈니스 생성자 사용 → 생성자 시그니처 유지 필수.
+
 ### 실행 체크리스트
-- [ ] 게이트: ⚠️ **Lombok × JDK 25 호환성 검증**(`./gradlew dependencies | grep lombok` → 릴리스노트 대조). 미지원이면 최신 핀 or 보류.
-- [ ] `doc-service/build.gradle.kts`: Lombok `compileOnly` + `annotationProcessor`(BOM 버전).
-- [ ] 엔티티 4종(`Page`/`Workspace`/`User`/`PageSnapshot`) + 베이스 2종(`BaseTimeEntity`/`BaseCreatedEntity`)에 `@Getter` + `@NoArgsConstructor(access = PROTECTED)`. 수기 getter·`protected Xxx(){}` 제거. **비즈니스 생성자·`rename()` 유지.**
+- [ ] 착수 전: `cd weDocs-backend && git checkout main && git pull` → 새 브랜치 `refactor/craft-standards-lombok`.
+- [ ] 게이트: ⚠️ **Lombok × JDK 25 호환성 검증**(`./gradlew :doc-service:dependencies | grep lombok`으로 BOM resolve 버전 확인 → Lombok 릴리스노트에서 JDK 25 지원 대조). 미지원이면 최신 핀 or 보류(엔티티는 record 불가 → 대안 없음, 수기 유지).
+- [ ] `doc-service/build.gradle.kts`: Lombok `compileOnly` + `annotationProcessor`(BOM 버전, 미지원 시만 명시 핀).
+- [ ] 엔티티 4종 + 베이스 2종에 `@Getter` + `@NoArgsConstructor(access = AccessLevel.PROTECTED)`. 수기 getter·`protected Xxx(){}` 제거. **비즈니스 생성자·`rename()` 유지.** getter명 정합: `archived`→`isArchived()`, `position`→`getPosition()`.
   - ⛔ `@Data`/`@ToString`/기본 `@EqualsAndHashCode` 금지. equals/hashCode 추가 안 함(identity 유지).
-- [ ] 검증: `./gradlew :doc-service:compileJava :doc-service:test` (TC 영속 테스트 3건 green). → **STOP**.
+- [ ] 검증: `./gradlew :doc-service:compileJava :doc-service:test` (TC 영속 테스트 3건 green). → **STOP**(push/PR 승인 대기).
 
 ---
 
@@ -79,8 +87,9 @@ commit 2·3 추가: `cargo bench --no-run`. 전체 후 `make check && make test`
 ---
 
 ## 재개 지점 (Resume)
-- **마지막 완료** = Phase A 완료 → [crdt-engine PR #4](https://github.com/ressKim-io/weDocs-crdt-engine/pull/4) OPEN. backend PR #3 머지 확인(`54a8b48`).
-- **다음** = **Phase B(backend Lombok) 착수 가능** (backend 머지됨 → main 전환+게이트부터). / Phase C(sync 분해)는 PR #4 머지 후 별도 PR.
+- **마지막 완료** = Phase A **머지 완료**([crdt-engine PR #4](https://github.com/ressKim-io/weDocs-crdt-engine/pull/4), merge `65772d3`). crdt-engine 로컬 main 최신화 완료.
+- **다음(이 세션 clear 후 시작점)** = **Phase B(backend Lombok)** — 위 §Phase B 체크리스트대로. backend main에서 새 브랜치 → Lombok×JDK25 게이트 → 엔티티 6파일 → gradle test → STOP(push 승인).
+- **그 다음** = Phase C(crdt-engine `sync()` 함수 분해) — 이제 PR #4 머지됐으니 **착수 가능**. backend Lombok과 독립.
 - **주의** = 서비스 레포는 branch+PR+**건별 승인**·push 승인. controller만 main 직접.
 
 ## 범위 밖
