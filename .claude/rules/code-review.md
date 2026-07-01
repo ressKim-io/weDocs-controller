@@ -39,8 +39,8 @@ PR 코드 리뷰 시 반드시 이 양식과 프로세스를 따른다.
 | 보안/권한 | 🔒 | securityContext, 시크릿 노출, RBAC, image tag 고정, TLS |
 | 운영/성능 | ⚙️ | resource limits, health probe, 서비스 연동, 데이터 영속성 |
 | 패턴/일관성 | 📐 | values↔template 정합성, DRY, 네이밍 컨벤션, deprecated API |
-| Rust 크래프트 | 🦀 | `rust-expert` 실행 — `error-handling.md` 체크리스트(thiserror·no-unwrap·에러체인·경계매핑) |
-| Java 크래프트 | ☕ | `java-expert` 실행 — `error-handling.md` 체크리스트(ControllerAdvice·ProblemDetail·Lombok) |
+| Rust 크래프트 | 🦀 | `rust-expert` 실행 — 크래프트 표준 체크리스트 전체(`error-handling`·`concurrency`·`layering-readability`·`observability`) |
+| Java 크래프트 | ☕ | `java-expert` 실행 — 크래프트 표준 체크리스트 전체(`error-handling`·`concurrency`·`layering-readability`·`observability`) |
 
 ### 종합 규칙
 - 중복 제거: 같은 파일/라인의 동일 이슈는 병합
