@@ -33,18 +33,11 @@ controller에 방금 머지된 4개 크래프트 표준(`error-handling` / `conc
 수정 파일: `Cargo.toml` · `src/engine.rs` · `src/service.rs` · `tests/registry_fanout.rs`. (`lib.rs`/`main.rs`/`telemetry.rs`는 무변경 — observability.md 이미 준수.)
 
 ### 실행 체크리스트
-- [ ] Commit 1 — `refactor(engine): thiserror로 EngineError derive (error-handling P2)`
-  - `Cargo.toml`: `thiserror = "2"` 추가(0x=major.minor, stable=bare major 관례 → `yrs="0.27"` 옆에 배치).
-  - `src/engine.rs`: 수동 `impl fmt::Display` + `impl std::error::Error` 삭제 → `#[derive(Debug, thiserror::Error)]` + `#[error("unknown doc: {0}")]` / `#[error("v1 codec error: {0}")]`. 메시지 바이트 동일(테스트 `matches!` 유지). `use std::fmt;` 제거(commit 3에서 재추가).
-- [ ] Commit 2 — `refactor(engine): DashMap 샤딩 + per-doc parking_lot::Mutex (concurrency P4/P5)`
-  - `Cargo.toml`: `dashmap = "6"`, `parking_lot = "0.12"` 추가.
-  - `src/engine.rs`: `Arc<Mutex<HashMap<String, DocEntry>>>` → `Arc<DashMap<String, Arc<parking_lot::Mutex<DocEntry>>>>`. 6개 메서드 **비-async**화. 2단계 락(샤드 가드 `.value().clone()` 후 drop → per-doc `.lock()`).
-  - `src/service.rs`: registry 호출 6곳 `.await` 제거(시그니처 변경 없음). `sync()`/`get_snapshot()`은 `async fn` 유지.
-  - `tests/registry_fanout.rs` + 유닛테스트: registry 호출 `.await` 제거.
-- [ ] Commit 3 — `refactor(engine): DocId newtype 도입 (layering-readability P3)`
-  - `src/engine.rs`: `pub struct DocId(String)` + derive + `Display`/`From`/`as_str`/`into_inner`. `DashMap<DocId,..>`, `doc_id: &DocId`.
-  - `src/service.rs`: 메타데이터 추출 직후 `.map(DocId::from)` wrap. `get_snapshot`은 `into_inner()` unwrap. `frame.doc_id != doc_id.as_str()`.
-  - 테스트: `DocId::from("room-1")`.
+- [x] Commit 1 — thiserror로 EngineError derive (`538ace0`)
+- [x] Commit 2 — DashMap 샤딩 + per-doc parking_lot::Mutex (`2d933fc`)
+- [x] Commit 3 — DocId newtype 도입 (`79c3786`)
+- [x] 검증: build/clippy(-D warnings)/fmt/test + `cargo bench --no-run` + CI `make check && make test` 전부 green
+- [ ] **STOP — push/PR 사용자 승인 대기** (브랜치 `refactor/craft-standards-alignment`, 3커밋, working tree clean)
 
 ### 검증 (각 커밋 후)
 ```sh
@@ -75,8 +68,8 @@ commit 2·3 추가: `cargo bench --no-run`. 전체 후 `make check && make test`
 ---
 
 ## 재개 지점 (Resume)
-- **마지막 완료** = plan SSOT 기록·커밋(이 파일).
-- **다음** = Phase A commit 1(crdt-engine 브랜치 `refactor/craft-standards-alignment` 생성 → thiserror).
+- **마지막 완료** = Phase A 3커밋(`538ace0`/`2d933fc`/`79c3786`) + 전체 검증 green. crdt-engine 브랜치 `refactor/craft-standards-alignment`, working tree clean.
+- **다음** = Phase A push + PR **사용자 승인 후** push/PR 생성. 그 다음 = Phase B(backend, PR #3 머지 대기).
 - **주의** = 서비스 레포는 branch+PR+**건별 승인**·push 승인. controller만 main 직접. backend Phase B는 PR #3 머지 전 착수 금지.
 
 ## 범위 밖
