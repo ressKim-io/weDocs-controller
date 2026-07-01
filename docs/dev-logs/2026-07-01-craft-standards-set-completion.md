@@ -41,7 +41,7 @@ related:
 
 ## 다음 세션 할 일 (TODO)
 1. `ress-claude-agents` 로컬 경로가 확보되면 4개 표준을 일괄 승격.
-2. `concurrency.md` 부록이 지적한 실제 코드 갭(`DocRegistry` 전역락 미샤딩·`tokio::sync::Mutex` 오용)은 이번 세션 범위 밖 — 엔진에 실제 적용할지는 별도 PR/세션에서 사용자 판단 필요.
+2. ~~`concurrency.md` 부록이 지적한 실제 코드 갭(`DocRegistry` 전역락 미샤딩·`tokio::sync::Mutex` 오용)은 이번 세션 범위 밖~~ → **해소됨(2026-07-01)**: `docs/plans/2026-07-01-craft-standards-alignment.md`(status: done)에서 크래프트 표준 4종 전체(error-handling/concurrency/layering-readability/observability)가 지적한 crdt-engine/backend 갭을 정합 — DashMap 샤딩+parking_lot(concurrency P4/P5), thiserror(error-handling), DocId newtype+Lombok(layering-readability), `sync()` 함수 분해(layering-readability P1). [crdt-engine PR #4](https://github.com/ressKim-io/weDocs-crdt-engine/pull/4)·[#5](https://github.com/ressKim-io/weDocs-crdt-engine/pull/5)·[backend PR #4](https://github.com/ressKim-io/weDocs-backend/pull/4) 전부 머지.
 3. 다음 표준이 추가되면 이번 결정(신규 행 추가 아님, 기존 렌즈의 체크리스트 목록만 확장)을 그대로 따른다.
 
 ## 관련 자료
