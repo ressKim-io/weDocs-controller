@@ -66,12 +66,15 @@ commit 2·3 추가: `cargo bench --no-run`. 전체 후 `make check && make test`
 - 검증 테스트(변경 없어야 함, 통과 확인용): `doc-service/src/test/java/io/wedocs/doc/PageTreePersistenceTest.java` — `new User(...)`/`new Page(...)` 등 비즈니스 생성자 사용 → 생성자 시그니처 유지 필수.
 
 ### 실행 체크리스트
-- [ ] 착수 전: `cd weDocs-backend && git checkout main && git pull` → 새 브랜치 `refactor/craft-standards-lombok`.
-- [ ] 게이트: ⚠️ **Lombok × JDK 25 호환성 검증**(`./gradlew :doc-service:dependencies | grep lombok`으로 BOM resolve 버전 확인 → Lombok 릴리스노트에서 JDK 25 지원 대조). 미지원이면 최신 핀 or 보류(엔티티는 record 불가 → 대안 없음, 수기 유지).
-- [ ] `doc-service/build.gradle.kts`: Lombok `compileOnly` + `annotationProcessor`(BOM 버전, 미지원 시만 명시 핀).
-- [ ] 엔티티 4종 + 베이스 2종에 `@Getter` + `@NoArgsConstructor(access = AccessLevel.PROTECTED)`. 수기 getter·`protected Xxx(){}` 제거. **비즈니스 생성자·`rename()` 유지.** getter명 정합: `archived`→`isArchived()`, `position`→`getPosition()`.
-  - ⛔ `@Data`/`@ToString`/기본 `@EqualsAndHashCode` 금지. equals/hashCode 추가 안 함(identity 유지).
-- [ ] 검증: `./gradlew :doc-service:compileJava :doc-service:test` (TC 영속 테스트 3건 green). → **STOP**(push/PR 승인 대기).
+- [x] 착수 전: `cd weDocs-backend && git checkout main && git pull` → 새 브랜치 `refactor/craft-standards-lombok`.
+- [x] 게이트: ⚠️ **Lombok × JDK 25 호환성 검증** — Spring Boot 4.1.0 BOM resolve = `1.18.46`(로컬 캐시 POM 확인). Lombok 공식 changelog(WebFetch): JDK25 지원은 **v1.18.40**(2025-09-04)부터, 1.18.46은 그 이후 안정 버전 → **지원 확인, 버전 핀 불필요**.
+- [x] `doc-service/build.gradle.kts`: Lombok `compileOnly` + `annotationProcessor`(BOM 버전).
+- [x] 엔티티 4종 + 베이스 2종에 `@Getter` + `@NoArgsConstructor(access = AccessLevel.PROTECTED)`. 수기 getter·`protected Xxx(){}` 제거. **비즈니스 생성자·`rename()` 유지.** getter명 정합: `archived`→`isArchived()`, `position`→`getPosition()` 그대로 생성됨(Lombok 확인).
+  - ⛔ `@Data`/`@ToString`/기본 `@EqualsAndHashCode` 금지 — 미사용 확인. equals/hashCode 추가 안 함(identity 유지).
+- [x] 검증: `./gradlew :doc-service:compileJava :doc-service:test` — compileJava green, PageTreePersistenceTest **6건**(계획서 "3건"은 과소 기재 — 실제 테스트 메서드 6개) 전부 green(`tests="6" skipped="0" failures="0" errors="0"`). → 커밋 `0226a97`. **STOP**(push/PR 승인 대기).
+
+### 함정 발견 — annotationProcessor는 BOM platform을 상속하지 않음
+`implementation(platform(...))`는 `implementation`을 extendsFrom하는 구성(`compileClasspath`/`testImplementation` 등)에만 버전 제약이 전파된다. `annotationProcessor`는 별도 구성이라 `compileOnly("org.projectlombok:lombok")`만으론 `annotationProcessor`가 버전을 못 찾고 `Could not find org.projectlombok:lombok:.`로 실패. 해결: `annotationProcessor(platform("org.springframework.boot:spring-boot-dependencies:4.1.0"))`를 별도 명시. (config-contract-audit.md 사례 — "BOM에 적힌 버전이 자동 적용될 것" mental model 오류.)
 
 ---
 
@@ -87,9 +90,8 @@ commit 2·3 추가: `cargo bench --no-run`. 전체 후 `make check && make test`
 ---
 
 ## 재개 지점 (Resume)
-- **마지막 완료** = Phase A **머지 완료**([crdt-engine PR #4](https://github.com/ressKim-io/weDocs-crdt-engine/pull/4), merge `65772d3`). crdt-engine 로컬 main 최신화 완료.
-- **다음(이 세션 clear 후 시작점)** = **Phase B(backend Lombok)** — 위 §Phase B 체크리스트대로. backend main에서 새 브랜치 → Lombok×JDK25 게이트 → 엔티티 6파일 → gradle test → STOP(push 승인).
-- **그 다음** = Phase C(crdt-engine `sync()` 함수 분해) — 이제 PR #4 머지됐으니 **착수 가능**. backend Lombok과 독립.
+- **마지막 완료** = Phase B **구현+로컬커밋 완료**(backend `refactor/craft-standards-lombok` 브랜치, 커밋 `0226a97`). 엔티티 4종+베이스 2종 Lombok 전환, compileJava+test(6건) green. **push/PR 미승인 — 아직 로컬에만 존재.**
+- **다음(이 세션 clear 후 시작점)** = Phase B **push + PR 생성 승인 요청** → 승인 시 push·PR 생성. 이후 Phase C(crdt-engine `sync()` 함수 분해) — PR #4 머지됐으니 착수 가능, backend Lombok과 독립.
 - **주의** = 서비스 레포는 branch+PR+**건별 승인**·push 승인. controller만 main 직접.
 
 ## 범위 밖
