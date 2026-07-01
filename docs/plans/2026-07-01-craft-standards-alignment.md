@@ -52,9 +52,9 @@ commit 2·3 추가: `cargo bench --no-run`. 전체 후 `make check && make test`
 
 ---
 
-## Phase B — backend doc-service (Java) · **M2 Phase 1a PR #3 머지 + main 최신화 후**
+## Phase B — backend doc-service (Java) · **착수 가능 (PR #3 머지 완료 `54a8b48`)**
 
-레포: `/home/ressbe/my-file/weDocs/weDocs-backend`. 현재 `feature/m2-doc-service-skeleton`(PR #3 OPEN, 리뷰 1차 완료·머지 대기). **선행 조건: PR #3 머지 → `git checkout main && git pull` → 새 브랜치.**
+레포: `/home/ressbe/my-file/weDocs/weDocs-backend`. PR #3가 origin/main에 머지됨(`54a8b48`). **선행: 로컬이 아직 `feature/m2-doc-service-skeleton` → `git checkout main && git pull` → 새 브랜치.**
 
 **성격**: blocking 위반 없음. layering-readability `[A]` advisory(엔티티 수기 getter/생성자 → Lombok)만. 우선순위 낮음.
 
@@ -67,9 +67,20 @@ commit 2·3 추가: `cargo bench --no-run`. 전체 후 `make check && make test`
 
 ---
 
+## Phase C — crdt-engine `sync()` 함수 분해 (layering P1) · **PR #4 머지 후 별도 PR**
+
+`service.rs::sync()`가 73줄(그 중 `tokio::spawn` 클로저 37줄)로 layering-readability P1(≈40줄)·clean-code(50줄 초과 분할) 초과 + 추상화 수준 혼재(SLAP). 동작 불변 리팩토링.
+- 세션 루프(step1 전송 + `loop{select!{inbound,fanout}}`)를 `async fn run_session(...)`로 추출 → `sync()`는 셋업+spawn만(~30줄).
+- (선택) traceparent/doc-id 파싱을 `extract_*` 헬퍼로.
+- 이미 있는 `handle_inbound`/`handle_broadcast`와 같은 분해 방향(일관성).
+- **PR #4와 분리 이유**: PR #4=동작 불변 기계적 치환(리뷰 쉬움) vs 함수 분해=로직 이동(동작 동일성 별도 검증). git.md 하나의 목적=하나의 PR.
+- 검증: 로직 이동만 → 기존 테스트 그대로 green. `make check && make test`.
+
+---
+
 ## 재개 지점 (Resume)
-- **마지막 완료** = Phase A 완료 → [crdt-engine PR #4](https://github.com/ressKim-io/weDocs-crdt-engine/pull/4) OPEN (3커밋 `538ace0`/`2d933fc`/`79c3786`, 전체 검증 green).
-- **다음** = PR #4 리뷰/머지 대기. 그 후 = Phase B(backend Lombok) — **단, backend M2 Phase 1a PR #3 머지 + main 최신화 전엔 착수 금지**.
+- **마지막 완료** = Phase A 완료 → [crdt-engine PR #4](https://github.com/ressKim-io/weDocs-crdt-engine/pull/4) OPEN. backend PR #3 머지 확인(`54a8b48`).
+- **다음** = **Phase B(backend Lombok) 착수 가능** (backend 머지됨 → main 전환+게이트부터). / Phase C(sync 분해)는 PR #4 머지 후 별도 PR.
 - **주의** = 서비스 레포는 branch+PR+**건별 승인**·push 승인. controller만 main 직접.
 
 ## 범위 밖
