@@ -37,7 +37,7 @@ controller에 방금 머지된 4개 크래프트 표준(`error-handling` / `conc
 - [x] Commit 2 — DashMap 샤딩 + per-doc parking_lot::Mutex (`2d933fc`)
 - [x] Commit 3 — DocId newtype 도입 (`79c3786`)
 - [x] 검증: build/clippy(-D warnings)/fmt/test + `cargo bench --no-run` + CI `make check && make test` 전부 green
-- [ ] **STOP — push/PR 사용자 승인 대기** (브랜치 `refactor/craft-standards-alignment`, 3커밋, working tree clean)
+- [x] push + PR 생성 (승인됨) → [crdt-engine PR #4](https://github.com/ressKim-io/weDocs-crdt-engine/pull/4) OPEN
 
 ### 검증 (각 커밋 후)
 ```sh
@@ -68,9 +68,9 @@ commit 2·3 추가: `cargo bench --no-run`. 전체 후 `make check && make test`
 ---
 
 ## 재개 지점 (Resume)
-- **마지막 완료** = Phase A 3커밋(`538ace0`/`2d933fc`/`79c3786`) + 전체 검증 green. crdt-engine 브랜치 `refactor/craft-standards-alignment`, working tree clean.
-- **다음** = Phase A push + PR **사용자 승인 후** push/PR 생성. 그 다음 = Phase B(backend, PR #3 머지 대기).
-- **주의** = 서비스 레포는 branch+PR+**건별 승인**·push 승인. controller만 main 직접. backend Phase B는 PR #3 머지 전 착수 금지.
+- **마지막 완료** = Phase A 완료 → [crdt-engine PR #4](https://github.com/ressKim-io/weDocs-crdt-engine/pull/4) OPEN (3커밋 `538ace0`/`2d933fc`/`79c3786`, 전체 검증 green).
+- **다음** = PR #4 리뷰/머지 대기. 그 후 = Phase B(backend Lombok) — **단, backend M2 Phase 1a PR #3 머지 + main 최신화 전엔 착수 금지**.
+- **주의** = 서비스 레포는 branch+PR+**건별 승인**·push 승인. controller만 main 직접.
 
 ## 범위 밖
 - error-handling P4 full(원인 체인 `#[source]`) — yrs 에러 2타입 분할 필요, 별도 후속.
