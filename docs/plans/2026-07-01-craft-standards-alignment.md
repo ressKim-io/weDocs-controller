@@ -58,6 +58,8 @@ commit 2·3 추가: `cargo bench --no-run`. 전체 후 `make check && make test`
 
 **성격**: blocking 위반 없음. layering-readability `[A]` advisory(엔티티 수기 getter/생성자 → Lombok)만. 우선순위 낮음.
 
+**✅ 완료** — [backend PR #4](https://github.com/ressKim-io/weDocs-backend/pull/4) 승인·머지(squash, `18e1aa1`), 브랜치 삭제됨.
+
 ### 대상 파일 (경로 SSOT — 재도출 불필요)
 루트 `/home/ressbe/my-file/weDocs/weDocs-backend`, 모듈 `doc-service`.
 - 빌드: `doc-service/build.gradle.kts` (현재 Lombok 없음, JDK 25 toolchain, Spring Boot 4.1.0 BOM)
@@ -90,8 +92,8 @@ commit 2·3 추가: `cargo bench --no-run`. 전체 후 `make check && make test`
 ---
 
 ## 재개 지점 (Resume)
-- **마지막 완료** = Phase B **구현+로컬커밋 완료**(backend `refactor/craft-standards-lombok` 브랜치, 커밋 `0226a97`). 엔티티 4종+베이스 2종 Lombok 전환, compileJava+test(6건) green. **push/PR 미승인 — 아직 로컬에만 존재.**
-- **다음(이 세션 clear 후 시작점)** = Phase B **push + PR 생성 승인 요청** → 승인 시 push·PR 생성. 이후 Phase C(crdt-engine `sync()` 함수 분해) — PR #4 머지됐으니 착수 가능, backend Lombok과 독립.
+- **마지막 완료** = Phase B **머지 완료**([backend PR #4](https://github.com/ressKim-io/weDocs-backend/pull/4), squash `18e1aa1`). backend origin/main 최신화 완료(로컬도 fast-forward, feature 브랜치 원격 삭제됨).
+- **다음(이 세션 clear 후 시작점)** = **Phase C(crdt-engine `sync()` 함수 분해)** — crdt-engine 레포에서 새 브랜치, §Phase C 설명대로 `run_session` 추출. PR #4(craft-standards-alignment) 머지됐으니 독립 착수 가능.
 - **주의** = 서비스 레포는 branch+PR+**건별 승인**·push 승인. controller만 main 직접.
 
 ## 범위 밖
