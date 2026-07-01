@@ -59,6 +59,7 @@
 ### 상황별 룰 (해당 작업 시 `.claude/rules/` 참조 — `paths:` frontmatter로 스코프됨)
 - `git.md`·`code-review.md`·`deep-thinking.md` — 커밋/PR/품질 (보편)
 - `java.md`·`spring.md` — ws-gateway, doc-service
+- `error-handling.md` — 에러 처리 원칙(P1~6) + Java/Rust/Python 언어별 실현, 전 서비스 공통 크래프트 표준 (첫 표준 — concurrency/layering/observability로 복제 예정)
 - `istio.md`·`k8s-manifest.md` — infra/istio, infra/k8s, argocd
 - `monitoring.md` — OTel/PromQL/Grafana (폴리글랏 trace showcase)
 - `version-compatibility.md` — K8s/Istio/ArgoCD/OTel 버전 매트릭스
