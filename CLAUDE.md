@@ -60,7 +60,7 @@
 ### 상황별 룰 (해당 작업 시 `.claude/rules/` 참조 — `paths:` frontmatter로 스코프됨)
 - `git.md`·`code-review.md`·`deep-thinking.md` — 커밋/PR/품질 (보편)
 - `java.md`·`spring.md` — ws-gateway, doc-service
-- `error-handling.md`·`concurrency.md`·`layering-readability.md`·`observability.md` — 언어 무관 크래프트 표준 세트(P1~N 원칙 + Java/Rust/Python 실현 + `[B]`/`[A]` 체크리스트). `code-review.md` 크래프트 렌즈(🦀/☕)가 전부 실행
+- `error-handling.md`·`concurrency.md`·`layering-readability.md`·`observability.md`·`design-patterns.md`·`secure-coding.md` — 언어 무관 크래프트 표준 세트 6종(P1~N 원칙 + Java/Rust 실현 + `[B]`/`[A]` 체크리스트). `code-review.md` 크래프트 렌즈(🦀/☕)가 전부 실행
 - `istio.md`·`k8s-manifest.md` — infra/istio, infra/k8s, argocd
 - `monitoring.md` — OTel/PromQL/Grafana (폴리글랏 trace showcase)
 - `version-compatibility.md` — K8s/Istio/ArgoCD/OTel 버전 매트릭스
