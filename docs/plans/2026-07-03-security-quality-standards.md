@@ -48,7 +48,7 @@ related:
 - [x] **C3**: secure-coding.md 커밋 — `f710058`
 - [x] **C4**: 게이트 배선 4파일 — `4301030` (README 카운트 24(stale)→31 실측 정정 포함)
 - [x] **C5**: PRD/SDD 승격 — prd/2 §6·sdd/5 §14 ⑦⑧+§15 하드닝 등록·CLAUDE.md 가드레일 7·8 미러 (이 커밋)
-- [ ] **C6**: controller `.github/workflows/security-scan.yml`(gitleaks) + `ci/README.md` 스캔 표준 문서화
+- [x] **C6**: controller `.github/workflows/security-scan.yml`(gitleaks) + `ci/README.md` 스캔 표준 문서화 (이 커밋)
 - [x] **C7**: `docs/plans/2026-07-03-secure-coding-retrofit.md` 초안 — `d94c737` (§15 링크 무결성 위해 C5보다 먼저 커밋, 순서 교환)
 - [ ] 서비스 레포 스캔 CI — crdt-engine (gitleaks+cargo-audit, branch+PR+건별 승인)
 - [ ] 서비스 레포 스캔 CI — backend (gitleaks+Gradle SCA, branch+PR+건별 승인)
@@ -70,8 +70,8 @@ related:
 
 ## 재개 지점 (Resume)
 
-- 마지막 완료 = C5 (PRD/SDD 승격) — 트랙 1 완료, 트랙 3(retrofit plan) 완료
-- 다음 = C6 controller 스캔 CI → 서비스 3레포 CI PR(건별 승인) → C8 마감
+- 마지막 완료 = C6 (controller 스캔 CI) — 트랙 1·3 완료, 트랙 2 controller분 완료
+- 다음 = 서비스 3레포 스캔 CI PR(crdt-engine → backend → frontend, **push/PR/머지 건별 승인**) → C8 마감
 - 주의 = 서비스 레포 push·PR 생성·머지는 **건별 승인 STOP**. backend 로컬 클론 stale(main=30e0aca, PR #3/#4 미반영) — fetch 후 작업. controller만 main 직접.
 
 ## 범위 밖

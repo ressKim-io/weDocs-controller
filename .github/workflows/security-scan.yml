@@ -1,0 +1,27 @@
+name: security-scan
+
+# 시크릿 스캔 게이트(전 히스토리). 표준: .claude/rules/secure-coding.md · ci/README.md §보안 스캔
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 20 * * 0" # 주간 드리프트 스캔 (UTC 일 20:00 = KST 월 05:00)
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # gitleaks-action이 PR에 결과 코멘트
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # 전체 히스토리 스캔 — 과거 커밋에 묻힌 시크릿까지 검출
+      # 개인(User) 계정 레포 = GITLEAKS_LICENSE 불요 (organization만 필요, 2026-07-03 확인)
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
