@@ -1,12 +1,14 @@
 ---
 date: 2026-07-03
 slug: security-quality-standards
-status: in-progress
+status: done
 related:
   - plans/2026-07-01-craft-standards-alignment.md
   - plans/2026-06-30-m2-persistence-session.md
+  - plans/2026-07-03-secure-coding-retrofit.md
   - adr/0013-snapshot-persistence-lifecycle.md
   - adr/0014-auth-authz-boundary.md
+  - dev-logs/2026-07-03-craft-standards-v2-security-quality.md
 ---
 
 # 크래프트 표준 v2 (설계 패턴·시큐어 코딩) + 보안 스캔 CI — 실무급 품질 영구 상향
@@ -50,10 +52,10 @@ related:
 - [x] **C5**: PRD/SDD 승격 — prd/2 §6·sdd/5 §14 ⑦⑧+§15 하드닝 등록·CLAUDE.md 가드레일 7·8 미러 (이 커밋)
 - [x] **C6**: controller `.github/workflows/security-scan.yml`(gitleaks) + `ci/README.md` 스캔 표준 문서화 (이 커밋)
 - [x] **C7**: `docs/plans/2026-07-03-secure-coding-retrofit.md` 초안 — `d94c737` (§15 링크 무결성 위해 C5보다 먼저 커밋, 순서 교환)
-- [ ] 서비스 레포 스캔 CI — crdt-engine (gitleaks+cargo-audit, branch+PR+건별 승인)
-- [ ] 서비스 레포 스캔 CI — backend (gitleaks+Gradle SCA, branch+PR+건별 승인)
-- [ ] 서비스 레포 스캔 CI — frontend (gitleaks+npm/osv, branch+PR+건별 승인)
-- [ ] **C8**: 마감 — dev-log(시뮬레이션 매트릭스)·plan status done·CLAUDE.md 현재 상태·메모리(표준 4종→6종)
+- [x] 서비스 레포 스캔 CI — crdt-engine: PR #6 머지 `e925078` (gitleaks+cargo-audit, CI green 실측)
+- [x] 서비스 레포 스캔 CI — backend: PR #5 머지 `0992f70` (gitleaks+dependency-submission/review — **레포 dependency graph 비활성 함정** 발견→`gh api PUT vulnerability-alerts`로 활성화 후 재실행 green, dev-log 참조)
+- [x] 서비스 레포 스캔 CI — frontend: PR #2 머지 `1d4dad5` (gitleaks+npm audit, CI green 실측)
+- [x] **C8**: 마감 — dev-log(`2026-07-03-craft-standards-v2-security-quality.md`)·plan done·CLAUDE.md 현재 상태·메모리(표준 4종→6종) (이 커밋)
 
 ## 검증
 
@@ -70,8 +72,8 @@ related:
 
 ## 재개 지점 (Resume)
 
-- 마지막 완료 = C6 (controller 스캔 CI) — 트랙 1·3 완료, 트랙 2 controller분 완료
-- 다음 = 서비스 3레포 스캔 CI PR(crdt-engine → backend → frontend, **push/PR/머지 건별 승인**) → C8 마감
+- **전 단계 완료(2026-07-03)** — 트랙 1(표준 6종 체제+PRD/SDD 승격)·트랙 2(4레포 스캔 CI, 3 PR 머지)·트랙 3(retrofit plan 초안) 전부 종료
+- 후속 = [retrofit plan](2026-07-03-secure-coding-retrofit.md) 실행(M2 Phase 2 분기 전, 별도 세션·건별 승인) / M2 Phase 1b 복귀(신규 PR부터 크래프트 6종 게이트 적용)
 - 주의 = 서비스 레포 push·PR 생성·머지는 **건별 승인 STOP**. backend 로컬 클론 stale(main=30e0aca, PR #3/#4 미반영) — fetch 후 작업. controller만 main 직접.
 
 ## 범위 밖
