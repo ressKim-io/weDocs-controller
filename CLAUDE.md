@@ -13,6 +13,8 @@
 4. **서비스 간 호출은 gRPC + OTel propagator를 통과한다.** W3C `traceparent` 통일.
 5. **CRDT Engine은 "엔진"이다.** 단순 yrs 래퍼 PR은 반려 — 최적화 + `criterion` 벤치마크 동반.
 6. **M1 머지 전 `proptest` 수렴 테스트 통과 필수.**
+7. **크래프트 게이트 통과 없이 머지 금지.** 서비스 코드 PR은 크래프트 표준 6종 `[B]` 체크리스트(Gate 3 렌즈 🦀/☕) 통과 필수.
+8. **무검증 입력·무상한 자원 금지.** 외부 입력은 경계 검증 후 도메인 타입으로, 신규 상태·수신 경로는 상한·수명 동반(`secure-coding.md` P1/P2).
 
 ## 언어 배정 (왜)
 - I/O 바운드 → **Java 25 Virtual Thread** (ws-gateway, doc-service)

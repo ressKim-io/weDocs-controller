@@ -1,7 +1,7 @@
 ---
 date: 2026-07-03
 slug: security-quality-standards
-status: planned
+status: in-progress
 related:
   - plans/2026-07-01-craft-standards-alignment.md
   - plans/2026-06-30-m2-persistence-session.md
@@ -39,17 +39,17 @@ related:
 
 ## 실행 체크리스트
 
-- [ ] **C1**: 이 plan 커밋 (작업 시작 전)
-- [ ] 기술 사실 WebFetch 검증 (tonic·Tomcat WS·Spring Origin·gRPC deadline + gitleaks/cargo-audit/Gradle SCA 스펙)
-- [ ] `.claude/rules/design-patterns.md` 작성 (P1~P7 + Java/Rust 실현 + 체크리스트)
-- [ ] `.claude/rules/secure-coding.md` 작성 (P1~P5 + Java/Rust 실현 + 체크리스트 + 적용 시연 부록)
-- [ ] **게이트 시뮬레이션**: crdt-engine HEAD src 3파일 대상 rust-expert 판정 — 기대 fire 5건 + 오탐 0 확인, 필요 시 문구 개정
-- [ ] **C2**: design-patterns.md 커밋
-- [ ] **C3**: secure-coding.md 커밋
-- [ ] **C4**: 게이트 배선 — code-review.md(42·43행 append + 39행 🔒 스코프 명확화)·phase-workflow.md(Gate 3)·CLAUDE.md(크래프트 세트 줄)·`.claude/README.md`(카운트 재실측)
-- [ ] **C5**: PRD/SDD 승격 — prd/2 §6(보안 행 확장+코드 품질 행 신설)·sdd/5 §14(불변 규칙 ⑦⑧)+§15(하드닝 마일스톤 등록)·CLAUDE.md(가드레일 미러)
+- [x] **C1**: 이 plan 커밋 (작업 시작 전) — `a051fd4`
+- [x] 기술 사실 WebFetch 검증 — 전 항목 공식 출처 확인(tonic 4MB·Tomcat 8192B·Spring same-origin·gRPC deadline 없음). 도구 확정: gitleaks-action **v3**(User 계정=라이선스 불요, 실측)·rustsec/audit-check v2·Gradle SCA=**dependency-submission@v6 + dependency-review-action@v5**(lockfile 불요 — osv-scanner 기각)
+- [x] `.claude/rules/design-patterns.md` 작성 (P1~P7 + Java/Rust 실현 + 체크리스트)
+- [x] `.claude/rules/secure-coding.md` 작성 (P1~P5 + Java/Rust 실현 + 체크리스트 + 적용 시연 부록)
+- [x] **게이트 시뮬레이션**: 기대 [B] 6종 전부 fire + 오탐 0 (rust-expert, HEAD `0355a58`). 문구 개정 5건 — **A2 오지목 교정**(ADR-0013 seam=아웃바운드 클라이언트, 레지스트리 trait는 과설계)·A10 트리거 재정의(실패 가능→검증 필요)·A8 불변식 한정·A3 조립 포함·B5 출처 무관 에코백
+- [x] **C2**: design-patterns.md 커밋 — `8853164`
+- [x] **C3**: secure-coding.md 커밋 — `f710058`
+- [x] **C4**: 게이트 배선 4파일 — `4301030` (README 카운트 24(stale)→31 실측 정정 포함)
+- [x] **C5**: PRD/SDD 승격 — prd/2 §6·sdd/5 §14 ⑦⑧+§15 하드닝 등록·CLAUDE.md 가드레일 7·8 미러 (이 커밋)
 - [ ] **C6**: controller `.github/workflows/security-scan.yml`(gitleaks) + `ci/README.md` 스캔 표준 문서화
-- [ ] **C7**: `docs/plans/2026-07-03-secure-coding-retrofit.md` 초안(status: planned)
+- [x] **C7**: `docs/plans/2026-07-03-secure-coding-retrofit.md` 초안 — `d94c737` (§15 링크 무결성 위해 C5보다 먼저 커밋, 순서 교환)
 - [ ] 서비스 레포 스캔 CI — crdt-engine (gitleaks+cargo-audit, branch+PR+건별 승인)
 - [ ] 서비스 레포 스캔 CI — backend (gitleaks+Gradle SCA, branch+PR+건별 승인)
 - [ ] 서비스 레포 스캔 CI — frontend (gitleaks+npm/osv, branch+PR+건별 승인)
@@ -70,8 +70,8 @@ related:
 
 ## 재개 지점 (Resume)
 
-- 마지막 완료 = plan 작성 (커밋 전)
-- 다음 = C1 plan 커밋 → 기술 사실 WebFetch 검증
+- 마지막 완료 = C5 (PRD/SDD 승격) — 트랙 1 완료, 트랙 3(retrofit plan) 완료
+- 다음 = C6 controller 스캔 CI → 서비스 3레포 CI PR(건별 승인) → C8 마감
 - 주의 = 서비스 레포 push·PR 생성·머지는 **건별 승인 STOP**. backend 로컬 클론 stale(main=30e0aca, PR #3/#4 미반영) — fetch 후 작업. controller만 main 직접.
 
 ## 범위 밖

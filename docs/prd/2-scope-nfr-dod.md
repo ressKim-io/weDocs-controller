@@ -42,7 +42,8 @@
 | 편집 반영 지연(로컬 sync) | p95 < 100ms | 로컬-우선 UI라 체감 0ms, 서버 반영 기준 |
 | AI 응답 시작 지연(SSE 첫 토큰) | p95 < 5s (로컬 추론) | GPU 큐 대기 + 추론 |
 | CRDT 수렴 | 100% (property-based 검증) | 어떤 머지 순서에도 동일 결과 |
-| 보안 | 서비스 간 mTLS(Istio), JWT 인증 | |
+| 보안 | 서비스 간 mTLS(Istio) · JWT 인증/인가([ADR-0014](../adr/0014-auth-authz-boundary.md)) · 앱 경계 하드닝(입력 검증·자원 상한·인가 배선·정보 노출 최소화) · 시크릿/의존성 스캔 CI | 앱 경계 = 리뷰 게이트 강제: [secure-coding](../../.claude/rules/secure-coding.md) |
+| 코드 품질 | 크래프트 표준 6종 `[B]` 위반 0으로 머지 — Gate 3 상시 게이트 | [.claude/rules/](../../.claude/rules/): error-handling·concurrency·layering-readability·observability·design-patterns·secure-coding |
 | 관찰성 | 폴리글랏 단일 trace, 핵심 메트릭·로그 | OTel |
 
 ## 7. 성공 기준 (Definition of Done)

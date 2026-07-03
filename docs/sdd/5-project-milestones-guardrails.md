@@ -66,6 +66,8 @@
   - 서비스 간 호출은 gRPC + OTel propagator를 통과한다
   - CRDT Engine은 "엔진"이다 — 단순 래퍼 PR은 반려, 최적화·벤치마크 동반
   - M1 머지 전 proptest 수렴 테스트 통과 필수
+  - 서비스 코드 PR은 크래프트 표준 6종의 `[B]` 체크리스트를 통과해야 머지된다 — Gate 3 크래프트 렌즈([code-review](../../.claude/rules/code-review.md)·[phase-workflow](../../.claude/rules/phase-workflow.md))
+  - 외부 입력은 경계 검증 없이 내부로 흐를 수 없고, 신규 상태·수신 경로는 상한·수명 없이 도입될 수 없다([secure-coding](../../.claude/rules/secure-coding.md) P1/P2)
 
 ---
 
@@ -92,3 +94,10 @@
 - [x] 인증 서비스 분리 시점 → **M2** ✅ [ADR-0014](../adr/0014-auth-authz-boundary.md) (M2=doc-service 내장 발급/검증, 분리=후속)
 - [ ] consistent hash 키 전달 상세 (gRPC 메타데이터 ↔ waypoint) → **M3** (멀티인스턴스 라우팅)
 - [ ] AI Service SLO 정량 정의 (큐 대기 + 추론) → **M4**
+
+### 미해결 — 보안·품질 하드닝 (2026-07-03 크래프트 표준 6종 도입 시 등록)
+- [ ] DoS 하드닝 retrofit: room/doc-id 경계 검증(게이트웨이+엔진) · 문서 수 상한 · 프레임/메시지 크기 상한 → **M2 (Phase 2 분기 전 사이드트랙)** — [retrofit plan](../plans/2026-07-03-secure-coding-retrofit.md), 엔진/게이트웨이 독립 PR
+- [ ] 엔진 문서 eviction/idle unload → **M2 Phase 3+** ([ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md) 영속화 선행 — durable 전 evict = 유실)
+- [ ] 전송 하드닝(gateway↔engine 평문 채널·GetSnapshot 신뢰 경계) → **M5** (ztunnel mTLS+NetworkPolicy로 해소, 앱 레벨 TLS 여부는 mesh 도입 시 재판정)
+- [ ] SAST 확장(semgrep/CodeQL) → **M5** — 기본 스캔(gitleaks·의존성)은 [표준 도입 plan](../plans/2026-07-03-security-quality-standards.md) 트랙 2에서 CI로 도입
+- [ ] 레이트리밋·세션/커넥션 캡 정량화(NFR "~수천" 근거) → **M3** (멀티인스턴스 부하 검증과 동시)
