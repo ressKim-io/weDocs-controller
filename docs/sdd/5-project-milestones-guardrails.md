@@ -101,3 +101,9 @@
 - [ ] 전송 하드닝(gateway↔engine 평문 채널·GetSnapshot 신뢰 경계) → **M5** (ztunnel mTLS+NetworkPolicy로 해소, 앱 레벨 TLS 여부는 mesh 도입 시 재판정)
 - [ ] SAST 확장(semgrep/CodeQL) → **M5** — 기본 스캔(gitleaks·의존성)은 [표준 도입 plan](../plans/2026-07-03-security-quality-standards.md) 트랙 2에서 CI로 도입
 - [ ] 레이트리밋·세션/커넥션 캡 정량화(NFR "~수천" 근거) → **M3** (멀티인스턴스 부하 검증과 동시)
+
+### 미해결 — 엔진 확장·성능 (2026-07-04 등록, 상세 = [엔진 설계서 §6](../design/crdt-engine.md)·[벤치 방법론 §5](../design/benchmark-methodology.md))
+- [ ] fan-out 제로카피(`Vec<u8>` 구독자별 clone → `Bytes` 참조카운트) — Tier2 실험 2로 측정 후 적용 → **M2/M3**
+- [ ] yrs 인메모리 히스토리 GC/컴팩션 정책(스냅샷 시점 컴팩션·yrs 옵션 spec 검증) → **M2 Phase 3** ([ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md) 구현과 동시)
+- [ ] 샤드 리밸런싱/핸드오프(증설 시 드레인→스냅샷 push→재라우팅) → **M3** (consistent hash 키 전달 상세와 함께)
+- [ ] 릴리스 프로파일(lto 등)·jemalloc → Tier2 벤치 근거 동반 시만(jemalloc 보류 기록 2026-07-01)
