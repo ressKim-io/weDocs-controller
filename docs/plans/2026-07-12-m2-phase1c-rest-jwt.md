@@ -1,7 +1,7 @@
 ---
 date: 2026-07-12
 slug: m2-phase1c-rest-jwt
-status: planned
+status: in-progress
 related:
   - plans/2026-06-30-m2-persistence-session.md
   - adr/0014-auth-authz-boundary.md
@@ -73,12 +73,12 @@ DELETE /api/pages/{id}/permissions/{userId}          204  ws owner만
 
 ## 실행 체크리스트
 
-- [ ] controller: 이 plan 커밋(planned) + ADR-0017 작성·커밋 ← 코드 작업 전 필수
-- [ ] PR① 브랜치 분기 + 의존성 신좌표 실측 검증 커밋
-- [ ] PR① Stage A — JwtKeys/JwtProperties/JwtTokenService (TDD)
-- [ ] PR① Stage B — SecurityConfig + PasswordEncoder + CurrentUserId resolver + JwksController (TDD)
-- [ ] PR① Stage C — 예외 계층 + GlobalExceptionHandler + AuthService/AuthController (TDD)
-- [ ] PR① 전체 테스트 green + 크래프트 게이트(java-expert+code-reviewer 병렬) + 수정
+- [x] controller: 이 plan 커밋(planned, `2bc3235`) + ADR-0017 작성·커밋(`6960d01`)
+- [x] PR① 브랜치 분기 + 의존성 신좌표 실측 검증 커밋 (`60db0ec`)
+- [x] PR① Stage A — JwtKeys/JwtProperties/JwtTokenService (TDD, `eadaf38`)
+- [x] PR① Stage B — SecurityConfig + PasswordEncoder + CurrentUserId resolver + JwksController (TDD, `496a61f`)
+- [x] PR① Stage C — 예외 계층 + GlobalExceptionHandler + AuthService/AuthController (TDD, `a8b8c6e`) + TC 2.x deprecated 전수 정리(`3b89975`)
+- [ ] PR① 전체 테스트 green(49건 ✅) + 크래프트 게이트(java-expert+code-reviewer 병렬 — 실행 중) + 수정
 - [ ] PR① 사용자 승인 후 push·PR 오픈 → 리뷰 반영 → 승인 후 머지
 - [ ] PR② 브랜치 분기(①머지 후) — 가드/도메인 행위 (TDD)
 - [ ] PR② Workspace REST (TDD)
@@ -104,6 +104,6 @@ DELETE /api/pages/{id}/permissions/{userId}          204  ws owner만
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: plan 작성(이 커밋).
-> **다음**: ADR-0017 커밋 → weDocs-backend `feature/m2-doc-service-auth-jwt` 분기, PR① 의존성 검증부터.
-> **주의**: 서비스 레포는 건별 승인(push·PR). Boot 4.1 신·구 스타터 좌표 실측 필수. test application.yml은 main 완전 대체 — 신규 main 키는 test에도 명시.
+> **마지막 완료**: PR① 구현 전부(Stage A~C, backend 브랜치 `feature/m2-doc-service-auth-jwt` 커밋 5개 `60db0ec`~`3b89975`), 테스트 49건 green(-Xlint:deprecation 경고 0), `make proto-gen && :doc-service:build` green.
+> **다음**: 크래프트 게이트 리뷰(java-expert+code-reviewer) findings 반영 → 사용자 승인 후 push·PR 오픈.
+> **주의**: 서비스 레포는 건별 승인(push·PR). **Boot 4.x 신규 함정 3건 발견**(dev-log 후보): ① `@WebMvcTest` = `spring-boot-starter-webmvc-test` 별도 스타터 + 패키지 `org.springframework.boot.webmvc.test.autoconfigure`로 이동 ② Jackson 3 전환 — 패키지 `com.fasterxml.jackson`→`tools.jackson`, `asText()`→`asString()` ③ TC 2.x 신클래스 `org.testcontainers.postgresql.PostgreSQLContainer`는 비제네릭(self-type 제거). test application.yml은 main 완전 대체 — 신규 main 키는 test에도 명시(problemdetails 적용함).
