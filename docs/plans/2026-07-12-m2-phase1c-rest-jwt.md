@@ -78,8 +78,9 @@ DELETE /api/pages/{id}/permissions/{userId}          204  ws owner만
 - [x] PR① Stage A — JwtKeys/JwtProperties/JwtTokenService (TDD, `eadaf38`)
 - [x] PR① Stage B — SecurityConfig + PasswordEncoder + CurrentUserId resolver + JwksController (TDD, `496a61f`)
 - [x] PR① Stage C — 예외 계층 + GlobalExceptionHandler + AuthService/AuthController (TDD, `a8b8c6e`) + TC 2.x deprecated 전수 정리(`3b89975`)
-- [ ] PR① 전체 테스트 green(49건 ✅) + 크래프트 게이트(java-expert+code-reviewer 병렬 — 실행 중) + 수정
-- [ ] PR① 사용자 승인 후 push·PR 오픈 → 리뷰 반영 → 승인 후 머지
+- [x] PR① 전체 테스트 green + 크래프트 게이트(java-expert+code-reviewer 병렬) + 반영(`bfdf5f4`) — [B] 1건(비밀번호 72바이트 vs @Size 문자 수→한글 500)·MEDIUM 5건(레이스 409·이메일 정규화·test yml 미러·wireValue 단일화·리졸버 테스트)·[A]/LOW 7건 반영, 최종 53건 green
+- [x] PR① 사용자 승인 후 push·[PR #7](https://github.com/ressKim-io/weDocs-backend/pull/7) 오픈 (2026-07-13)
+- [ ] PR① 리뷰 반영 → 승인 후 머지
 - [ ] PR② 브랜치 분기(①머지 후) — 가드/도메인 행위 (TDD)
 - [ ] PR② Workspace REST (TDD)
 - [ ] PR② Page tree REST + move 사이클 검사 (TDD)
@@ -104,6 +105,6 @@ DELETE /api/pages/{id}/permissions/{userId}          204  ws owner만
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: PR① 구현 전부(Stage A~C, backend 브랜치 `feature/m2-doc-service-auth-jwt` 커밋 5개 `60db0ec`~`3b89975`), 테스트 49건 green(-Xlint:deprecation 경고 0), `make proto-gen && :doc-service:build` green.
-> **다음**: 크래프트 게이트 리뷰(java-expert+code-reviewer) findings 반영 → 사용자 승인 후 push·PR 오픈.
+> **마지막 완료**: PR① = [backend PR #7](https://github.com/ressKim-io/weDocs-backend/pull/7) **오픈**(커밋 6개 `60db0ec`~`bfdf5f4`, 크래프트 게이트 2-리뷰 반영 완료, 53건 green).
+> **다음**: PR #7 머지(사용자 승인) → PR② `feature/m2-doc-service-rest-pages` 분기(가드/도메인 행위→workspace→page tree/move→sharing, 이 plan §PR② 참조).
 > **주의**: 서비스 레포는 건별 승인(push·PR). **Boot 4.x 신규 함정 3건 발견**(dev-log 후보): ① `@WebMvcTest` = `spring-boot-starter-webmvc-test` 별도 스타터 + 패키지 `org.springframework.boot.webmvc.test.autoconfigure`로 이동 ② Jackson 3 전환 — 패키지 `com.fasterxml.jackson`→`tools.jackson`, `asText()`→`asString()` ③ TC 2.x 신클래스 `org.testcontainers.postgresql.PostgreSQLContainer`는 비제네릭(self-type 제거). test application.yml은 main 완전 대체 — 신규 main 키는 test에도 명시(problemdetails 적용함).
