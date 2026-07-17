@@ -20,8 +20,12 @@ SDD §15 결정 로그를 개별 ADR로 분리한다. 형식: **1 결정 = 1 파
 | [0014](0014-auth-authz-boundary.md) | 인증/인가 경계 (JWT 발급=doc-service·검증=gateway·viewer write-block) | **Accepted** |
 | [0015](0015-outbox-app-level.md) | outbox = 앱레벨 transactional outbox (Debezium 기각·relay=M4) | **Accepted** |
 | [0016](0016-system-admin-role.md) | 시스템 관리자 전역 역할 (`User.system_role`·워크스페이스 직교·enum+CHECK) | **Accepted** |
+| [0017](0017-jwt-rs256-jwks.md) | JWT 서명 = RS256 + JWKS (kid=RFC 7638 thumbprint·게이트웨이 공개키 검증) | **Accepted** |
+| [0018](0018-error-catalog.md) | 에러 카탈로그 (서비스별 ErrorCode enum + 카테고리 예외·ProblemDetail `code`·gRPC 매핑 일원화) | **Accepted** |
+| [0019](0019-package-by-feature-java.md) | Java 서비스 패키지 = package-by-feature (feature 평면·common 최소·gRPC 어댑터 예외) | **Accepted** |
+| [0020](0020-data-access-conventions.md) | 데이터 접근 (ID-only 연관·DB FK 유지+제거 트리거·QueryDSL 채택 기준) | **Accepted** |
 
-> **번호 공백(0002~0009)**: 0010(proto 배포 블로커)을 먼저 확정해 점프. 0002~0009 정식 분리는 **M6 일괄**(또는 해당 마일스톤 착수 시) — 그 전까지 **권위 = SDD §15 본문**. 0011 = M1 마감 산출물. 0012~0015 = M2 readiness 게이트 산출물.
+> **번호 공백(0002~0009)**: 0010(proto 배포 블로커)을 먼저 확정해 점프. 0002~0009 정식 분리는 **M6 일괄**(또는 해당 마일스톤 착수 시) — 그 전까지 **권위 = SDD §15 본문**. 0011 = M1 마감 산출물. 0012~0015 = M2 readiness 게이트 산출물. 0017 = M2 1c 산출물. 0018~0020 = 표준 확장 사이드트랙(2026-07-17) 산출물.
 
 ## 미해결 (소유 마일스톤 — 권위=SDD §15, 여기는 링크만)
 > SDD §15와 중복 관리 금지. 상세·갱신은 [SDD §15](../sdd/5-project-milestones-guardrails.md).
