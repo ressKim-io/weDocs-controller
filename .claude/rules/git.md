@@ -124,6 +124,7 @@ Closes #<issue>
 - 단일 PR MUST NOT exceed 400 lines of change
 - 400줄 초과 시 기능 단위로 PR 분할
 - 리뷰어가 맥락을 이해할 수 있도록 설명 충분히 작성
+- **이동 전용(move-only) 리팩토링 PR 예외**: `git diff -M90%` 기준 rename으로 인식되는 변경은 산정에서 제외 — 비-rename 실질 diff(package/import 행·최소 가시성 승격)가 400줄 이내면 허용. 단 PR 본문에 move-only 선언 + rename 검증 명령 + 비-이동 diff 전수 열거 필수. 로직 변경 혼입 금지.
 
 ---
 

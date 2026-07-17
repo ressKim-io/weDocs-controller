@@ -26,6 +26,8 @@ paths:
 
 **P6. 이름이 곧 문서.** 의도가 드러나는 명명. 주석으로 나쁜 이름을 변명하지 말 것.
 
+**P7. 패키지는 계층이 아니라 기능(도메인) 기준.** 전역 `api/`·`service/`·`repository/` 통 패키지 금지 — feature 패키지(예: `workspace/`, `page/`)가 자기 controller·service·entity·repository를 **평면으로** 담는다(feature 내부에 계층 서브패키지 재생성 금지 — 같은 패키지여야 package-private 은닉이 가능). 공용은 최소만 `common/<관심사>/`(예: `common/error/`, `common/jpa/`). 여러 feature를 디스패치하는 **크로스-feature 전송 어댑터**(예: 단일 gRPC 서비스 구현, 메시지 컨슈머)는 top-level 패키지 허용. 근거: Spring Modulith — 메인 패키지 직속 서브패키지=모듈, "모듈의 API = 패키지의 public 타입"(package scope가 경계 강제 수단).
+
 ---
 
 ## Java 실현
@@ -47,6 +49,19 @@ class Page {
 > - record는 엔티티가 될 수 없다(불변·무인자 생성자 없음) → 엔티티는 Lombok, DTO는 record.
 
 **P2 — 계층.** Controller(파싱·검증·`ResponseEntity`) → Service(`@Transactional`·로직) → Repository(DB). 건너뛰기 금지. (`spring.md` 참조)
+
+**P7 — package-by-feature 트리.** 계층(P2)은 호출 방향의 규칙이고, 패키지(P7)는 배치의 규칙 — 계층 이름으로 폴더를 만들지 않는다.
+```
+io.wedocs.doc/
+├── page/        ← PageController·PageTreeService·Page·PageRepository … (평면)
+├── workspace/   ← WorkspaceController·WorkspaceService·Workspace·멤버십 …
+├── auth/        ← AuthController·AuthService·User·SecurityConfig·JWT …
+├── grpc/        ← 크로스-feature 전송 어댑터 (허용 예외)
+└── common/
+    ├── error/   ← ErrorCode·카테고리 예외·advice (error-handling.md P7)
+    └── jpa/     ← Base*Entity·JpaAuditingConfig
+```
+- feature 내부 협력자는 package-private로 시작 — 다른 feature가 쓰는 것만 public(= 그 feature의 API).
 
 ---
 
@@ -83,6 +98,8 @@ pub struct DocId(String);
 **공통**
 - [ ][B] 계층 경계 위반 없음(표현→도메인→영속 건너뛰기 없음) (P2)
 - [ ][B] 내부 모델(엔티티/도메인)이 API 경계로 누출 안 됨 → DTO 사용 (P5)
+- [ ][B] 신규 프로덕션 파일이 feature 패키지(자기 계층 평면 보유)·`common/<관심사>/`·크로스-feature 전송 어댑터 중 하나에 위치 — 전역 계층 통패키지(`api/`·`service/`·`repository/` 류) 신설·비대화 금지 (P7)
+- [ ][A] 교차 feature의 repository 직접 주입 지양 — 소유 feature의 서비스/가드 등 공개 API 경유. 소유 feature API가 그 오퍼레이션을 노출하지 않는 경우(락·트랜잭션 경계 등)만 직접 주입 허용 + 사유 주석 필수 (P7)
 - [ ][A] 함수 단일 책임·과도한 길이/중첩 없음 (P1)
 - [ ][A] 도메인 개념이 raw 원시타입 아님 (primitive obsession) (P3)
 
@@ -96,17 +113,20 @@ pub struct DocId(String);
 - [ ][A] `Debug`/`Clone`/`PartialEq` 등 수기 impl 대신 derive (P4)
 - [ ][A] `pub` 표면 최소화, 깊은 중첩 대신 `?`/early return (P1/P6)
 
-> 이 표준은 대부분 `[A]`다 — 가독성은 취향 폭이 넓어 강제보다 권장 위주. **단 엔티티 `@Data`는 실제 버그를 유발**하므로 `[B]`.
+> 이 표준은 대부분 `[A]`다 — 가독성은 취향 폭이 넓어 강제보다 권장 위주. **단 엔티티 `@Data`는 실제 버그를, P7 통패키지 신설·비대화는 구조 부채를 유발**하므로 `[B]`.
 
 ---
 
 ## 게이트 배선 (활용 강제)
 
-`code-review.md` 크래프트 렌즈(🦀/☕)가 이 체크리스트도 실행. `[B]`(엔티티 @Data·계층 위반·모델 누출)=반려, 나머지 가독성은 `[A]` 코멘트. 새 함정은 `review-gaps.md` → 이 문서로 승격.
+`code-review.md` 크래프트 렌즈(🦀/☕)가 이 체크리스트도 실행. `[B]`(엔티티 @Data·계층 위반·모델 누출·통패키지)=반려, 나머지 가독성은 `[A]` 코멘트. 새 함정은 `review-gaps.md` → 이 문서로 승격.
+
+> **P7 게이트 시뮬레이션 (2026-07-17, backend `290bf69` doc-service 소급)**: 발화 — 전역 `api/`(21)·`service/`(22)·`repository/`(6)·`domain/`(16) 통패키지 + auth feature가 3개 패키지에 분산([B]) / `PermissionService`·`PageSharingService`·`DocMetaService`·`WorkspaceService`의 교차 feature repo 직접 주입([A] — `PageTreeService`의 workspace 락 주입은 backstop 사유 해당으로 허용). **오탐 0** — `grpc/`(크로스-feature 어댑터 예외)·ws-gateway(스코프 밖) 비발화. 소급 위반은 [A]+retrofit — `plans/2026-07-17-error-catalog-package-by-feature.md` ③-3이 소거.
 
 ---
 
 ## 출처
 
 - Java: [Thorben Janssen — Lombok & Hibernate 함정](https://thorben-janssen.com/lombok-hibernate-how-to-avoid-common-pitfalls/) · [JPA Buddy — Lombok & JPA](https://jpa-buddy.com/blog/lombok-and-jpa-what-may-go-wrong/) · [Records vs Lombok for DTO](https://toolshref.com/java-records-vs-lombok-dto-guide/) · Effective Java(불변·빌더)
+- P7 (✅ verified 2026-07-17, WebFetch): [Spring Modulith — Fundamentals](https://docs.spring.io/spring-modulith/reference/fundamentals.html) — "메인 패키지 직속 서브패키지 = application module", "모듈의 API = 패키지의 public 타입"(package-private 은닉). 구체 적용 결정 = ADR-0019(package-by-feature)
 - Rust: [Rust Design Patterns — Idioms](https://rust-unofficial.github.io/patterns/idioms/) · [Newtype 패턴](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) · [Rust API Guidelines] · [idiomatic-rust 모음](https://github.com/mre/idiomatic-rust)
