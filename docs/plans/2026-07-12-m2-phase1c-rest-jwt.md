@@ -80,7 +80,8 @@ DELETE /api/pages/{id}/permissions/{userId}          204  ws owner만
 - [x] PR① Stage C — 예외 계층 + GlobalExceptionHandler + AuthService/AuthController (TDD, `a8b8c6e`) + TC 2.x deprecated 전수 정리(`3b89975`)
 - [x] PR① 전체 테스트 green + 크래프트 게이트(java-expert+code-reviewer 병렬) + 반영(`bfdf5f4`) — [B] 1건(비밀번호 72바이트 vs @Size 문자 수→한글 500)·MEDIUM 5건(레이스 409·이메일 정규화·test yml 미러·wireValue 단일화·리졸버 테스트)·[A]/LOW 7건 반영, 최종 53건 green
 - [x] PR① 사용자 승인 후 push·[PR #7](https://github.com/ressKim-io/weDocs-backend/pull/7) 오픈 (2026-07-13)
-- [ ] PR① 리뷰 반영 → 승인 후 머지
+- [x] PR① 리뷰 반영 → 승인 후 **머지 완료** (2026-07-13, squash `a7e3a27`)
+- [ ] **⚠️ 선행: backend main security-scan 적신호 해소** — gitleaks 오탐 2건(PEM 마커 리터럴). `.gitleaksignore`가 squash 전 SHA(`eadaf38`)에 핀되어 머지와 동시에 무효화. 상세 = 아래 §머지 후 발견
 - [ ] PR② 브랜치 분기(①머지 후) — 가드/도메인 행위 (TDD)
 - [ ] PR② Workspace REST (TDD)
 - [ ] PR② Page tree REST + move 사이클 검사 (TDD)
@@ -103,8 +104,25 @@ DELETE /api/pages/{id}/permissions/{userId}          204  ws owner만
 - 엔진 스냅샷 저장/복원 = Phase 3/4 · outbox 배선(페이지 변경 insert 포함) = Phase 5
 - refresh token(재로그인 대체, ADR-0014 24h TTL) · 키 로테이션 자동화 · admin 전용 API(ADR-0016) · rate limiting(M5 인그레스) · 페이지 영구삭제 · 멤버 role 변경/제거 API
 
+## 머지 후 발견 — gitleaks 오탐 2건 + fingerprint 무효화 (2026-07-17 확인)
+
+PR① 머지(`a7e3a27`) 직후 **backend main의 security-scan이 적신호**. 실제 키 유출은 **없음** — 커밋된 키 자료 0, 전부 PEM 마커 문자열 리터럴 오탐.
+
+| # | 위치 | 실체 | 판정 |
+|---|---|---|---|
+| 1 | `JwtKeys.java:60-75` | PKCS#8 파서의 `.replace("-----BEGIN PRIVATE KEY-----", "")` + 에러 메시지(L75) | 오탐 — 키 자료 없음 |
+| 2 | `JwtKeysTest.java:61-77` | fail-fast 테스트 더미(`"not-a-key"`) + 런타임 생성 키 조립 헬퍼(L77) | 오탐 — 키는 테스트 런타임 생성 |
+
+**근본 원인 = squash 머지가 fingerprint를 재작성**. gitleaks fingerprint는 `<commit>:<path>:<rule>:<line>` 구조인데, `.gitleaksignore`에 브랜치 커밋 `eadaf38`로 핀했다 → squash로 main 커밋이 `a7e3a27`이 되며 **엔트리 즉시 사망**. PR CI는 green(fingerprint 일치) → 머지 직후 main red. **게이트가 false pass를 준 것** — 커밋 핀 방식은 squash 머지 레포에서 구조적으로 깨진다.
+
+부수 확인: `.gitleaksignore`는 #2만 덮었고 #1은 미등록(PR 스캔은 커밋별 diff라 미검출, main의 squash 통합 diff에서 발현).
+
+**동종 사례 — controller 자신도 적신호**: 주간 schedule 스캔(전체 히스토리)이 **최초 실행부터 계속 red**(2026-07-05·07-12). `.claude/agents/gitops-reviewer.md:242`(`password: <base64>` 예시)·`.claude/skills/service-mesh/istio-core.md:243`(산문) `generic-api-key` 오탐 2건, 출처 커밋 `5ce132c`(2026-06-25). push 스캔은 마지막 커밋만 봐서 green → **주간 스캔 red를 아무도 못 봄**. engine·frontend는 green.
+
+→ 교훈: 게이트를 배선했으면 **오탐 베이스라인까지 green으로 만들어야** 게이트다. red가 상시화되면 신호가 죽는다([craft-standards-gate-activation] 메모리의 "커밋 전 게이트 시뮬레이션" 원칙이 schedule 트리거에는 미적용됐던 갭).
+
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: PR① = [backend PR #7](https://github.com/ressKim-io/weDocs-backend/pull/7) **오픈**(커밋 6개 `60db0ec`~`bfdf5f4`, 크래프트 게이트 2-리뷰 반영 완료, 53건 green).
-> **다음**: PR #7 머지(사용자 승인) → PR② `feature/m2-doc-service-rest-pages` 분기(가드/도메인 행위→workspace→page tree/move→sharing, 이 plan §PR② 참조).
-> **주의**: 서비스 레포는 건별 승인(push·PR). **Boot 4.x 신규 함정 3건 발견**(dev-log 후보): ① `@WebMvcTest` = `spring-boot-starter-webmvc-test` 별도 스타터 + 패키지 `org.springframework.boot.webmvc.test.autoconfigure`로 이동 ② Jackson 3 전환 — 패키지 `com.fasterxml.jackson`→`tools.jackson`, `asText()`→`asString()` ③ TC 2.x 신클래스 `org.testcontainers.postgresql.PostgreSQLContainer`는 비제네릭(self-type 제거). test application.yml은 main 완전 대체 — 신규 main 키는 test에도 명시(problemdetails 적용함).
+> **마지막 완료**: PR① = [backend PR #7](https://github.com/ressKim-io/weDocs-backend/pull/7) **머지 완료**(2026-07-13, squash `a7e3a27` — 커밋 6개 `60db0ec`~`bfdf5f4` 압축, 크래프트 게이트 2-리뷰 반영, 53건 green). Boot 4.x 함정 3건 dev-log = [2026-07-13-m2-doc-service-1c-boot4-traps.md](../dev-logs/2026-07-13-m2-doc-service-1c-boot4-traps.md).
+> **다음**: ① **backend main security-scan 적신호 해소**(위 §머지 후 발견 — 오탐 2건, 커밋 핀 대신 경로/룰 기반 allowlist 검토. controller 자신의 schedule red도 동반 처리) → ② PR② `feature/m2-doc-service-rest-pages` 분기(가드/도메인 행위→workspace→page tree/move→sharing, 이 plan §PR② 참조).
+> **주의**: 서비스 레포는 건별 승인(push·PR). **Boot 4.x 함정 3건**: ① `@WebMvcTest` = `spring-boot-starter-webmvc-test` 별도 스타터 + 패키지 `org.springframework.boot.webmvc.test.autoconfigure`로 이동 ② Jackson 3 전환 — 패키지 `com.fasterxml.jackson`→`tools.jackson`, `asText()`→`asString()` ③ TC 2.x 신클래스 `org.testcontainers.postgresql.PostgreSQLContainer`는 비제네릭(self-type 제거). test application.yml은 main 완전 대체 — 신규 main 키는 test에도 명시(problemdetails 적용함). **신규**: `.gitleaksignore` 커밋 핀은 squash 머지에서 무효 — 오탐 억제는 경로/룰 기반으로.
