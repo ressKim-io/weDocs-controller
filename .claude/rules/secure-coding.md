@@ -114,6 +114,7 @@ Server::builder()
 - MUST **억제 후 대조군으로 "룰이 죽지 않았음"을 증명**한다 — 허용 경로에 **진짜 시크릿을 심어 발화하는지** 확인(확인 후 반드시 제거). 억제가 룰 자체를 무력화하면 "no leaks found"는 거짓 안심이다.
 - MUST **CI와 동일 버전 바이너리로 로컬 재현** — 기능이 버전에 종속된다(예: allowlist `targetRules`는 **8.25.0 신설** — `action@v3`가 해소하는 8.24.3엔 없다). 버전 확인은 실행 로그의 `gitleaks version:` 줄.
 - MUST 억제 엔트리마다 **"왜 오탐인가" 1줄** — 억제는 리뷰 대상이다. 스캐너에 맞춰 프로덕션 코드·문서를 비트는 것은 반려(`clean-code.md`).
+- MUST **제출형 의존성 그래프(Dependency Submission) 알림은 SBOM 실버전으로 트리아지**한다 — Dependabot이 **manifest 파일** 기반이면 버전 상향 시 자동 해제하지만, **제출형 스냅샷** 알림은 실 해석이 패치 버전으로 올라가도 **자동 해제되지 않는다**(GitHub 한계). 오래된 스냅샷이 SBOM에 잔존해 오탐 red를 상시화한다(실증: backend `commons-lang3` 3.16.0 스테일 — 실 해석은 전 구성 3.20.0, 알림 2주 방치). 트리아지: `gh api .../dependency-graph/sbom`으로 **실제 해석 버전 확인** → `./gradlew :m:dependencies`로 취약 버전이 "최종 해석 노드"인지 검증(‘requested X→Y’ 업그레이드 표시와 구분) → 미사용이면 `inaccurate`로 dismiss + 근거 코멘트. 실 취약이면 constraint/BOM으로 상향.
 
 ---
 
