@@ -157,14 +157,15 @@ TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock \
 - [x] ② 구현+게이트 완료(push·PR 승인 대기): `fix/m2-1c-gate-findings` 로컬 커밋 6개(`5048a31`~`389d9fa`), **113건 green**. HIGH-1(도달성 BFS, active-only 예산)·HIGH-2(인가→락→clear, InOrder 결정적 가드)·MED-4/5/6/7·LOW 전부 반영. 게이트 2-렌즈: java-expert [B] 0 · code-reviewer Critical 1(레이스 테스트 판별력 — 실증)+Major 4+Minor 6 → **전부 반영**(MJ-2의 projection 제안은 HIGH-2 재도입이라 기각). MED-3·MAX_ANCESTOR_DEPTH·canRead 위임은 ③-2 몫(계획대로 이월)
 - [x] ② push + PR 오픈(사용자 승인, 2026-07-17) — [backend PR #10](https://github.com/ressKim-io/weDocs-backend/pull/10), CI 3종(gitleaks·dependency-submission·dependency-review) green
 - [ ] ② 머지 (건별 승인 필요)
-- [ ] ③-1 refactor/doc-service-error-catalog → green → 게이트 → 승인 → PR → 머지
+- [x] ③-1 구현+게이트+리뷰 완료(push·PR 승인 대기): `refactor/doc-service-error-catalog` 커밋 2개(`98526cf`+`7f69a6c`), **145건 green**. common/error 신설(DocErrorCode enum+카테고리 5종+GlobalExceptionHandler)·leaf 12 삭제·gRPC failDomain 단일화·DocMetaService InvariantViolation. 게이트 2-렌즈: java-expert [B] 0(정확성 5검증 PASS)·code-reviewer Critical 1(불변식 비노출 테스트 부재)+Major 3 → 전부 반영(isInternal 3채널 동치·sealed·grpc 전수·PII 주석·불변식 비노출 테스트 2건). ② 위(a40bae5)에서 분기
+- [ ] ③-1 push → PR → 머지 (건별 승인 필요)
 - [ ] ③-2 refactor/doc-service-dedup → green → 게이트 → 승인 → PR → 머지
 - [ ] ③-3 refactor/doc-service-package-by-feature → 검증 프로토콜 → green → 게이트 → 승인 → PR → 머지
 - [ ] 마감: plan done + CLAUDE.md 재개지점 + dev-log
 
 ## 재개 지점 (Resume)
 
-마지막 완료 = **Step ① 전체 + Step ② PR 오픈**([backend PR #10](https://github.com/ressKim-io/weDocs-backend/pull/10), 커밋 6개·113건 green·CI 3종 green). 다음 = **② 머지 승인 → ③-1 `refactor/doc-service-error-catalog`**. 주의 = ③-1은 머지된 ② 위에서 분기(squash 후 `git fetch && git switch main && git pull`) · ③ 각 PR도 게이트+건별 승인 · ②의 status 중심 단언 유지 확인(type URI는 ③-1이 재정의).
+마지막 완료 = **② 머지(#10, `a40bae5`) + dependabot 스테일 알림 정리 + ③-1 구현·게이트·리뷰**(backend 로컬 `refactor/doc-service-error-catalog` 커밋 2개, 145건 green — 미push). 다음 = **③-1 push·PR 승인 → 머지 → ③-2 `refactor/doc-service-dedup`**(MED-3 requireSharableBy·canRead 위임·MAX_ANCESTOR_DEPTH 단일화) → ③-3 package-by-feature 이동. 주의 = ③-2/③-3은 머지된 ③-1 위에서 분기 · 각 게이트+건별 승인.
 
 ## 범위 밖
 
