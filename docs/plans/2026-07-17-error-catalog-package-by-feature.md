@@ -1,7 +1,7 @@
 ---
 date: 2026-07-17
 slug: error-catalog-package-by-feature
-status: planned
+status: in-progress
 related:
   - plans/2026-07-12-m2-phase1c-rest-jwt.md
   - plans/2026-07-03-secure-coding-retrofit.md
@@ -146,14 +146,14 @@ TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock \
 
 ## 실행 체크리스트
 
-- [ ] ①-0 이 plan 커밋 (status: planned)
-- [ ] ①-1 WebFetch 검증: RFC 9457·Spring ProblemDetail·AIP-193·gRPC status·Modulith·Anthropic 모델/effort
-- [ ] ①-2 게이트 시뮬레이션 (backend HEAD, 기대 발화 4종·오탐 0) — 룰 커밋 전
-- [ ] ①-3 커밋: error-handling P7 + spring.md 정합
-- [ ] ①-4 커밋: layering-readability P7 + git.md move-only 단서
-- [ ] ①-5 커밋: ADR-0018·0019·0020 + README 인덱스
-- [ ] ①-6 커밋: effort-guide·token-budget 갱신 + CLAUDE.md(stale·import·현재 상태·L4)
-- [ ] ①-7 커밋: meta dev-log
+- [x] ①-0 이 plan 커밋 (`6949c1f`)
+- [x] ①-1 WebFetch 검증 완료(2026-07-17): RFC 9457·Spring ProblemDetail·AIP-193·gRPC status·Modulith·Anthropic 모델/effort/캐시 — 전부 설계 정합 확인
+- [x] ①-2 게이트 시뮬레이션 (backend `290bf69`, java-expert): 기대 발화 전부 fire·오탐 0·문구 결함 4건 교정 반영(성격 기준 fail-fast·안전망 허용·어댑터 예시·LR-2 backstop), OR 완화 제안은 기각
+- [x] ①-3 커밋: error-handling P7 + spring.md 정합 (`9d508f5`)
+- [x] ①-4 커밋: layering-readability P7 + git.md move-only 단서 (`317f028`)
+- [x] ①-5 커밋: ADR-0018·0019·0020 + README 인덱스(0017 누락 행 포함) (`b3e7083`)
+- [x] ①-6 커밋: effort-guide·token-budget 현행화 + CLAUDE.md (`5c4a1a2`)
+- [x] ①-7 커밋: meta dev-log = `dev-logs/2026-07-17-error-catalog-package-standards.md`
 - [ ] ② backend fix/m2-1c-gate-findings: MED-4 prep → HIGH-1 → HIGH-2 → MED-5/6/7 → LOW 테스트군 → green → 게이트 → 승인 → PR → 머지
 - [ ] ③-1 refactor/doc-service-error-catalog → green → 게이트 → 승인 → PR → 머지
 - [ ] ③-2 refactor/doc-service-dedup → green → 게이트 → 승인 → PR → 머지
@@ -162,7 +162,7 @@ TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock \
 
 ## 재개 지점 (Resume)
 
-마지막 완료 = plan 작성. 다음 = ①-0 plan 커밋 → ①-1 WebFetch 검증. 주의 = 룰 커밋 전 ①-2 게이트 시뮬레이션 필수(메모리 룰), backend 착수 전 `git fetch`(로컬 stale 가능).
+마지막 완료 = **Step ① 전체 완료**(①-0~①-7, 커밋 `6949c1f`→`9d508f5`→`317f028`→`b3e7083`→`5c4a1a2`+dev-log). 다음 = **② backend `fix/m2-1c-gate-findings` 소PR** — findings 스펙은 `plans/2026-07-12-m2-phase1c-rest-jwt.md` §PR② findings, ②/③ 소속 할당표는 본 문서 §Step ②. 주의 = ② 에러 응답 단언은 status 중심(③-1이 type URI 재정의) · backend는 branch+PR+건별 승인 · colima 필요 · 착수 전 `git fetch`.
 
 ## 범위 밖
 
