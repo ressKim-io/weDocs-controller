@@ -158,14 +158,16 @@ TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock \
 - [x] ② push + PR 오픈(사용자 승인, 2026-07-17) — [backend PR #10](https://github.com/ressKim-io/weDocs-backend/pull/10), CI 3종(gitleaks·dependency-submission·dependency-review) green
 - [ ] ② 머지 (건별 승인 필요)
 - [x] ③-1 구현+게이트+리뷰 완료(push·PR 승인 대기): `refactor/doc-service-error-catalog` 커밋 2개(`98526cf`+`7f69a6c`), **145건 green**. common/error 신설(DocErrorCode enum+카테고리 5종+GlobalExceptionHandler)·leaf 12 삭제·gRPC failDomain 단일화·DocMetaService InvariantViolation. 게이트 2-렌즈: java-expert [B] 0(정확성 5검증 PASS)·code-reviewer Critical 1(불변식 비노출 테스트 부재)+Major 3 → 전부 반영(isInternal 3채널 동치·sealed·grpc 전수·PII 주석·불변식 비노출 테스트 2건). ② 위(a40bae5)에서 분기
-- [ ] ③-1 push → PR → 머지 (건별 승인 필요)
+- [x] ③-1 머지 완료 — [backend PR #11](https://github.com/ressKim-io/weDocs-backend/pull/11) squash `080cec7`(2026-07-17). CI 3종 green, post-merge 스캔 green
+- [x] ③-2 구현+게이트 완료(push·PR 승인 대기): `refactor/doc-service-dedup` 커밋 2개(`c596df1`+`d3f872b`), **148건 green**. MED-3(requireSharableBy→requireOwner 재사용, IDOR 회귀 방지 위해 not-found 코드 파라미터 오버로드+교차 feature repo 주입 제거+붕괴 가드 테스트)·canRead 위임·MAX_ANCESTOR_DEPTH를 Page 도메인 단일화. 게이트 2-렌즈: java-expert [B] 0·code-reviewer Blocker/Critical 0+Major 1(상수 결합→Page 이동으로 반영)+Minor. 행동 불변
+- [ ] ③-2 push → PR → 머지 (건별 승인 필요)
 - [ ] ③-2 refactor/doc-service-dedup → green → 게이트 → 승인 → PR → 머지
 - [ ] ③-3 refactor/doc-service-package-by-feature → 검증 프로토콜 → green → 게이트 → 승인 → PR → 머지
 - [ ] 마감: plan done + CLAUDE.md 재개지점 + dev-log
 
 ## 재개 지점 (Resume)
 
-마지막 완료 = **② 머지(#10, `a40bae5`) + dependabot 스테일 알림 정리 + ③-1 구현·게이트·리뷰**(backend 로컬 `refactor/doc-service-error-catalog` 커밋 2개, 145건 green — 미push). 다음 = **③-1 push·PR 승인 → 머지 → ③-2 `refactor/doc-service-dedup`**(MED-3 requireSharableBy·canRead 위임·MAX_ANCESTOR_DEPTH 단일화) → ③-3 package-by-feature 이동. 주의 = ③-2/③-3은 머지된 ③-1 위에서 분기 · 각 게이트+건별 승인.
+마지막 완료 = **③-1 머지(#11, `080cec7`) + ③-2 구현·게이트·리뷰**(backend 로컬 `refactor/doc-service-dedup` 커밋 2개, 148건 green — 미push). 다음 = **③-2 push·PR 승인 → 머지 → ③-3 `refactor/doc-service-package-by-feature`**(move-only, ADR-0019 목표 트리 — feature 패키지 재편). 주의 = ③-3은 머지된 ③-2 위에서 분기 · move-only 검증 프로토콜(git.md §Size Limit, `git diff -M90%`) · 게이트+건별 승인.
 
 ## 범위 밖
 
