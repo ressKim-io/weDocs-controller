@@ -154,7 +154,8 @@ TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock \
 - [x] ①-5 커밋: ADR-0018·0019·0020 + README 인덱스(0017 누락 행 포함) (`b3e7083`)
 - [x] ①-6 커밋: effort-guide·token-budget 현행화 + CLAUDE.md (`5c4a1a2`)
 - [x] ①-7 커밋: meta dev-log = `dev-logs/2026-07-17-error-catalog-package-standards.md`
-- [ ] ② backend fix/m2-1c-gate-findings: MED-4 prep → HIGH-1 → HIGH-2 → MED-5/6/7 → LOW 테스트군 → green → 게이트 → 승인 → PR → 머지
+- [x] ② 구현+게이트 완료(push·PR 승인 대기): `fix/m2-1c-gate-findings` 로컬 커밋 6개(`5048a31`~`389d9fa`), **113건 green**. HIGH-1(도달성 BFS, active-only 예산)·HIGH-2(인가→락→clear, InOrder 결정적 가드)·MED-4/5/6/7·LOW 전부 반영. 게이트 2-렌즈: java-expert [B] 0 · code-reviewer Critical 1(레이스 테스트 판별력 — 실증)+Major 4+Minor 6 → **전부 반영**(MJ-2의 projection 제안은 HIGH-2 재도입이라 기각). MED-3·MAX_ANCESTOR_DEPTH·canRead 위임은 ③-2 몫(계획대로 이월)
+- [ ] ② push → PR → 머지 (건별 승인 필요)
 - [ ] ③-1 refactor/doc-service-error-catalog → green → 게이트 → 승인 → PR → 머지
 - [ ] ③-2 refactor/doc-service-dedup → green → 게이트 → 승인 → PR → 머지
 - [ ] ③-3 refactor/doc-service-package-by-feature → 검증 프로토콜 → green → 게이트 → 승인 → PR → 머지
@@ -162,7 +163,7 @@ TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock \
 
 ## 재개 지점 (Resume)
 
-마지막 완료 = **Step ① 전체 완료**(①-0~①-7, 커밋 `6949c1f`→`9d508f5`→`317f028`→`b3e7083`→`5c4a1a2`+dev-log). 다음 = **② backend `fix/m2-1c-gate-findings` 소PR** — findings 스펙은 `plans/2026-07-12-m2-phase1c-rest-jwt.md` §PR② findings, ②/③ 소속 할당표는 본 문서 §Step ②. 주의 = ② 에러 응답 단언은 status 중심(③-1이 type URI 재정의) · backend는 branch+PR+건별 승인 · colima 필요 · 착수 전 `git fetch`.
+마지막 완료 = **Step ① 전체 + Step ② 구현·게이트·리뷰 반영**(backend 로컬 브랜치 `fix/m2-1c-gate-findings` 커밋 6개, 113건 green — 미push). 다음 = **② push·PR 사용자 승인 → 머지 → ③-1 `refactor/doc-service-error-catalog`**. 주의 = ③-1은 머지된 ② 위에서 분기 · ③ 각 PR도 게이트+건별 승인 · ②의 status 중심 단언 유지 확인(type URI는 ③-1이 재정의).
 
 ## 범위 밖
 
