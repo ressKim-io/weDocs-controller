@@ -104,6 +104,17 @@ Server::builder()
 
 `code-review.md` 크래프트 렌즈(🦀 rust-expert / ☕ java-expert)가 이 체크리스트도 실행. `[B]` 위반=반려(escape hatch: 근거 주석+이슈 링크 — 예: `// MVP 로컬: 평문 채널, mTLS는 M5 #NN`). 인프라 레이어(🔒 렌즈)와 이중 지적 시 앱 코드 소견이 이 표준 기준. 새 함정은 `review-gaps.md` → 이 문서 체크리스트로 승격(gap→standard loop).
 
+### 자동 스캔 게이트(gitleaks/audit류) — 배선의 완료 조건 (2026-07-17 학습)
+
+**완료 조건은 "워크플로 파일 존재"가 아니라 "모든 트리거가 green"이다.** red가 상시화된 게이트는 배선 안 한 것보다 나쁘다 — 신호가 죽어 진짜 유출을 덮는다.
+
+- MUST **트리거별 스캔 범위 차이를 확인**한다 — gitleaks-action: `push`=마지막 커밋만(`--log-opts=-1`) / `schedule`·`workflow_dispatch`=전체 히스토리. **push green이 전체 히스토리 red를 은폐**한다(실증: controller 주간 red가 최초 실행부터 2주간 미발견). `workflow_dispatch`를 배선해 주 1회를 기다리지 말고 즉시 검증한다.
+- NEVER **오탐 억제를 커밋 SHA에 핀하지 않는다** — gitleaks fingerprint는 `<commit>:<path>:<rule>:<line>`이라 **squash 머지의 SHA 재작성에 즉사**한다(실증: backend PR #7 → PR green/main red = 게이트 false pass). `.gitleaksignore`는 공식 문서상 *experimental*. 억제는 `.gitleaks.toml` allowlist로.
+- NEVER **경로 통째 허용(blanket)** — `condition="AND"`로 경로 + 값/모양까지 좁힌다. 오탐이 난 파일이 오히려 진짜 시크릿이 붙을 위험이 큰 파일일 수 있다(예: `JwtKeys.java`).
+- MUST **억제 후 대조군으로 "룰이 죽지 않았음"을 증명**한다 — 허용 경로에 **진짜 시크릿을 심어 발화하는지** 확인(확인 후 반드시 제거). 억제가 룰 자체를 무력화하면 "no leaks found"는 거짓 안심이다.
+- MUST **CI와 동일 버전 바이너리로 로컬 재현** — 기능이 버전에 종속된다(예: allowlist `targetRules`는 **8.25.0 신설** — `action@v3`가 해소하는 8.24.3엔 없다). 버전 확인은 실행 로그의 `gitleaks version:` 줄.
+- MUST 억제 엔트리마다 **"왜 오탐인가" 1줄** — 억제는 리뷰 대상이다. 스캐너에 맞춰 프로덕션 코드·문서를 비트는 것은 반려(`clean-code.md`).
+
 ---
 
 ## 부록 — 엔진 적용 시연 (loop 증명, 게이트 시뮬레이션 2026-07-03)
