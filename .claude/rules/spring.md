@@ -134,17 +134,20 @@ NEVER `@Entity` 클래스에 record 사용 — java.md 참조.
 MUST `@RestControllerAdvice` 글로벌 핸들러 하나에 모든 예외 처리 집중.
 NEVER Controller 메서드 내 try-catch — 핸들러로 위임.
 
-도메인 예외는 MUST `BusinessException extends RuntimeException`으로 정의.
+도메인 예외는 MUST 카테고리 예외(NotFound/Conflict/Forbidden/Unauthorized/InvariantViolation) + 서비스별 `ErrorCode` 카탈로그(enum)로 정의 — 상세는 `error-handling.md` P7이 SSOT.
 
-에러 응답은 MUST 표준화: `ErrorResponse(code, message, timestamp)`.
+에러 응답은 MUST `ProblemDetail`(RFC 9457) + `code` 확장 property로 표준화 — 자체 `ErrorResponse` 포맷 신설 금지.
 NEVER 프로덕션 응답에 스택트레이스 포함 — 내부 구조 노출 금지.
 
 ```java
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ErrorResponse> handle(BusinessException e) {
-        return ResponseEntity.badRequest().body(ErrorResponse.of(e));
+    @ExceptionHandler(DomainException.class)
+    public ProblemDetail handle(DomainException e) {
+        var pd = ProblemDetail.forStatusAndDetail(e.code().http(), e.code().message());
+        pd.setType(URI.create("https://wedocs.io/errors/" + e.code().slug()));
+        pd.setProperty("code", e.code().slug());
+        return pd;
     }
 }
 ```
