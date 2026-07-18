@@ -1,7 +1,7 @@
 ---
 date: 2026-07-17
 slug: error-catalog-package-by-feature
-status: in-progress
+status: done
 related:
   - plans/2026-07-12-m2-phase1c-rest-jwt.md
   - plans/2026-07-03-secure-coding-retrofit.md
@@ -9,7 +9,11 @@ related:
   - adr/0018-error-catalog.md
   - adr/0019-package-by-feature-java.md
   - adr/0020-data-access-conventions.md
+  - dev-logs/2026-07-17-error-catalog-package-standards.md
+  - dev-logs/2026-07-18-m2-refactor-track-backend.md
 ---
+
+> **완료(2026-07-18)** — Step ①(controller 표준·ADR·모델 가이드) + Step ②③(backend 4 PR: [#10](https://github.com/ressKim-io/weDocs-backend/pull/10)·[#11](https://github.com/ressKim-io/weDocs-backend/pull/11)·[#12](https://github.com/ressKim-io/weDocs-backend/pull/12)·[#13](https://github.com/ressKim-io/weDocs-backend/pull/13) 전부 머지, 148건 green). 결과·교훈 = `dev-logs/2026-07-18-m2-refactor-track-backend.md`. 다음 = ④ secure-coding retrofit → ⑤ Phase 2.
 
 # 크래프트 표준 확장(에러 카탈로그·package-by-feature) + doc-service 구조 리팩토링
 
@@ -162,12 +166,12 @@ TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock \
 - [x] ③-2 구현+게이트 완료(push·PR 승인 대기): `refactor/doc-service-dedup` 커밋 2개(`c596df1`+`d3f872b`), **148건 green**. MED-3(requireSharableBy→requireOwner 재사용, IDOR 회귀 방지 위해 not-found 코드 파라미터 오버로드+교차 feature repo 주입 제거+붕괴 가드 테스트)·canRead 위임·MAX_ANCESTOR_DEPTH를 Page 도메인 단일화. 게이트 2-렌즈: java-expert [B] 0·code-reviewer Blocker/Critical 0+Major 1(상수 결합→Page 이동으로 반영)+Minor. 행동 불변
 - [x] ③-2 머지 완료 — [backend PR #12](https://github.com/ressKim-io/weDocs-backend/pull/12) squash `9c870a5`(2026-07-17)
 - [x] ③-3 구현+게이트 완료(push·PR 승인 대기): `refactor/doc-service-package-by-feature` 커밋 `dc99d4a`, **148건 green**. ADR-0019 목표 트리로 재편(auth/workspace/page/snapshot/common), 테스트 미러 이동+RestTestSupport public 승격. move-only 검증(`git -M50%`, package/import/가시성 제외 실질 diff **비어있음** — same-package import 정리로 소형 파일이 90% 임계 미달이라 50% 사용). 게이트: java-expert **PASS**(구조 ADR-0019 완전 일치·move-only 무결성·가시성 과승격 없음·base package 불변)
-- [ ] ③-3 push → PR → 머지 (건별 승인 필요)
-- [ ] 마감: plan done + CLAUDE.md 재개지점("다음 = ④ retrofit → ⑤ Phase 2") + dev-log
+- [x] ③-3 머지 완료 — [backend PR #13](https://github.com/ressKim-io/weDocs-backend/pull/13) squash `3b51772`(2026-07-18), post-merge 스캔 green
+- [x] 마감: plan done + CLAUDE.md 재개지점 갱신 + dev-log(`2026-07-18-m2-refactor-track-backend.md`)
 
 ## 재개 지점 (Resume)
 
-마지막 완료 = **③-2 머지(#12, `9c870a5`) + ③-3 구현·게이트**(backend 로컬 `refactor/doc-service-package-by-feature` 커밋 `dc99d4a`, 148건 green — 미push). 다음 = **③-3 push·PR 승인 → 머지 → 마감**(plan done·CLAUDE.md 재개지점·dev-log). ③-3 머지 후 리팩토링 트랙(Step ①~③) 완결 → 남은 것 = **④ secure-coding retrofit → ⑤ Phase 2**(M2 본류). ⚠️ same-package import 정리로 rename 인식은 -M50% 기준(-M90% 아님), 로직 diff는 비어있음(검증 완료).
+**트랙 완결(2026-07-18)** — Step ①(controller) + Step ②③(backend 4 PR #10~#13 전부 머지, 148건 green). 다음 = **④ secure-coding retrofit(`plans/2026-07-03-secure-coding-retrofit.md`, Phase 2 분기 전) → ⑤ Phase 2 인증**(M2 본류, `plans/2026-06-30-m2-persistence-session.md`). 결과·교훈 = `dev-logs/2026-07-18-m2-refactor-track-backend.md`.
 
 ## 범위 밖
 
