@@ -160,14 +160,14 @@ TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock \
 - [x] ③-1 구현+게이트+리뷰 완료(push·PR 승인 대기): `refactor/doc-service-error-catalog` 커밋 2개(`98526cf`+`7f69a6c`), **145건 green**. common/error 신설(DocErrorCode enum+카테고리 5종+GlobalExceptionHandler)·leaf 12 삭제·gRPC failDomain 단일화·DocMetaService InvariantViolation. 게이트 2-렌즈: java-expert [B] 0(정확성 5검증 PASS)·code-reviewer Critical 1(불변식 비노출 테스트 부재)+Major 3 → 전부 반영(isInternal 3채널 동치·sealed·grpc 전수·PII 주석·불변식 비노출 테스트 2건). ② 위(a40bae5)에서 분기
 - [x] ③-1 머지 완료 — [backend PR #11](https://github.com/ressKim-io/weDocs-backend/pull/11) squash `080cec7`(2026-07-17). CI 3종 green, post-merge 스캔 green
 - [x] ③-2 구현+게이트 완료(push·PR 승인 대기): `refactor/doc-service-dedup` 커밋 2개(`c596df1`+`d3f872b`), **148건 green**. MED-3(requireSharableBy→requireOwner 재사용, IDOR 회귀 방지 위해 not-found 코드 파라미터 오버로드+교차 feature repo 주입 제거+붕괴 가드 테스트)·canRead 위임·MAX_ANCESTOR_DEPTH를 Page 도메인 단일화. 게이트 2-렌즈: java-expert [B] 0·code-reviewer Blocker/Critical 0+Major 1(상수 결합→Page 이동으로 반영)+Minor. 행동 불변
-- [ ] ③-2 push → PR → 머지 (건별 승인 필요)
-- [ ] ③-2 refactor/doc-service-dedup → green → 게이트 → 승인 → PR → 머지
-- [ ] ③-3 refactor/doc-service-package-by-feature → 검증 프로토콜 → green → 게이트 → 승인 → PR → 머지
-- [ ] 마감: plan done + CLAUDE.md 재개지점 + dev-log
+- [x] ③-2 머지 완료 — [backend PR #12](https://github.com/ressKim-io/weDocs-backend/pull/12) squash `9c870a5`(2026-07-17)
+- [x] ③-3 구현+게이트 완료(push·PR 승인 대기): `refactor/doc-service-package-by-feature` 커밋 `dc99d4a`, **148건 green**. ADR-0019 목표 트리로 재편(auth/workspace/page/snapshot/common), 테스트 미러 이동+RestTestSupport public 승격. move-only 검증(`git -M50%`, package/import/가시성 제외 실질 diff **비어있음** — same-package import 정리로 소형 파일이 90% 임계 미달이라 50% 사용). 게이트: java-expert **PASS**(구조 ADR-0019 완전 일치·move-only 무결성·가시성 과승격 없음·base package 불변)
+- [ ] ③-3 push → PR → 머지 (건별 승인 필요)
+- [ ] 마감: plan done + CLAUDE.md 재개지점("다음 = ④ retrofit → ⑤ Phase 2") + dev-log
 
 ## 재개 지점 (Resume)
 
-마지막 완료 = **③-1 머지(#11, `080cec7`) + ③-2 구현·게이트·리뷰**(backend 로컬 `refactor/doc-service-dedup` 커밋 2개, 148건 green — 미push). 다음 = **③-2 push·PR 승인 → 머지 → ③-3 `refactor/doc-service-package-by-feature`**(move-only, ADR-0019 목표 트리 — feature 패키지 재편). 주의 = ③-3은 머지된 ③-2 위에서 분기 · move-only 검증 프로토콜(git.md §Size Limit, `git diff -M90%`) · 게이트+건별 승인.
+마지막 완료 = **③-2 머지(#12, `9c870a5`) + ③-3 구현·게이트**(backend 로컬 `refactor/doc-service-package-by-feature` 커밋 `dc99d4a`, 148건 green — 미push). 다음 = **③-3 push·PR 승인 → 머지 → 마감**(plan done·CLAUDE.md 재개지점·dev-log). ③-3 머지 후 리팩토링 트랙(Step ①~③) 완결 → 남은 것 = **④ secure-coding retrofit → ⑤ Phase 2**(M2 본류). ⚠️ same-package import 정리로 rename 인식은 -M50% 기준(-M90% 아님), 로직 diff는 비어있음(검증 완료).
 
 ## 범위 밖
 
