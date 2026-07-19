@@ -76,6 +76,19 @@ related:
 
 ---
 
+## 재개 지점 SSOT / CLAUDE.md 동기화 (MANDATORY)
+
+재개 정보가 **plan 파일 §재개 지점**과 **CLAUDE.md 재개 블록** 두 곳에 존재하면 드리프트가 필연이다. 다음을 강제한다:
+
+- **plan 파일의 §재개 지점이 그 작업의 재개 상세 SSOT.** CLAUDE.md 재개 블록은 이를 가리키는 **요약 포인터**로만 유지(내용 중복 최소화).
+- 한쪽(plan §재개 지점 ↔ CLAUDE.md 재개 블록)을 바꾸면 **같은 커밋에서 다른 쪽도 갱신**한다.
+- **하위 plan·사이드 트랙이 `done`** 되어 부모 plan의 §재개 지점이 참조하던 "다음"이 바뀌면, **부모 plan도 같은 커밋에서 갱신**한다(CLAUDE.md만 갱신 금지).
+- 마일스톤/트랙 완료 커밋 전 **전수 점검**: `grep -l 'status: in-progress' docs/plans/*.md` → 각 파일의 §재개 지점·frontmatter status가 실제 상태와 일치하는지 확인. 완료된 작업의 plan은 `done`으로 클로징.
+
+> 사고 2026-07-17~18: retrofit·리팩토링 트랙 완료 커밋(`50774fc`·`73f53a5`)이 **CLAUDE.md만 갱신**하고 `m2-persistence-session` §재개 지점·`m2-1a-foundation-hardening` status(2026-06-30 완료됐으나 `in-progress` 방치)를 놔둬, plan 파일만 여는 세션이 이미 끝난 트랙을 재실행할 위험 발생(2026-07-19 전수 점검서 발견·클로징).
+
+---
+
 ## 절대 금지
 
 | 금지 행위 | 이유 |
@@ -84,6 +97,8 @@ related:
 | 재개 지점(Resume) 미갱신 채 다음 단계 진행 | 끊기면 "어디까지 했는지" 불명 |
 | harness plan(`~/.claude/plans`)만 믿고 repo 기록 생략 | 휘발성 — 사실상 미기록 |
 | `status` 방치 (planned인데 이미 절반 실행) | 재개 시 상태 오판 |
+| 트랙/작업 완료 후 `status: in-progress` 방치 (done으로 미클로징) | 재개 점검 시 미완료로 오판, 완료 작업 재실행 위험 — 2026-06-30 `m2-1a-foundation-hardening` |
+| 하위/사이드 트랙 완료로 부모 plan 재개 조건이 바뀌었는데 부모 plan §재개 지점 미갱신 (CLAUDE.md만 갱신) | 부모 plan만 여는 세션이 이미 끝난 트랙 재실행 — 2026-07-17 M2 드리프트 |
 
 ---
 
