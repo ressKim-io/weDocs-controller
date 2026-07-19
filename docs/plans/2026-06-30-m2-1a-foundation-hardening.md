@@ -1,7 +1,7 @@
 ---
 date: 2026-06-30
 slug: m2-1a-foundation-hardening
-status: in-progress
+status: done
 related:
   - plans/2026-06-30-m2-persistence-session.md
   - adr/0014-auth-authz-boundary.md
@@ -66,10 +66,10 @@ cd ../weDocs-backend && ./gradlew :doc-service:test
 ```
 - validate 통과만으로 정합 판단 금지(이번 사고의 교훈) — 감사 필드는 **값 검증 테스트**로 확인.
 
-## 재개 지점 (Resume)
-- **마지막 완료**: Part 1 controller 설계 문서(ADR-0016 + PRD §4.3 + README, 커밋 예정).
-- **다음**: Part 2 backend 1a 브랜치 구현(V1 수정 → BaseTimeEntity/Auditing/enum → 엔티티 상속 → 테스트). 로컬 구현·테스트 후 diff 제시 → **커밋/push 건별 승인**.
-- **주의**: backend = 서비스 레포 → 커밋/push 건별 승인. V1 직접 수정(미머지라 안전). created_by/UUIDv7/Lombok은 **이 plan 범위 밖**(후속).
+## 재개 지점 (Resume) — ✅ 완료 (2026-07-19 소급 클로징)
+- **완료**: Part 1 controller 설계(ADR-0016 + PRD §4.3 + README) + Part 2 backend 1a 구현이 **PR #3에 폴딩되어 머지**(2026-06-30) — backend `e10eb90`(JPA Auditing 공통 베이스 `BaseTimeEntity` + `SystemRole` enum) · `58c3dc8`(엔티티 감사 베이스 상속·systemRole 매핑 + 감사/제약 테스트) · 병합 `54a8b48`(PR #3). backend main에 `BaseTimeEntity`/`JpaAuditingConfig`/`WorkspaceRole`/`SystemRole`(+converter) 전부 존재 확인.
+- **후속(이 plan 범위 밖, 별도 트랙 처리됨)**: Lombok 전환 = 크래프트 정합 PR #4(`18e1aa1`). created_by/UUIDv7는 여전히 후속 여지.
+- **주의**: status를 `in-progress`로 방치했던 사고 — 작업은 2026-06-30 완료됐으나 plan 클로징이 누락됐다. 2026-07-19 M2 재개 지점 전수 점검 중 발견·클로징. 재발 방지 = [plan-logging.md §재개 지점 SSOT / CLAUDE.md 동기화](../../.claude/rules/plan-logging.md).
 
 ## 범위 밖
 위 "범위 밖" 섹션 참조. 1b(권한 엔티티·gRPC)·1c(인증·행위자 감사)로 명확히 분리.
