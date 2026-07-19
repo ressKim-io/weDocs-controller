@@ -59,7 +59,7 @@ related:
 ### 0. ADR-0021 (controller, main 직접) — Q2 결정 기록 ✅
 - [x] `docs/adr/0021-ws-handshake-auth-failure-observability.md`: 핸드셰이크 HTTP 거절 vs WS close 대안비교 + 관측 계약(로그 필드·메트릭·알림) + fail-closed. (커밋 `8e08af5`)
 
-### 2a-1. gateway 인증 핸드셰이크 (ws-gateway) ✅ ([backend PR #16](https://github.com/ressKim-io/weDocs-backend/pull/16), 커밋 `19d7716`)
+### 2a-1. gateway 인증 핸드셰이크 (ws-gateway) ✅ ([backend PR #16](https://github.com/ressKim-io/weDocs-backend/pull/16) 머지, squash `583b065`)
 - [x] **JWKS 검증기**(`JwtVerifier`/`AuthConfig`): 원격 JWKS fetch + Nimbus 기본 캐시/회전(5분·30초전 갱신·30초 rate-limit, 공식 검증) + kid 매칭, RS256 서명·`iss`/`exp` 검증(clock skew). **fail-closed**: JWKS 미획득/키 부재 → empty. (`aud`는 발급측 미발급이라 검증 대상 아님 — plan 문구 정정)
 - [x] **subprotocol 토큰**(`AuthSubprotocol`/`AuthHandshakeHandler`): `Sec-WebSocket-Protocol` `[SENTINEL, <jwt>]`(SENTINEL=`wedocs.sync.v1`) → 서버가 SENTINEL만 echo(토큰 비반향), 모호(토큰≠1개) 시 거절.
 - [x] **authn 게이트**(`AuthHandshakeInterceptor`): 무토큰/무효/만료 → **HTTP 401**(업그레이드 전, 세션 미생성). 성공 → `user_id` 세션 attribute.
@@ -103,8 +103,8 @@ related:
 - **회귀**: 기존 수렴 E2E가 토큰 경로로 green(2c).
 
 ## 재개 지점 (Resume)
-- **마지막 완료**: **2a-1 gateway 인증 핸드셰이크** — [backend PR #16](https://github.com/ressKim-io/weDocs-backend/pull/16)(커밋 `19d7716`, **push·PR 완료, 리뷰/머지 대기**), 69 테스트 green. ADR-0021(`8e08af5`)도 완료. 교훈 = [dev-log](../dev-logs/2026-07-19-m2-gateway-authn-observability.md).
-- **다음**: **2a-2 gateway 인가 + viewer 다층 1차**(같은 ws-gateway 레포, PR #16 머지 후 새 브랜치) — doc-service `CheckPermission` gRPC 클라이언트(mTLS·timeout·fail-closed) + 핸드셰이크 authz(`allowed=false`/UNSPECIFIED→**403**, VIEWER=read-only·EDITOR/OWNER=양방향) + viewer write-drop 1차 + role 메타 엔진 전달 + 관측(`checkpermission_duration`·`authz_backend_error_total`). 이후 2b(engine role 방어)→2c(frontend 토큰). §PR 분해 2a-2 참조.
+- **마지막 완료**: **2a-1 gateway 인증 핸드셰이크 ✅ 머지** — [backend PR #16](https://github.com/ressKim-io/weDocs-backend/pull/16) squash 머지(`583b065`, main), 69 테스트 green·CI green(gitleaks/dependency-review pass). ADR-0021(`8e08af5`)도 완료. 교훈 = [dev-log](../dev-logs/2026-07-19-m2-gateway-authn-observability.md).
+- **다음**: **2a-2 gateway 인가 + viewer 다층 1차**(같은 ws-gateway 레포, PR #16 머지됨 → 새 브랜치 착수 가능) — doc-service `CheckPermission` gRPC 클라이언트(mTLS·timeout·fail-closed) + 핸드셰이크 authz(`allowed=false`/UNSPECIFIED→**403**, VIEWER=read-only·EDITOR/OWNER=양방향) + viewer write-drop 1차 + role 메타 엔진 전달 + 관측(`checkpermission_duration`·`authz_backend_error_total`). 이후 2b(engine role 방어)→2c(frontend 토큰). §PR 분해 2a-2 참조.
 - **주의**: 서비스 레포 = branch+PR+push 건별 승인. proto **무변경** → 태그 bump 불요. **VT pinning 재검 포인트 = 2a-2**(CheckPermission 블로킹 gRPC를 핸드셰이크 VT에서 호출). **관측 계약 이어짐**: 2a-2가 `ws_handshake_total{result}`에 `authz_denied`·`backend_error` 추가(2a-1이 authn_fail·ok 확립). 이 §재개 지점 변경 시 상위 persistence plan·CLAUDE.md 동기화(plan-logging §재개 지점 SSOT).
 
 ## 범위 밖
