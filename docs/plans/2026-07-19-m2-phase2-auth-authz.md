@@ -1,7 +1,7 @@
 ---
 date: 2026-07-19
 slug: m2-phase2-auth-authz
-status: planned
+status: in-progress
 related:
   - plans/2026-06-30-m2-persistence-session.md
   - adr/0014-auth-authz-boundary.md
@@ -56,15 +56,16 @@ related:
 
 > 각 PR = 해당 레포 branch+PR+건별 승인. 크래프트 6종(+P7) 게이트 2-렌즈(☕/🦀). PR 경계마다 이 plan 재개지점 갱신.
 
-### 0. ADR-0021 (controller, main 직접) — Q2 결정 기록
-- [ ] `docs/adr/0021-ws-handshake-auth-failure-observability.md`: 핸드셰이크 HTTP 거절 vs WS close 대안비교 + 관측 계약(로그 필드·메트릭·알림) + fail-closed. `documentation.md` ADR 검증규칙 충족.
+### 0. ADR-0021 (controller, main 직접) — Q2 결정 기록 ✅
+- [x] `docs/adr/0021-ws-handshake-auth-failure-observability.md`: 핸드셰이크 HTTP 거절 vs WS close 대안비교 + 관측 계약(로그 필드·메트릭·알림) + fail-closed. (커밋 `8e08af5`)
 
-### 2a-1. gateway 인증 핸드셰이크 (ws-gateway PR)
-- [ ] **JWKS 검증기**: doc-service JWKS fetch + TTL 캐시 + kid 매칭, RS256 서명·`exp`/`iss`/`aud` 검증(clock skew 허용). **fail-closed**: JWKS 미획득/키 부재 → 검증 실패 처리.
-- [ ] **subprotocol 토큰**: 핸드셰이크에서 `Sec-WebSocket-Protocol` 값으로 JWT 수신 → 서버가 협상 subprotocol echo(미echo 시 브라우저 핸드셰이크 실패). 토큰 형식·마커 협약 확정(예: `["wedocs-auth", <jwt>]` → echo `"wedocs-auth"`).
-- [ ] **authn 게이트**: 토큰 없음/무효/만료 → **HTTP 401**(업그레이드 전, 세션 미생성). 검증 성공 → `user_id`를 세션 attribute로.
-- [ ] **관측**: 핸드셰이크 결과 구조화 로그(`event=ws_handshake result=… doc_id user(hash) reason verify_ms trace_id`, **토큰·PII 비로깅**) + 메트릭 `ws_handshake_total{result}`·`jwt_verify_total{result}`·`jwks_refresh_total{result}`.
-- [ ] 테스트(TDD): 유효/무효/만료/서명불일치/kid부재 토큰, subprotocol echo, JWKS 캐시·회전, 무토큰=401.
+### 2a-1. gateway 인증 핸드셰이크 (ws-gateway) ✅ ([backend PR #16](https://github.com/ressKim-io/weDocs-backend/pull/16), 커밋 `19d7716`)
+- [x] **JWKS 검증기**(`JwtVerifier`/`AuthConfig`): 원격 JWKS fetch + Nimbus 기본 캐시/회전(5분·30초전 갱신·30초 rate-limit, 공식 검증) + kid 매칭, RS256 서명·`iss`/`exp` 검증(clock skew). **fail-closed**: JWKS 미획득/키 부재 → empty. (`aud`는 발급측 미발급이라 검증 대상 아님 — plan 문구 정정)
+- [x] **subprotocol 토큰**(`AuthSubprotocol`/`AuthHandshakeHandler`): `Sec-WebSocket-Protocol` `[SENTINEL, <jwt>]`(SENTINEL=`wedocs.sync.v1`) → 서버가 SENTINEL만 echo(토큰 비반향), 모호(토큰≠1개) 시 거절.
+- [x] **authn 게이트**(`AuthHandshakeInterceptor`): 무토큰/무효/만료 → **HTTP 401**(업그레이드 전, 세션 미생성). 성공 → `user_id` 세션 attribute.
+- [x] **관측**(ADR-0021, `AuthMetrics` + actuator/micrometer): 구조화 로그(`result=ok|authn_fail` `doc_id` `user`(SHA-256 해시) `reason` `verify_ms` `trace_id`, 토큰·PII 비로깅) + 메트릭 `ws_handshake_total`·`jwt_verify_total`·`jwks_refresh_total{result}`(후자=`MeteredResourceRetriever` 데코레이터). **H-1**: ok 집계·로그를 `afterHandshake`로 미뤄 Origin 거절(403)을 ok로 오집계 안 함(앱 신호=상태코드, before→after=ThreadLocal).
+- [x] 테스트(TDD, 69 green): 유효/무효/만료/서명불일치/unknown-kid/subject부재/형식오류, subprotocol echo, 메트릭 Prometheus `_total` 계약, config fail-fast, H-1 정상·거절 양경로. 크래프트 게이트(☕ 2-렌즈, BLOCKING 0).
+- **이월(추적)**: actuator 무인증 노출 → M5 mesh 하드닝 · JWKS-fail vs bad-token `reason` 세분화 → 2a-2(단 `jwks_refresh_total{fail}`로 인프라 다운 구분 가능). VT pinning = 2a-1 무해(첫 fetch만, 이후 refresh는 Nimbus 별도 스레드) — **2a-2 CheckPermission 블로킹 gRPC에서 재검**.
 
 ### 2a-2. gateway 인가 + viewer 다층 1차 (ws-gateway PR)
 - [ ] **doc-service gRPC 클라이언트**: `CheckPermission(doc_id, user_id)` 채널(mTLS 전제), timeout + **fail-closed**(에러/타임아웃 → 거절).
@@ -102,9 +103,9 @@ related:
 - **회귀**: 기존 수렴 E2E가 토큰 경로로 green(2c).
 
 ## 재개 지점 (Resume)
-- **마지막 완료**: (계획 단계) — 이 plan 작성·커밋. 상위 [m2-persistence-session](2026-06-30-m2-persistence-session.md) §재개 지점 = "다음=Phase 2".
-- **다음**: **ADR-0021 작성(controller)** → **2a-1 gateway 인증**(ws-gateway 새 브랜치, TDD, 로컬 테스트 → diff 제시 → 건별 승인) → 2a-2 → 2b(engine) → 2c(frontend).
-- **주의**: 서비스 레포 = branch+PR+push 건별 승인. proto **무변경**(계약 추가 없음) → 태그 bump 불요. gateway VT pinning(블로킹 gRPC/HTTP in 핸드셰이크) 구현 시 검증. subprotocol 토큰 형식·y-websocket 버전 subprotocol 지원 = 신규도구 spec 사전검증. 이 §재개 지점 변경 시 상위 persistence plan·CLAUDE.md 동기화(plan-logging §재개 지점 SSOT).
+- **마지막 완료**: **2a-1 gateway 인증 핸드셰이크** — [backend PR #16](https://github.com/ressKim-io/weDocs-backend/pull/16)(커밋 `19d7716`, **push·PR 완료, 리뷰/머지 대기**), 69 테스트 green. ADR-0021(`8e08af5`)도 완료. 교훈 = [dev-log](../dev-logs/2026-07-19-m2-gateway-authn-observability.md).
+- **다음**: **2a-2 gateway 인가 + viewer 다층 1차**(같은 ws-gateway 레포, PR #16 머지 후 새 브랜치) — doc-service `CheckPermission` gRPC 클라이언트(mTLS·timeout·fail-closed) + 핸드셰이크 authz(`allowed=false`/UNSPECIFIED→**403**, VIEWER=read-only·EDITOR/OWNER=양방향) + viewer write-drop 1차 + role 메타 엔진 전달 + 관측(`checkpermission_duration`·`authz_backend_error_total`). 이후 2b(engine role 방어)→2c(frontend 토큰). §PR 분해 2a-2 참조.
+- **주의**: 서비스 레포 = branch+PR+push 건별 승인. proto **무변경** → 태그 bump 불요. **VT pinning 재검 포인트 = 2a-2**(CheckPermission 블로킹 gRPC를 핸드셰이크 VT에서 호출). **관측 계약 이어짐**: 2a-2가 `ws_handshake_total{result}`에 `authz_denied`·`backend_error` 추가(2a-1이 authn_fail·ok 확립). 이 §재개 지점 변경 시 상위 persistence plan·CLAUDE.md 동기화(plan-logging §재개 지점 SSOT).
 
 ## 범위 밖
 - 연결 중 권한 강등 즉시 반영·연결 중 토큰 주기 재검증 → 후속(ADR-0014 트레이드오프, 재연결 시 반영이 MLP).
