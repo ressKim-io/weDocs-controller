@@ -1,12 +1,13 @@
 ---
 date: 2026-07-03
 slug: secure-coding-retrofit
-status: planned
+status: done
 related:
   - plans/2026-07-03-security-quality-standards.md
   - plans/2026-07-01-craft-standards-alignment.md
   - adr/0013-snapshot-persistence-lifecycle.md
   - adr/0014-auth-authz-boundary.md
+  - dev-logs/2026-07-18-secure-coding-retrofit-completion.md
 ---
 
 # secure-coding·design-patterns retrofit — 기존 코드 [B] 위반 소급 정합
@@ -24,24 +25,28 @@ related:
 ### P0 — DoS 체인 차단 (독립 PR 2건)
 
 **엔진 PR (crdt-engine, 1건)** — 시뮬레이션 fire 직결:
-- [ ] `DocId` 검증 생성자: `From` → `TryFrom<&str>`(길이·문자집합) — `engine.rs:39-49` + 호출부 `service.rs:127-133` (SC-P1)
-- [ ] 문서 수 상한: `open()` 삽입 전 상한 검사, 초과 시 `Status::resource_exhausted` — `engine.rs:109-123` (SC-P2; **eviction은 범위 밖** — ADR-0013 영속화 선행)
-- [ ] `max_decoding_message_size` 명시 + `concurrency_limit`/timeout 근거화 — `main.rs:23-29` (SC-P2/P5)
-- [ ] `ServerFrame` 스마트 생성자로 수동 조립 4곳 단일화 — `service.rs:149·204·235·246` (DP-P4/P5)
-- [ ] doc-id mismatch 에러의 서버측 바인딩 에코백 제거(분류 code만) — `service.rs:193` (SC-P4)
+- [x] `DocId` 검증 생성자: `From` → `TryFrom<&str>`(길이·문자집합) — `engine.rs:39-49` + 호출부 `service.rs:127-133` (SC-P1)
+- [x] 문서 수 상한: `open()` 삽입 전 상한 검사, 초과 시 `Status::resource_exhausted` — `engine.rs:109-123` (SC-P2; **eviction은 범위 밖** — ADR-0013 영속화 선행)
+- [x] `max_decoding_message_size` 명시 + `concurrency_limit`/timeout 근거화 — `main.rs:23-29` (SC-P2/P5)
+- [x] `ServerFrame` 스마트 생성자로 수동 조립 4곳 단일화 — `service.rs:149·204·235·246` (DP-P4/P5)
+- [x] doc-id mismatch 에러의 서버측 바인딩 에코백 제거(분류 code만) — `service.rs:193` (SC-P4)
+
+→ [crdt-engine PR #9](https://github.com/ressKim-io/weDocs-crdt-engine/pull/9) 머지(`5854b72`, 2026-07-18). 17건 green.
 
 **게이트웨이 PR (backend, 1건)**:
-- [ ] room 경계 검증(`HandshakeInterceptor`: 길이·문자집합) + `RoomId` 도메인 타입 내부 관통 — `roomFromUri` 소급 (SC-P1, DP-P6)
-- [ ] WS 프레임/버퍼 상한 + 세션 idle timeout 명시(`ServletServerContainerFactoryBean`) — Tomcat 기본 8192B 암묵 의존 해소, Yjs sync-step2 최대 크기 근거 명시 (SC-P2)
-- [ ] Origin 화이트리스트(프로파일 분리) — `setAllowedOriginPatterns("*")` 해소 (SC-P5)
+- [x] room 경계 검증(`HandshakeInterceptor`: 길이·문자집합) + `RoomId` 도메인 타입 내부 관통 — `roomFromUri` 소급 (SC-P1, DP-P6)
+- [x] WS 프레임/버퍼 상한 + 세션 idle timeout 명시(`ServletServerContainerFactoryBean`) — Tomcat 기본 8192B 암묵 의존 해소, Yjs sync-step2 최대 크기 근거 명시 (SC-P2)
+- [x] Origin 화이트리스트(프로파일 분리) — `setAllowedOriginPatterns("*")` 해소 (SC-P5)
+
+→ [backend PR #14](https://github.com/ressKim-io/weDocs-backend/pull/14) 머지(`1d94a9a`, 2026-07-18). 40건 green.
 
 ### P1 — 안전 기본값 (M2 Phase 1b/2와 접점)
-- [ ] gateway→engine gRPC: 채널 keepalive·재연결 정책. **신규 unary deadline은 M2 1b 신규 코드가 게이트로 강제**(retrofit 아님) (SC-P5)
-- [ ] `Sync`/`GetSnapshot` 신뢰 경계 주석+이슈(mTLS/NetworkPolicy 전제 — M5) — 인가 **구현**은 M2 Phase 2 소속 (SC-P3)
+- [x] gateway→engine gRPC: 채널 keepalive·재연결 정책. **신규 unary deadline은 M2 1b 신규 코드가 게이트로 강제**(retrofit 아님) (SC-P5) — 위 게이트웨이 PR #14에 포함
+- [x] `Sync`/`GetSnapshot` 신뢰 경계 주석+이슈(mTLS/NetworkPolicy 전제 — M5) — 인가 **구현**은 M2 Phase 2 소속 (SC-P3) — 위 엔진 PR #9에 포함
 
 ### P2 — 잔여 [A]류
-- [ ] dev 크리덴셜 프로파일 분리(`application.yml`) · 무페이지네이션 조회 `Pageable`(doc-service — backend 최신 fetch 후 재확인)
-- [ ] frontend: room 파라미터 클라 측 sanity + `wss://` 배포 강제(비고 — 크래프트 렌즈 비대상)
+- [x] dev 크리덴셜 프로파일 분리(`application.yml`) · 무페이지네이션 조회 `Pageable`(doc-service — backend 최신 fetch 후 재확인) — [backend PR #15](https://github.com/ressKim-io/weDocs-backend/pull/15) 머지(`a74667b`). 페이지네이션은 재확인 결과 기존에 이미 처리됨(트리 쿼리=Limit, `findById_UserId`=문서화된 예외).
+- [x] frontend: room 파라미터 클라 측 sanity + `wss://` 배포 강제(비고 — 크래프트 렌즈 비대상) — [frontend PR #3](https://github.com/ressKim-io/weDocs-frontend/pull/3) 머지(`f7b5b92`).
 
 ### 제외 (오지목 교정 — 게이트 시뮬레이션 발견)
 - ~~레지스트리 `DocStore` trait 도입~~ — **기각**. ADR-0013의 실제 seam은 엔진→doc-service **아웃바운드 클라이언트**(SaveSnapshot/LoadSnapshot)이지 레지스트리가 아님. trait(`SnapshotStore`)는 **M2 Phase 3 신설 코드**에 design-patterns P2 게이트로 적용(retrofit 대상 아님). 레지스트리 trait는 과설계.
@@ -60,9 +65,9 @@ related:
 
 ## 재개 지점 (Resume)
 
-- 마지막 완료 = plan 초안 작성(실행 전)
-- 다음 = 사용자 승인 → crdt-engine 브랜치(`feature/secure-coding-retrofit`) 생성 → 엔진 PR 체크리스트 순서대로
-- 주의 = **backend 로컬 클론 stale**(main=`30e0aca`, PR #3/#4 미반영) — 착수 전 `git fetch` 필수. 서비스 레포 push·PR·머지 = 건별 승인.
+- 마지막 완료 = **전 항목 완료(2026-07-18)**: crdt-engine PR #9(`5854b72`)·backend PR #14(`1d94a9a`)·backend PR #15(`a74667b`)·frontend PR #3(`f7b5b92`) 전부 머지. 상세 = `docs/dev-logs/2026-07-18-secure-coding-retrofit-completion.md`.
+- 다음 = Phase 2(M2 인증) 착수 — `docs/plans/2026-06-30-m2-persistence-session.md` §재개지점 참조.
+- 주의 = 이 4 PR은 controller와 별도 세션에서 진행·머지되어 있었고, controller의 plan/CLAUDE.md 상태 갱신이 하루 지연됨(2026-07-19 pull 동기화 중 발견·정합). 서비스 레포 작업 후에는 controller plan도 같은 세션에서 갱신할 것.
 
 ## 범위 밖
 
