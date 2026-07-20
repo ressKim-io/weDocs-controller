@@ -101,12 +101,14 @@ related:
 
 > 게이트웨이 무변경. `service.rs` 358줄 / `handle_inbound`(:223-263)의 read·write 분기는 **독립 `if` 2개**(oneof 아님 → 한 프레임에 둘 다 가능) / 엔진 `grep -rn "role" src/` = 0건 / 엔진엔 메트릭 익스포터 없음(tracing만).
 
-- [ ] **경계 타입**: `src/service.rs`에 `SessionRole {Viewer, Editor}` + `TryFrom<&str>`. 위치 근거 — `DocId`는 레지스트리 키라 `engine.rs`지만 role은 CRDT가 전혀 모르는 **전송 경계 개념**이므로 경계 파일에 둔다.
-- [ ] **추출**: `extract_role(&MetadataMap) -> Result<SessionRole, Status>` — `extract_doc_id`(:168-179) 패턴 그대로(부재 → `invalid_argument("missing role metadata")`, 미인식 → 상수 `INVALID_ROLE_MSG`, 상세는 서버 로그만 = P4). ⚠️ untrusted 원문 무상한 로깅 금지(길이 캡 또는 값 생략). `sync()`에서 `extract_doc_id` 직후·`registry.open` **이전**에 호출(자원 할당 전 거절) + span에 `role` 필드.
-- [ ] **강제**: `run_session`→`handle_inbound`에 `role` 전달, `doc_id mismatch` 가드 **직후**(=read 블록보다 앞)에 guard clause — viewer + `!update.is_empty()` → `permission_denied` 전송 후 `return false`. 혼합 프레임이 diff를 받아가지 못하게 순서가 중요.
-- [ ] **신뢰 경계 주석 갱신**(:96-101): "엔진 자체 방어선은 docId·`MAX_DOCUMENTS`·프레임 크기뿐"이 더 이상 사실이 아님 → role 강제 추가 + 남는 갭(호출자 신원 미검증 = mTLS/NetworkPolicy는 M5) 명시.
-- [ ] **테스트**: `build.rs` `build_client(true)`(D5) + `tests/sync_role.rs` 신규 — 랜덤 포트 `TcpListener`(0) + `serve_with_incoming` + 생성 클라이언트로 실제 스트림. ① viewer+update → `PermissionDenied`·스트림 종료 ② **viewer+state_vector만 → diff 정상 수신·유지**(읽기 불가 회귀 방지, 가장 중요한 반대 케이스) ③ editor+update → 적용·유지 ④ role 부재 → open 실패 ⑤ 미인식(`"owner"`/`"admin"`/`""`) → 거절(⚠️ `"owner"` 거절이 의도임을 테스트명에 명시 — 게이트웨이가 이미 editor로 접음). + 인라인 `extract_role` 단위 테스트(:331-337 미러링).
-- [ ] 검증: `make proto-sync && cargo build && cargo test && cargo clippy --all-targets -- -D warnings && cargo fmt --check` (⚠️ `proto/`는 gitignore·미생성 시 빌드 자체 실패, Makefile에 clippy/fmt 타깃 없음).
+> **진행 상태(2026-07-20)**: 구현·테스트 완료, 로컬 커밋 `7fb01b5`(브랜치 `feature/m2-phase2b-engine-role-enforcement`, **미푸시**). 28 테스트 green(lib 17 + proptest 3 + fanout 3 + **sync_role 5**), `cargo clippy --all-targets -- -D warnings`·`cargo fmt --check` clean. ⚠️ **크래프트 게이트 2-렌즈 리뷰 미완** — rust-expert·code-reviewer 서브에이전트가 세션 한도로 중단(부분 출력만, findings 없음). **재개 시 게이트 리뷰부터 다시 실행 → 반영 → PR**.
+
+- [x] **경계 타입**: `src/service.rs`에 `SessionRole {Viewer, Editor}` + `TryFrom<&str>`. 위치 근거 — `DocId`는 레지스트리 키라 `engine.rs`지만 role은 CRDT가 전혀 모르는 **전송 경계 개념**이므로 경계 파일에 둔다.
+- [x] **추출**: `extract_role(&MetadataMap) -> Result<SessionRole, Status>` — `extract_doc_id`(:168-179) 패턴 그대로(부재 → `invalid_argument("missing role metadata")`, 미인식 → 상수 `INVALID_ROLE_MSG`, 상세는 서버 로그만 = P4). ⚠️ untrusted 원문 무상한 로깅 금지(길이 캡 또는 값 생략). `sync()`에서 `extract_doc_id` 직후·`registry.open` **이전**에 호출(자원 할당 전 거절) + span에 `role` 필드.
+- [x] **강제**: `run_session`→`handle_inbound`에 `role` 전달, `doc_id mismatch` 가드 **직후**(=read 블록보다 앞)에 guard clause — viewer + `!update.is_empty()` → `permission_denied` 전송 후 `return false`. 혼합 프레임이 diff를 받아가지 못하게 순서가 중요.
+- [x] **신뢰 경계 주석 갱신**(:96-101): "엔진 자체 방어선은 docId·`MAX_DOCUMENTS`·프레임 크기뿐"이 더 이상 사실이 아님 → role 강제 추가 + 남는 갭(호출자 신원 미검증 = mTLS/NetworkPolicy는 M5) 명시.
+- [x] **테스트**: `build.rs` `build_client(true)`(D5) + `tests/sync_role.rs` 신규 — 랜덤 포트 `TcpListener`(0) + `serve_with_incoming` + 생성 클라이언트로 실제 스트림. ① viewer+update → `PermissionDenied`·스트림 종료 ② **viewer+state_vector만 → diff 정상 수신·유지**(읽기 불가 회귀 방지, 가장 중요한 반대 케이스) ③ editor+update → 적용·유지 ④ role 부재 → open 실패 ⑤ 미인식(`"owner"`/`"admin"`/`""`) → 거절(⚠️ `"owner"` 거절이 의도임을 테스트명에 명시 — 게이트웨이가 이미 editor로 접음). + 인라인 `extract_role` 단위 테스트(:331-337 미러링).
+- [x] 검증: `make proto-sync && cargo build && cargo test && cargo clippy --all-targets -- -D warnings && cargo fmt --check` (⚠️ `proto/`는 gitignore·미생성 시 빌드 자체 실패, Makefile에 clippy/fmt 타깃 없음).
 
 ### 2c. frontend 토큰 전달 (frontend PR)
 - [ ] y-websocket `WebsocketProvider`가 로그인 JWT를 `Sec-WebSocket-Protocol`(`protocols` 옵션)로 전달. 버전의 subprotocol 지원 **spec 사전검증**(workflow.md 신규도구 검증). read-only(viewer) UI 반영은 최소.
@@ -135,7 +137,8 @@ related:
 - **이전 완료**: **2a-1 gateway 인증 핸드셰이크 ✅ 머지** — [backend PR #16](https://github.com/ressKim-io/weDocs-backend/pull/16) squash 머지(`583b065`, main), 69 테스트 green·CI green(gitleaks/dependency-review pass). ADR-0021(`8e08af5`)도 완료. 교훈 = [dev-log](../dev-logs/2026-07-19-m2-gateway-authn-observability.md).
 - **마지막 완료**: **2a-2 gateway 인가 + viewer 다층 1차 ✅ 머지** — [backend PR #17](https://github.com/ressKim-io/weDocs-backend/pull/17) squash `4cb750d`, main 100 테스트 green·CI green(gitleaks/dependency-review pass, **squash 후 main 스캔도 success** 확인). 크래프트 게이트 2-렌즈 BLOCKING 0, advisory 전량 반영. **VT pinning 이월 검증점 종결** — JFR 0건 + `isVirtual()` 프로브로 공허한 green 배제, ⚠️ 안전 근거는 JEP 491이 아니라 grpc-java `LockSupport.park`라 **재측정 트리거 = grpc-java 메이저 업그레이드**([dev-log](../dev-logs/2026-07-20-vt-pinning-grpc-blocking-stub.md)).
 
-- **다음(진행 중) = 2b crdt-engine 방어층**(Rust, `rust-expert` 🦀 + code-reviewer 2-렌즈). **2a-2가 이미 `role` 메타데이터를 보내고 있다** — 엔진은 지금 그것을 무시하므로, 2b는 수신·강제만 하면 된다(게이트웨이 무변경).
+- **진행 중 = 2b crdt-engine 방어층 — 구현 완료·게이트 미완**. 브랜치 `feature/m2-phase2b-engine-role-enforcement` 로컬 커밋 `7fb01b5`(미푸시). 28 테스트 green(신규 `tests/sync_role.rs` 5건 = 실 gRPC 스트림), clippy `-D warnings`·fmt clean. **다음 액션 = 크래프트 게이트 2-렌즈(`rust-expert` 🦀 + `code-reviewer`) 재실행**(이전 시도는 세션 한도로 중단, findings 0) → 반영 → PR 생성(승인 필요). 구현 요지·리뷰 중점은 아래.
+- 2b 설계 요지(Rust, `rust-expert` 🦀 + code-reviewer 2-렌즈). **2a-2가 이미 `role` 메타데이터를 보내고 있다** — 엔진은 지금 그것을 무시하므로, 2b는 수신·강제만 하면 된다(게이트웨이 무변경).
   - 입력 계약(2a-2가 확정, 이미 wire에 흐름): `Sync` 스트림 open 시 gRPC 메타데이터 **`role` = `"viewer"` | `"editor"`** (`doc-id`와 같은 open-time 채널, **proto 무변경**). 게이트웨이측 생성 지점 = `EngineClient.openSync`, 값의 출처 = `SessionRole.wireValue()`.
   - 할 일: `service.rs`가 open 시 `role`을 읽어 스트림에 보존 → `handle_inbound`의 **`apply_v1` 경로(=`!frame.update.is_empty()`)를 viewer 스트림에서 거부**. `state_vector`(`diff_v1`)는 읽기이므로 통과시켜야 한다(막으면 viewer가 문서를 못 받는다 — 게이트웨이와 같은 판정 기준). 상세 체크리스트 = 위 §2b.
   - ✅ **메타 부재 시 기본 정책 = 결정됨(D3, 2026-07-20)**: 부재·미인식 모두 **open 시점 `invalid_argument`로 스트림 거절**(fail-closed). 게이트웨이는 항상 보내므로 정상 경로 무영향. viewer 위반 처리는 D4(스트림 종료), 테스트 깊이는 D5(실 스트림).
