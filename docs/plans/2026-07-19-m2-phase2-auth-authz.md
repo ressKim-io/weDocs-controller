@@ -74,7 +74,7 @@ related:
 - [x] 테스트(TDD, 69 green): 유효/무효/만료/서명불일치/unknown-kid/subject부재/형식오류, subprotocol echo, 메트릭 Prometheus `_total` 계약, config fail-fast, H-1 정상·거절 양경로. 크래프트 게이트(☕ 2-렌즈, BLOCKING 0).
 - **이월(추적)**: actuator 무인증 노출 → M5 mesh 하드닝 · JWKS-fail vs bad-token `reason` 세분화 → 2a-2(단 `jwks_refresh_total{fail}`로 인프라 다운 구분 가능). VT pinning = 2a-1 무해(첫 fetch만, 이후 refresh는 Nimbus 별도 스레드) — **2a-2 CheckPermission 블로킹 gRPC에서 재검**.
 
-### 2a-2. gateway 인가 + viewer 다층 1차 (ws-gateway PR) — ✅ 구현·게이트 완료(PR 미생성)
+### 2a-2. gateway 인가 + viewer 다층 1차 ✅ ([backend PR #17](https://github.com/ressKim-io/weDocs-backend/pull/17) 머지, squash `4cb750d`)
 
 > 배선 사실(2026-07-20 탐색): 핸드셰이크 체인 = `RoomHandshakeInterceptor`(400) → `AuthHandshakeInterceptor`(401) → **신규 authz** → 프레임워크 Origin(403). authz는 auth 뒤라 `wedocs.roomId`(`RoomId`)·`wedocs.userId`가 이미 세팅된 상태로 받는다. **H-1 불변식이 자동 보호됨** — authz가 403을 세팅하면 Spring이 앞선 인터셉터의 `afterHandshake`를 호출하고, 거기서 `isRejected(status≥400)`로 ok 집계를 건너뛴다(회귀 테스트로 고정).
 
@@ -115,10 +115,16 @@ related:
 - **회귀**: 기존 수렴 E2E가 토큰 경로로 green(2c).
 
 ## 재개 지점 (Resume)
-- **마지막 완료**: **2a-1 gateway 인증 핸드셰이크 ✅ 머지** — [backend PR #16](https://github.com/ressKim-io/weDocs-backend/pull/16) squash 머지(`583b065`, main), 69 테스트 green·CI green(gitleaks/dependency-review pass). ADR-0021(`8e08af5`)도 완료. 교훈 = [dev-log](../dev-logs/2026-07-19-m2-gateway-authn-observability.md).
-- **2a-2 구현 완료(2026-07-20, 커밋 `b2c3f50`, 브랜치 `feature/m2-phase2a2-gateway-authz`, PR 미생성)** — 100 테스트 green(69→100). 크래프트 게이트 2-렌즈(java-expert ☕ + code-reviewer) **BLOCKING 0**, advisory 전량 반영(핸들러 단위 테스트 신설·통합 테스트 스캐폴딩 통합으로 Spring 컨텍스트 부팅 2→1회·properties 검증 테스트·주석 정정). **VT pinning 이월 검증점 종결**: JFR `jdk.VirtualThreadPinned` 0건 + `isVirtual()` 프로브로 공허한 green 배제 — ⚠️ 안전 근거는 JEP 491이 아니라 grpc-java blocking stub의 `LockSupport.park`라 **재측정 트리거 = grpc-java 메이저 업그레이드**([dev-log](../dev-logs/2026-07-20-vt-pinning-grpc-blocking-stub.md)).
-- **다음**: **2a-2 PR 생성·머지 승인** → 이후 2b(engine role 강제)·2c(frontend 토큰). 원 착수 메모: 설계·배선 사실·체크리스트 = §PR 분해 2a-2(위, 탐색 완료분 반영). 결정 D1(비UUID → gRPC 없이 403)·D2(단일 PR) = §2a-2 착수 시 확정 결정. 진행 순서 = 클라이언트 → SessionRole → authz 인터셉터 → 관측 → 배선 → write-drop → role 메타 → 테스트 → ☕ 2-렌즈 게이트. 이후 2b(engine role 방어)→2c(frontend 토큰).
-- **주의**: ⚠️ **엔진측 role 강제가 없어(2b 미완) 현재 viewer 차단은 게이트웨이 단일 지점** — 엔진 gRPC(`0.0.0.0:50051`)에 직접 도달 가능한 호출자는 우회 가능(게이트 리뷰가 확인, ADR-0014 알려진 갭·M5 mTLS/NetworkPolicy 전제). 2b를 미루면 이 갭이 남는다. 서비스 레포 = branch+PR+push 건별 승인. proto **무변경** → 태그 bump 불요. **VT pinning 재검 포인트 = 2a-2**(CheckPermission 블로킹 gRPC를 핸드셰이크 VT에서 호출). **관측 계약 이어짐**: 2a-2가 `ws_handshake_total{result}`에 `authz_denied`·`backend_error` 추가(2a-1이 authn_fail·ok 확립). 이 §재개 지점 변경 시 상위 persistence plan·CLAUDE.md 동기화(plan-logging §재개 지점 SSOT).
+- **이전 완료**: **2a-1 gateway 인증 핸드셰이크 ✅ 머지** — [backend PR #16](https://github.com/ressKim-io/weDocs-backend/pull/16) squash 머지(`583b065`, main), 69 테스트 green·CI green(gitleaks/dependency-review pass). ADR-0021(`8e08af5`)도 완료. 교훈 = [dev-log](../dev-logs/2026-07-19-m2-gateway-authn-observability.md).
+- **마지막 완료**: **2a-2 gateway 인가 + viewer 다층 1차 ✅ 머지** — [backend PR #17](https://github.com/ressKim-io/weDocs-backend/pull/17) squash `4cb750d`, main 100 테스트 green·CI green(gitleaks/dependency-review pass, **squash 후 main 스캔도 success** 확인). 크래프트 게이트 2-렌즈 BLOCKING 0, advisory 전량 반영. **VT pinning 이월 검증점 종결** — JFR 0건 + `isVirtual()` 프로브로 공허한 green 배제, ⚠️ 안전 근거는 JEP 491이 아니라 grpc-java `LockSupport.park`라 **재측정 트리거 = grpc-java 메이저 업그레이드**([dev-log](../dev-logs/2026-07-20-vt-pinning-grpc-blocking-stub.md)).
+
+- **다음 = 2b crdt-engine 방어층**(Rust, `rust-expert` 🦀 + code-reviewer 2-렌즈). **2a-2가 이미 `role` 메타데이터를 보내고 있다** — 엔진은 지금 그것을 무시하므로, 2b는 수신·강제만 하면 된다(게이트웨이 무변경).
+  - 입력 계약(2a-2가 확정, 이미 wire에 흐름): `Sync` 스트림 open 시 gRPC 메타데이터 **`role` = `"viewer"` | `"editor"`** (`doc-id`와 같은 open-time 채널, **proto 무변경**). 게이트웨이측 생성 지점 = `EngineClient.openSync`, 값의 출처 = `SessionRole.wireValue()`.
+  - 할 일: `service.rs`가 open 시 `role`을 읽어 스트림에 보존 → `handle_inbound`의 **`apply_v1` 경로(=`!frame.update.is_empty()`)를 viewer 스트림에서 거부**. `state_vector`(`diff_v1`)는 읽기이므로 통과시켜야 한다(막으면 viewer가 문서를 못 받는다 — 게이트웨이와 같은 판정 기준).
+  - ⚠️ **메타 부재 시 기본 정책을 정해야 한다**: 현재 엔진은 인증이 전혀 없고(`0.0.0.0:50051` 무인가) 게이트웨이 외 호출자도 붙을 수 있다. fail-closed(메타 없으면 거부)면 안전하지만 구버전 게이트웨이/직접 테스트가 깨진다 — **2b 착수 시 사용자 결정 필요**.
+  - 왜 미루면 안 되나: **지금 viewer 차단은 게이트웨이 단일 지점**이다. 엔진에 네트워크로 도달 가능한 호출자는 2a-2의 차단을 통째로 우회한다(게이트 리뷰가 `grep -rn "role" src/` = 0건으로 확인). ADR-0014의 알려진 갭·M5 mTLS/NetworkPolicy 전제이나, 2b 전까지는 실제 노출이다.
+  - 이후 = **2c frontend 토큰 전달**(`WebsocketProvider` `protocols` 옵션으로 JWT, subprotocol 지원 spec 사전검증). ⚠️ 2c에서 **데모 `?room=demo` 경로가 UUID여야 함**(2a-2 D1의 이월) — 실제 페이지 UUID를 쓰도록 정리.
+- **주의**: 서비스 레포 = branch+PR+push 건별 승인. proto **무변경** → 태그 bump 불요. **관측 계약**: `ws_handshake_total{result}` = `ok`·`authn_fail`(2a-1) + `authz_denied`·`backend_error`(2a-2) — 2b가 엔진측 거부 신호를 추가하면 이 계약을 이어서 확장한다. VT pinning 재검점은 2a-2에서 종결(위). 이 §재개 지점 변경 시 상위 persistence plan·CLAUDE.md 동기화(plan-logging §재개 지점 SSOT).
 
 ## 범위 밖
 - 연결 중 권한 강등 즉시 반영·연결 중 토큰 주기 재검증 → 후속(ADR-0014 트레이드오프, 재연결 시 반영이 MLP).
