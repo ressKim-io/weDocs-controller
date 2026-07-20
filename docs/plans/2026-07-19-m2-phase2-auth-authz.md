@@ -34,6 +34,13 @@ related:
 | Q2 | 인증/인가 실패 처리 | **인증·인가 모두 핸드셰이크(업그레이드 전) HTTP 거절**: authn 실패=**401**, authz 거부=**403** + **운영 관측 1급**(구조화 로그·메트릭·fail-closed 신호). WS close **4401/4403 = 연결 후 close 경로로 예약** | 실무 표준·근본 해결. HTTP 상태코드가 access log·Istio/Envoy·Prometheus에 그대로 노출(L7 관측), WS close code는 프레임 내부라 프록시·메트릭에 불가시. 업그레이드 전 거절=세션 자원 미할당(DoS). → **[ADR-0021](../adr/0021-ws-handshake-auth-failure-observability.md)** |
 | Q3 | gateway 검증키 | **doc-service JWKS fetch + 캐시**(kid 매칭, TTL, 회전 지원, fail-closed) | 기존 `JwksController` 재사용, 키 회전 무중단. 런타임 gateway→doc-service 의존은 mTLS(ztunnel)+캐시로 완화 |
 
+### 2a-2 착수 시 확정 결정 (사용자, 2026-07-20)
+
+| # | 결정 | 근거 |
+|---|---|---|
+| D1 | **비UUID `doc_id`/`user_id` → gRPC 호출 없이 403**(`reason=invalid_doc_id`) | `RoomId`는 `[A-Za-z0-9_-]{1,128}`을 허용하지만 `DocServiceImpl`은 `doc_id`·`user_id` 둘 다 **UUID 파싱 필수**(아니면 `INVALID_ARGUMENT`). doc-service가 이미 "비존재 page → `DENIED`(NOT_FOUND 아님)"로 존재 여부를 비노출하므로, 게이트웨이 단축 거절이 **동일 결과 + 무의미 왕복 제거**. ⚠️ 필연적 결과: 기존 `DocWebSocketBridgeIntegrationTest`(room=비UUID, subject=`"it-user"`)는 UUID로 갱신해야 함 |
+| D2 | **2a-2를 단일 PR로**(≤400줄 룰 초과 시 PR 본문에 근거 명시) | authz만 선머지하면 **viewer가 쓰기 가능한 중간 상태**가 열린다(D-5 구멍). 단일 관심사 + 테스트 비중 큼(~300/615줄) |
+
 ### 인가 매핑 (CheckPermissionResponse → 세션 정책)
 - `allowed=false` (또는 `role=UNSPECIFIED`/응답 이상) → **403 거절**(fail-closed).
 - `allowed=true, role=VIEWER` → **read-only 세션**: client→server update **drop**, server→client만 통과 + 엔진에 `role=viewer` 메타 전달.
@@ -67,13 +74,18 @@ related:
 - [x] 테스트(TDD, 69 green): 유효/무효/만료/서명불일치/unknown-kid/subject부재/형식오류, subprotocol echo, 메트릭 Prometheus `_total` 계약, config fail-fast, H-1 정상·거절 양경로. 크래프트 게이트(☕ 2-렌즈, BLOCKING 0).
 - **이월(추적)**: actuator 무인증 노출 → M5 mesh 하드닝 · JWKS-fail vs bad-token `reason` 세분화 → 2a-2(단 `jwks_refresh_total{fail}`로 인프라 다운 구분 가능). VT pinning = 2a-1 무해(첫 fetch만, 이후 refresh는 Nimbus 별도 스레드) — **2a-2 CheckPermission 블로킹 gRPC에서 재검**.
 
-### 2a-2. gateway 인가 + viewer 다층 1차 (ws-gateway PR)
-- [ ] **doc-service gRPC 클라이언트**: `CheckPermission(doc_id, user_id)` 채널(mTLS 전제), timeout + **fail-closed**(에러/타임아웃 → 거절).
-- [ ] **authz 게이트**(핸드셰이크): `allowed=false`/UNSPECIFIED → **HTTP 403**. `VIEWER` → read-only 플래그·`EDITOR|OWNER` → 양방향(세션 attribute).
-- [ ] **viewer write-drop(1차)**: `DocWebSocketHandler`가 read-only 세션의 client→server update 프레임 drop(server→client 유지).
-- [ ] **role 메타 전달**: Sync 스트림 open 시 `role`을 gRPC 메타데이터로 엔진에 전달(doc-id 채널, [ADR-0011](../adr/0011-engine-sync-fanout-bridge.md) 결정4, **proto 무변경**).
-- [ ] **관측(fail-closed 1급)**: `checkpermission_duration` 히스토그램 + `authz_backend_error_total`(doc-service 불가 시 발화 → 알림 후보) + authz 결과 로그. OTel javaagent가 gRPC CheckPermission을 자식 span으로 자동 계측(트레이스 연속성).
-- [ ] 테스트: none=403·viewer read-only(write drop)·editor 양방향, doc-service down=fail-closed 403+메트릭, VT pinning 미발생.
+### 2a-2. gateway 인가 + viewer 다층 1차 (ws-gateway PR) — 🔄 진행 중
+
+> 배선 사실(2026-07-20 탐색): 핸드셰이크 체인 = `RoomHandshakeInterceptor`(400) → `AuthHandshakeInterceptor`(401) → **신규 authz** → 프레임워크 Origin(403). authz는 auth 뒤라 `wedocs.roomId`(`RoomId`)·`wedocs.userId`가 이미 세팅된 상태로 받는다. **H-1 불변식이 자동 보호됨** — authz가 403을 세팅하면 Spring이 앞선 인터셉터의 `afterHandshake`를 호출하고, 거기서 `isRejected(status≥400)`로 ok 집계를 건너뛴다(회귀 테스트로 고정).
+
+- [ ] **doc-service gRPC 클라이언트**(`grpc/DocServiceClient`): `EngineClient` 채널 패턴 재사용(keepalive 30s/10s, `@PreDestroy` shutdown) + **blocking 스텁 + `withDeadlineAfter`**(모듈 내 최초 deadline 사용 — 핸드셰이크 무한대기 방지). 반환은 proto 비누출 3-상태 `ALLOWED(role)`/`DENIED`/`BACKEND_ERROR`(관측에서 거부 vs 장애 구분). **fail-closed**: 모든 `StatusRuntimeException`·타임아웃 → `BACKEND_ERROR`(=거절), 예외 비삼킴.
+- [ ] **경계 타입**(`auth/SessionRole`): `enum {VIEWER, EDITOR}` + `fromProto(Role)` → `OWNER`=EDITOR, `UNSPECIFIED`/`UNRECOGNIZED`=empty(거절). 외부 입력→도메인 타입 단일 변환점(secure-coding P1).
+- [ ] **authz 게이트**(`auth/AuthzHandshakeInterceptor`): roomId·userId **UUID 파싱**(D1, 실패 시 gRPC 없이 403) → `CheckPermission` → `allowed=false`/role 매핑 실패 = **403** `reason=authz_denied` · `BACKEND_ERROR` = **403** `reason=backend_error`. 성공 시 `ROLE_ATTRIBUTE`(`wedocs.role`) 세팅.
+- [ ] **viewer write-drop(1차)**: `DocWebSocketHandler.handleBinaryMessage`가 디코드 결과에 **update가 담겼고** 세션=VIEWER면 엔진 미전달(`SYNC_STEP1`/state_vector는 초기 문서 수신에 필요하므로 **통과**). `YProtocolCodec` 무수정, server→client 단일 writer 불변식(D-6) 유지.
+- [ ] **role 메타 전달**: `EngineClient.openSync(docId, role, …)` — 기존 `doc-id` 메타데이터에 `role`(`viewer|editor`) 추가([ADR-0011](../adr/0011-engine-sync-fanout-bridge.md) 결정4, **proto 무변경**). 엔진 측 강제는 2b.
+- [ ] **관측(fail-closed 1급)**: `ws_handshake_total{result}`에 `authz_denied`·`backend_error` 추가(2a-1의 `ok`/`authn_fail` 계약 연장) + `checkpermission_duration` + `authz_backend_error_total`(알림 후보=page) + `ws_write_dropped_total{reason=viewer}`(D-5가 실제 발화하는지 — 무신호 실패 금지). 로그는 2a-1 규칙 재사용(user=SHA-256 해시, 토큰·PII 비로깅). OTel javaagent가 CheckPermission을 자식 span으로 자동 계측.
+- [ ] **config**(config-contract-audit 3곳 동시): `DocServiceProperties`(`wedocs.doc-service`, `GatewayAuthProperties` fail-fast 패턴) + `@DefaultValue` + `application.yml`.
+- [ ] 테스트: 단위(`AuthzHandshakeInterceptorTest`, 2a-1 테스트 구조 미러링 — `SimpleMeterRegistry` 실계측·Mock 서블릿·fake 클라이언트, 모킹 라이브러리 없음) 비UUID·denied·UNSPECIFIED·backend_error 403 + **H-1 회귀**(403 시 ok 미증가) / 통합 `FakeDocService`(랜덤 포트 실 TCP + `@DynamicPropertySource`, `FakeCrdtEngine` 패턴 — ws-gateway엔 `grpc-inprocess` 없음) + **기존 통합 테스트 room·subject UUID화**(D1 필연) + viewer write drop·editor 양방향·role 헤더 캡처 + **VT pinning 실측**(JFR `jdk.VirtualThreadPinned`; Java 25 JEP 491로 무해 가능성 높으나 **추정 금지·측정**).
 
 ### 2b. crdt-engine 방어층 (crdt-engine PR, rust-expert 리뷰)
 - [ ] Sync 스트림 open 메타에서 `role` 수신 → **viewer 스트림에 도착한 write(update) 프레임 거부**(엔진 방어, D-5 다층 완성). 클라이언트/게이트웨이 우회 대비 최종 방어선.
@@ -104,7 +116,7 @@ related:
 
 ## 재개 지점 (Resume)
 - **마지막 완료**: **2a-1 gateway 인증 핸드셰이크 ✅ 머지** — [backend PR #16](https://github.com/ressKim-io/weDocs-backend/pull/16) squash 머지(`583b065`, main), 69 테스트 green·CI green(gitleaks/dependency-review pass). ADR-0021(`8e08af5`)도 완료. 교훈 = [dev-log](../dev-logs/2026-07-19-m2-gateway-authn-observability.md).
-- **다음**: **2a-2 gateway 인가 + viewer 다층 1차**(같은 ws-gateway 레포, PR #16 머지됨 → 새 브랜치 착수 가능) — doc-service `CheckPermission` gRPC 클라이언트(mTLS·timeout·fail-closed) + 핸드셰이크 authz(`allowed=false`/UNSPECIFIED→**403**, VIEWER=read-only·EDITOR/OWNER=양방향) + viewer write-drop 1차 + role 메타 엔진 전달 + 관측(`checkpermission_duration`·`authz_backend_error_total`). 이후 2b(engine role 방어)→2c(frontend 토큰). §PR 분해 2a-2 참조.
+- **다음**: **2a-2 gateway 인가 + viewer 다층 1차 — 🔄 착수(2026-07-20)**. 설계·배선 사실·체크리스트 = §PR 분해 2a-2(위, 탐색 완료분 반영). 결정 D1(비UUID → gRPC 없이 403)·D2(단일 PR) = §2a-2 착수 시 확정 결정. 진행 순서 = 클라이언트 → SessionRole → authz 인터셉터 → 관측 → 배선 → write-drop → role 메타 → 테스트 → ☕ 2-렌즈 게이트. 이후 2b(engine role 방어)→2c(frontend 토큰).
 - **주의**: 서비스 레포 = branch+PR+push 건별 승인. proto **무변경** → 태그 bump 불요. **VT pinning 재검 포인트 = 2a-2**(CheckPermission 블로킹 gRPC를 핸드셰이크 VT에서 호출). **관측 계약 이어짐**: 2a-2가 `ws_handshake_total{result}`에 `authz_denied`·`backend_error` 추가(2a-1이 authn_fail·ok 확립). 이 §재개 지점 변경 시 상위 persistence plan·CLAUDE.md 동기화(plan-logging §재개 지점 SSOT).
 
 ## 범위 밖
