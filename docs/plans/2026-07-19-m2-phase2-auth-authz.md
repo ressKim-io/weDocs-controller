@@ -41,6 +41,16 @@ related:
 | D1 | **비UUID `doc_id`/`user_id` → gRPC 호출 없이 403**(`reason=invalid_doc_id`) | `RoomId`는 `[A-Za-z0-9_-]{1,128}`을 허용하지만 `DocServiceImpl`은 `doc_id`·`user_id` 둘 다 **UUID 파싱 필수**(아니면 `INVALID_ARGUMENT`). doc-service가 이미 "비존재 page → `DENIED`(NOT_FOUND 아님)"로 존재 여부를 비노출하므로, 게이트웨이 단축 거절이 **동일 결과 + 무의미 왕복 제거**. ⚠️ 필연적 결과: 기존 `DocWebSocketBridgeIntegrationTest`(room=비UUID, subject=`"it-user"`)는 UUID로 갱신해야 함 |
 | D2 | **2a-2를 단일 PR로**(≤400줄 룰 초과 시 PR 본문에 근거 명시) | authz만 선머지하면 **viewer가 쓰기 가능한 중간 상태**가 열린다(D-5 구멍). 단일 관심사 + 테스트 비중 큼(~300/615줄) |
 
+### 2b 착수 시 확정 결정 (사용자, 2026-07-20)
+
+| # | 결정 | 근거 |
+|---|---|---|
+| D3 | **`role` 메타 부재/미인식 = 스트림 거절**(`invalid_argument`, open 시점 · registry.open 이전) | fail-closed. 게이트웨이는 `role`을 **무조건** 보내므로(`EngineClient.openSync`가 유일 호출부·null 분기 없음, 롤 미해결 시 스트림을 아예 안 엶) 정상 경로 무영향. "메타 없으면 조용히 동작"은 계약 위반을 은폐한다. 대가: grpcurl 수동 디버깅 시 `-H role:editor` 필수 |
+| D4 | **viewer 스트림에 update 도착 = `permission_denied` 전송 후 스트림 종료** | 정상 게이트웨이는 viewer update를 절대 전달하지 않는다(`DocWebSocketHandler.isPermitted` 필터) → **도착 자체가 우회 신호**. 기존 `doc_id mismatch` 선례와 동일 규약(하드 위반=닫음). 같은 프레임의 `state_vector`도 함께 버려짐 — 게이트웨이도 프레임 통째로 drop하므로 판정 의미 동일 |
+| D5 | **`build.rs`의 `build_client(false)` → `true` flip 후 실제 Sync 스트림 통합 테스트** | 2b 정확성이 전부 gRPC 메타 경계에 있어, private 헬퍼 단위테스트로는 "실제로 막히는지"를 증명 못 한다(배선 회귀에 취약 = 공허한 green). ADR-0013상 Phase 3에서 어차피 flip 예정이라 선반영 |
+
+**2b wire 계약(2a-2가 이미 흘리는 값, 2026-07-20 양 레포 탐색으로 확인)**: 메타 키 `role`(ASCII, `doc-id`와 같은 open-time 채널, `EngineClient.java:28-29·56-64`) · 값은 **`"viewer"` | `"editor"` 둘뿐**(OWNER는 게이트웨이서 editor로 접힘·UNSPECIFIED는 403, `SessionRole.java:27-33·43-45`) · "쓰기"의 정의 = **`update` 필드 non-empty**(`state_vector`/SyncStep1은 viewer도 통과해야 함 — 막으면 문서 수신 불가, `DocWebSocketHandler.java:100-107`).
+
 ### 인가 매핑 (CheckPermissionResponse → 세션 정책)
 - `allowed=false` (또는 `role=UNSPECIFIED`/응답 이상) → **403 거절**(fail-closed).
 - `allowed=true, role=VIEWER` → **read-only 세션**: client→server update **drop**, server→client만 통과 + 엔진에 `role=viewer` 메타 전달.
@@ -87,9 +97,16 @@ related:
 - [x] **config**(config-contract-audit 3곳 동시): `DocServiceProperties`(`wedocs.doc-service`, `GatewayAuthProperties` fail-fast 패턴) + `@DefaultValue` + `application.yml`.
 - [x] 테스트: 단위(`AuthzHandshakeInterceptorTest`, 2a-1 테스트 구조 미러링 — `SimpleMeterRegistry` 실계측·Mock 서블릿·fake 클라이언트, 모킹 라이브러리 없음) 비UUID·denied·UNSPECIFIED·backend_error 403 + **H-1 회귀**(403 시 ok 미증가) / 통합 `FakeDocService`(랜덤 포트 실 TCP + `@DynamicPropertySource`, `FakeCrdtEngine` 패턴 — ws-gateway엔 `grpc-inprocess` 없음) + **기존 통합 테스트 room·subject UUID화**(D1 필연) + viewer write drop·editor 양방향·role 헤더 캡처 + **VT pinning 실측**(JFR `jdk.VirtualThreadPinned`; Java 25 JEP 491로 무해 가능성 높으나 **추정 금지·측정**).
 
-### 2b. crdt-engine 방어층 (crdt-engine PR, rust-expert 리뷰)
-- [ ] Sync 스트림 open 메타에서 `role` 수신 → **viewer 스트림에 도착한 write(update) 프레임 거부**(엔진 방어, D-5 다층 완성). 클라이언트/게이트웨이 우회 대비 최종 방어선.
-- [ ] 테스트: viewer 메타 스트림의 write 거부 + editor 통과, 메타 부재 시 기본정책(fail-closed 관점).
+### 2b. crdt-engine 방어층 (crdt-engine PR, 🦀 `rust-expert` + `code-reviewer` 2-렌즈) — 진행 중
+
+> 게이트웨이 무변경. `service.rs` 358줄 / `handle_inbound`(:223-263)의 read·write 분기는 **독립 `if` 2개**(oneof 아님 → 한 프레임에 둘 다 가능) / 엔진 `grep -rn "role" src/` = 0건 / 엔진엔 메트릭 익스포터 없음(tracing만).
+
+- [ ] **경계 타입**: `src/service.rs`에 `SessionRole {Viewer, Editor}` + `TryFrom<&str>`. 위치 근거 — `DocId`는 레지스트리 키라 `engine.rs`지만 role은 CRDT가 전혀 모르는 **전송 경계 개념**이므로 경계 파일에 둔다.
+- [ ] **추출**: `extract_role(&MetadataMap) -> Result<SessionRole, Status>` — `extract_doc_id`(:168-179) 패턴 그대로(부재 → `invalid_argument("missing role metadata")`, 미인식 → 상수 `INVALID_ROLE_MSG`, 상세는 서버 로그만 = P4). ⚠️ untrusted 원문 무상한 로깅 금지(길이 캡 또는 값 생략). `sync()`에서 `extract_doc_id` 직후·`registry.open` **이전**에 호출(자원 할당 전 거절) + span에 `role` 필드.
+- [ ] **강제**: `run_session`→`handle_inbound`에 `role` 전달, `doc_id mismatch` 가드 **직후**(=read 블록보다 앞)에 guard clause — viewer + `!update.is_empty()` → `permission_denied` 전송 후 `return false`. 혼합 프레임이 diff를 받아가지 못하게 순서가 중요.
+- [ ] **신뢰 경계 주석 갱신**(:96-101): "엔진 자체 방어선은 docId·`MAX_DOCUMENTS`·프레임 크기뿐"이 더 이상 사실이 아님 → role 강제 추가 + 남는 갭(호출자 신원 미검증 = mTLS/NetworkPolicy는 M5) 명시.
+- [ ] **테스트**: `build.rs` `build_client(true)`(D5) + `tests/sync_role.rs` 신규 — 랜덤 포트 `TcpListener`(0) + `serve_with_incoming` + 생성 클라이언트로 실제 스트림. ① viewer+update → `PermissionDenied`·스트림 종료 ② **viewer+state_vector만 → diff 정상 수신·유지**(읽기 불가 회귀 방지, 가장 중요한 반대 케이스) ③ editor+update → 적용·유지 ④ role 부재 → open 실패 ⑤ 미인식(`"owner"`/`"admin"`/`""`) → 거절(⚠️ `"owner"` 거절이 의도임을 테스트명에 명시 — 게이트웨이가 이미 editor로 접음). + 인라인 `extract_role` 단위 테스트(:331-337 미러링).
+- [ ] 검증: `make proto-sync && cargo build && cargo test && cargo clippy --all-targets -- -D warnings && cargo fmt --check` (⚠️ `proto/`는 gitignore·미생성 시 빌드 자체 실패, Makefile에 clippy/fmt 타깃 없음).
 
 ### 2c. frontend 토큰 전달 (frontend PR)
 - [ ] y-websocket `WebsocketProvider`가 로그인 JWT를 `Sec-WebSocket-Protocol`(`protocols` 옵션)로 전달. 버전의 subprotocol 지원 **spec 사전검증**(workflow.md 신규도구 검증). read-only(viewer) UI 반영은 최소.
@@ -118,10 +135,10 @@ related:
 - **이전 완료**: **2a-1 gateway 인증 핸드셰이크 ✅ 머지** — [backend PR #16](https://github.com/ressKim-io/weDocs-backend/pull/16) squash 머지(`583b065`, main), 69 테스트 green·CI green(gitleaks/dependency-review pass). ADR-0021(`8e08af5`)도 완료. 교훈 = [dev-log](../dev-logs/2026-07-19-m2-gateway-authn-observability.md).
 - **마지막 완료**: **2a-2 gateway 인가 + viewer 다층 1차 ✅ 머지** — [backend PR #17](https://github.com/ressKim-io/weDocs-backend/pull/17) squash `4cb750d`, main 100 테스트 green·CI green(gitleaks/dependency-review pass, **squash 후 main 스캔도 success** 확인). 크래프트 게이트 2-렌즈 BLOCKING 0, advisory 전량 반영. **VT pinning 이월 검증점 종결** — JFR 0건 + `isVirtual()` 프로브로 공허한 green 배제, ⚠️ 안전 근거는 JEP 491이 아니라 grpc-java `LockSupport.park`라 **재측정 트리거 = grpc-java 메이저 업그레이드**([dev-log](../dev-logs/2026-07-20-vt-pinning-grpc-blocking-stub.md)).
 
-- **다음 = 2b crdt-engine 방어층**(Rust, `rust-expert` 🦀 + code-reviewer 2-렌즈). **2a-2가 이미 `role` 메타데이터를 보내고 있다** — 엔진은 지금 그것을 무시하므로, 2b는 수신·강제만 하면 된다(게이트웨이 무변경).
+- **다음(진행 중) = 2b crdt-engine 방어층**(Rust, `rust-expert` 🦀 + code-reviewer 2-렌즈). **2a-2가 이미 `role` 메타데이터를 보내고 있다** — 엔진은 지금 그것을 무시하므로, 2b는 수신·강제만 하면 된다(게이트웨이 무변경).
   - 입력 계약(2a-2가 확정, 이미 wire에 흐름): `Sync` 스트림 open 시 gRPC 메타데이터 **`role` = `"viewer"` | `"editor"`** (`doc-id`와 같은 open-time 채널, **proto 무변경**). 게이트웨이측 생성 지점 = `EngineClient.openSync`, 값의 출처 = `SessionRole.wireValue()`.
-  - 할 일: `service.rs`가 open 시 `role`을 읽어 스트림에 보존 → `handle_inbound`의 **`apply_v1` 경로(=`!frame.update.is_empty()`)를 viewer 스트림에서 거부**. `state_vector`(`diff_v1`)는 읽기이므로 통과시켜야 한다(막으면 viewer가 문서를 못 받는다 — 게이트웨이와 같은 판정 기준).
-  - ⚠️ **메타 부재 시 기본 정책을 정해야 한다**: 현재 엔진은 인증이 전혀 없고(`0.0.0.0:50051` 무인가) 게이트웨이 외 호출자도 붙을 수 있다. fail-closed(메타 없으면 거부)면 안전하지만 구버전 게이트웨이/직접 테스트가 깨진다 — **2b 착수 시 사용자 결정 필요**.
+  - 할 일: `service.rs`가 open 시 `role`을 읽어 스트림에 보존 → `handle_inbound`의 **`apply_v1` 경로(=`!frame.update.is_empty()`)를 viewer 스트림에서 거부**. `state_vector`(`diff_v1`)는 읽기이므로 통과시켜야 한다(막으면 viewer가 문서를 못 받는다 — 게이트웨이와 같은 판정 기준). 상세 체크리스트 = 위 §2b.
+  - ✅ **메타 부재 시 기본 정책 = 결정됨(D3, 2026-07-20)**: 부재·미인식 모두 **open 시점 `invalid_argument`로 스트림 거절**(fail-closed). 게이트웨이는 항상 보내므로 정상 경로 무영향. viewer 위반 처리는 D4(스트림 종료), 테스트 깊이는 D5(실 스트림).
   - 왜 미루면 안 되나: **지금 viewer 차단은 게이트웨이 단일 지점**이다. 엔진에 네트워크로 도달 가능한 호출자는 2a-2의 차단을 통째로 우회한다(게이트 리뷰가 `grep -rn "role" src/` = 0건으로 확인). ADR-0014의 알려진 갭·M5 mTLS/NetworkPolicy 전제이나, 2b 전까지는 실제 노출이다.
   - 이후 = **2c frontend 토큰 전달**(`WebsocketProvider` `protocols` 옵션으로 JWT, subprotocol 지원 spec 사전검증). ⚠️ 2c에서 **데모 `?room=demo` 경로가 UUID여야 함**(2a-2 D1의 이월) — 실제 페이지 UUID를 쓰도록 정리.
 - **주의**: 서비스 레포 = branch+PR+push 건별 승인. proto **무변경** → 태그 bump 불요. **관측 계약**: `ws_handshake_total{result}` = `ok`·`authn_fail`(2a-1) + `authz_denied`·`backend_error`(2a-2) — 2b가 엔진측 거부 신호를 추가하면 이 계약을 이어서 확장한다. VT pinning 재검점은 2a-2에서 종결(위). 이 §재개 지점 변경 시 상위 persistence plan·CLAUDE.md 동기화(plan-logging §재개 지점 SSOT).
