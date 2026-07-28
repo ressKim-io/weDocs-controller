@@ -1,7 +1,7 @@
 ---
 date: 2026-06-30
 slug: plan-audit-improvements
-status: planned
+status: in-progress
 related:
   - dev-logs/2026-06-30-m1-plan-audit.md
   - plans/2026-06-25-m1-convergence-impl.md
@@ -73,9 +73,9 @@ related:
 
 - [ ] **T4-1 (NFR-01/02, DOD-01/02)** `docs/status/dod-tracker.md`(DoD 9개 × 마일스톤 × 검증증거) + NFR별 측정수단·소유 마일스톤 매핑(p95→M3 부하 k6/Gatling, AI→M4). 벤치≠SLI caveat. M1 완료분(#1/#6부분/#8) 마킹.
 - [ ] **T4-2 (OBS-01)** 관측 콜사이트 정의(engine merge_duration 히스토그램·active_streams 게이지·lagged_total 카운터 / gateway active connection 게이지). M5 백엔드 전이라도 콜사이트 목록을 M5 plan에 선고정(가능하면 no-op exporter로 콜사이트 선삽입).
-- [ ] **T4-3 (CI-01)** 서비스레포 최소 PR CI를 M2 전 도입(engine: cargo test+clippy+bench --no-run / gateway: gradle test / frontend: vitest+build). 이미지빌드(cargo-chef/distroless)·소비자 buf 정합·다운스트림 트리거는 M5. 각 서비스레포 branch+PR+승인.
+- [x] **T4-3 (CI-01) ✅ 완료(2026-07-28)** — 서비스 3레포 빌드·테스트 CI 신설: engine `fab982d`(build/test/clippy/fmt + buf export vendoring) · backend `181b8de`(gradlew build + buf generate 선행) · frontend `ff2e077`(build/test:unit, 단위·E2E 스크립트 분리). **대조군 5종으로 red 확인**이 완료 조건이었다. ⚠️ "M2 전 도입" 권고보다 늦어져 **Phase 2b 직후**에 실행됨. bench `--no-run`은 미포함(후속). 이미지빌드·다운스트림 트리거는 M5 유지. 상세 = [plan](2026-07-28-build-test-ci-gap.md)(done) · [dev-log](../dev-logs/2026-07-28-build-test-ci-gap.md)
 - [ ] **T4-4 (PDD-02)** ADR 승격 프로그램 — blast radius 큰 것부터(0004 Rust bidi 엔진·0005 yrs·0007 Istio Ambient) 대안비교표 포함 정식 ADR. M6 마감 전 완성.
-- [ ] **T4-5 (PDD-04, SEC-02, 완전성보강)** ①overview.md 결정(생성 또는 룰 현실화) ②M5 plan stub에 mTLS STRICT+평문거부 검증 시나리오·입력검증 규칙 ③통합 로컬개발 compose(engine+gateway+jaeger 일괄) ④의존성 보안 스캔(cargo audit/npm audit) CI 항목 ⑤버전핀 매트릭스 문서.
+- [ ] **T4-5 (PDD-04, SEC-02, 완전성보강)** ①overview.md 결정(생성 또는 룰 현실화) ②M5 plan stub에 mTLS STRICT+평문거부 검증 시나리오·입력검증 규칙 ③통합 로컬개발 compose(engine+gateway+jaeger 일괄) ④~~의존성 보안 스캔(cargo audit/npm audit) CI 항목~~ **✅ 완료(2026-07-03, 4레포 security-scan)** ⑤버전핀 매트릭스 문서.
 
 ---
 
@@ -98,7 +98,7 @@ related:
 
 ## 재개 지점 (Resume)
 
-> **마지막 완료**: **T3(M2 readiness) 전체 완료**(2026-06-30) — 4 ADR(0012~0015) + proto-v0.2.0(LoadSnapshot·page-tree, 로컬 태그) + PRD D-1~6 확정 + [M2 plan](2026-06-30-m2-persistence-session.md) 선기록 + SDD §5/§15 갱신. **M2F-02 blocker 해소**(엔진 push, build_client(true)=ADR-0013). M1 본체는 앞서 종료(T1·T2 완료).
-> **다음 작업 = ① M2 구현 착수**([M2 plan](2026-06-30-m2-persistence-session.md) Phase 1=doc-service 스켈레톤+스키마, backend 레포 branch+PR) **② T4(횡단)**: NFR/DoD 트래커·서비스 CI(T4-3은 M2 전 권장)·관측 콜사이트·ADR 0002~0009 승격. T4 상세 = 이 문서 위 체크리스트.
-> **주의(검증된 사실, 변경 금지 전제)**: ~~telemetry.rs endpoint 미전달~~ → **M1R-09 기각**(0.32 env 자동읽기 검증, 코드 정상·`.with_endpoint` 추가 금지). build_client(false)로 엔진→doc-service 호출불가(T3-1 blocker, 유효) · submodule 6곳(T2-1, 유효) — grep 확인됨. engine·backend·frontend 변경은 branch+PR+건별 승인. controller는 main 직접.
-> **환경**: rust 1.96 · java 25.0.3 · node 24 · docker 29.6 · buf 1.71 · gh 2.95 (전부 Linux 설치 완료). 전체 40건 근거는 dev-log appendix.
+> **마지막 완료**: **T4-3(CI-01) ✅ 2026-07-28** — 서비스 3레포 빌드·테스트 CI 신설(위 체크리스트). 그 전 = **T3(M2 readiness) 전체 완료**(2026-06-30) — 4 ADR(0012~0015) + proto-v0.2.0(LoadSnapshot·page-tree, **당시 로컬 태그 → 2026-07-28 원격 push 완료** `99213c3`) + PRD D-1~6 확정 + [M2 plan](2026-06-30-m2-persistence-session.md) 선기록 + SDD §5/§15 갱신. **M2F-02 blocker 해소**(엔진 push, build_client(true)=ADR-0013). M1 본체는 앞서 종료(T1·T2 완료).
+> **다음 작업 = T4 잔여 4건**(T4-1 NFR/DoD 트래커 · T4-2 관측 콜사이트 · T4-4 ADR 0002~0009 승격 · T4-5 ①②③⑤). T4-3(서비스 CI)은 완료. ⚠️ **M2 구현은 이 plan의 소관이 아니다** — Phase 1 전체·Phase 2(2a·2b)가 이미 머지됐고 현재 진행점은 **Phase 2c**다. M2 재개는 [M2 plan](2026-06-30-m2-persistence-session.md) §재개 지점을 볼 것(이 문서는 횡단 감사 트랙 전용).
+> **주의(검증된 사실, 변경 금지 전제)**: ~~telemetry.rs endpoint 미전달~~ → **M1R-09 기각**(0.32 env 자동읽기 검증, 코드 정상·`.with_endpoint` 추가 금지). ~~build_client(false)로 엔진→doc-service 호출불가~~ → **2026-07-20 해소**(M2 Phase 2b가 `build_client(true)`로 flip, 엔진 커밋 `4d9c39e`) — 이 blocker는 더 이상 유효하지 않다 · submodule 6곳(T2-1, 유효) — grep 확인됨. engine·backend·frontend 변경은 branch+PR+건별 승인. controller는 main 직접.
+> **환경**(2026-06-30 기록): rust 1.96 · java 25.0.3 · node 24 · docker 29.6 · buf 1.71 · gh 2.95. ⚠️ 이후 변동 있음 — 로컬 node는 26.5.0, CI는 node 24 핀(frontend 워크플로, 툴체인 engines 교집합 근거). 전체 40건 근거는 dev-log appendix.
