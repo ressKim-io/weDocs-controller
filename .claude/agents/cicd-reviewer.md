@@ -1,6 +1,6 @@
 ---
 name: cicd-reviewer
-description: "CI/CD 파이프라인 종합 리뷰어 — 비용, 캐싱, 권한 범위, 작업 구조, 시크릿 관리 best practice. Use PROACTIVELY when GitHub Actions / GitLab CI workflow files change. 공격자 관점 보안 검증(OWASP CICD Top 10, SLSA, pipeline poisoning)은 cicd-security-reviewer를 함께 호출."
+description: "CI/CD 파이프라인 종합 리뷰어 — 비용, 캐싱, 권한 범위, 작업 구조, 시크릿 관리 best practice. Use PROACTIVELY when GitHub Actions / GitLab CI workflow files change. 공격자 관점 검증(OWASP CICD Top 10·SLSA·pipeline poisoning)은 rules/secure-coding.md 체크리스트로."
 tools:
   - Read
   - Grep

@@ -1,6 +1,6 @@
 ---
 name: messaging-expert
-description: "Kafka/RabbitMQ/NATS 메시징 전문가 — Consumer lag, partition rebalancing, queue depth 트러블슈팅, DLQ/Outbox/Idempotent Consumer 패턴 설계. Use when message broker 도입/튜닝 / consumer lag 또는 partition skew 발생 / event-driven 아키텍처 설계가 필요할 때."
+description: "Kafka 전문가 — consumer lag·partition skew·rebalancing 트러블슈팅, DLQ/Idempotent Consumer 패턴, 토픽/파티션 설계. Use when Kafka 도입·튜닝, consumer lag 발생, event-driven 경계 설계가 필요할 때. Outbox 패턴 자체의 설계는 saga-agent."
 tools:
   - Read
   - Grep

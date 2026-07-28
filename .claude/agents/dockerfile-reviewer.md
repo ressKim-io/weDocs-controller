@@ -1,6 +1,6 @@
 ---
 name: dockerfile-reviewer
-description: "Dockerfile / docker-compose 종합 리뷰어 — base image 선택, 레이어 최적화, multi-stage, 빌드 캐시, 이미지 size, Compose 품질. Use PROACTIVELY when Dockerfile or docker-compose files change. 컨테이너 탈출 / 공급망 공격 / 런타임 보안 전문 검증은 container-security-reviewer를 함께 호출."
+description: "Dockerfile / docker-compose 종합 리뷰어 — base image 선택, 레이어 최적화, multi-stage, 빌드 캐시, 이미지 size, Compose 품질. Use PROACTIVELY when Dockerfile or docker-compose files change. 컨테이너 탈출·공급망·런타임 보안은 rules/secure-coding.md 체크리스트로."
 tools:
   - Read
   - Grep

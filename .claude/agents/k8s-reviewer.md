@@ -1,6 +1,6 @@
 ---
 name: k8s-reviewer
-description: "K8s manifest / Helm chart / Kustomize 종합 리뷰어 — Pod Security Standards, RBAC, 리소스 관리, 고가용성, 이미지 정책. Use PROACTIVELY when K8s manifest files change. Red team 관점 공격 시나리오(MITRE ATT&CK, container escape, lateral movement)는 k8s-security-reviewer를 함께 호출."
+description: "K8s manifest / Helm chart / Kustomize 종합 리뷰어 — Pod Security Standards, RBAC, 리소스 관리, 고가용성, 이미지 정책. Use PROACTIVELY when K8s manifest files change. Red team 관점 공격 시나리오는 rules/k8s-manifest.md·secure-coding.md 체크리스트로."
 tools:
   - Read
   - Grep

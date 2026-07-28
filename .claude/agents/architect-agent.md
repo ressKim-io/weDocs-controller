@@ -1,6 +1,6 @@
 ---
 name: architect-agent
-description: "MSA 아키텍처 설계 에이전트. 서비스 경계 정의, API 계약(protobuf/OpenAPI) 설계, Bounded Context 매핑, 의존성 분석에 특화. Use for microservice architecture design, service decomposition, and API contract definition. compliance-strategy-agent의 compliance-blueprint를 consume하여 data-model에 규제 제약(PIPA/GDPR) 반영. business-decision-agent의 4 ADR(tenancy/auth/payment/notification)을 consume하여 api-contract 설계."
+description: "MSA 아키텍처 설계 에이전트. 서비스 경계 정의, API 계약(protobuf/OpenAPI) 설계, Bounded Context 매핑, 의존성 분석에 특화. Use for microservice architecture design, service decomposition, and API contract definition."
 tools:
   - Read
   - Grep

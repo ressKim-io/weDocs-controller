@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: "Cross-language 시니어 코드 리뷰어 — correctness, readability, 명명, 중복, 테스트 커버리지, 일반 best practice. Use PROACTIVELY after any code change as the default reviewer. 언어 특화 깊은 검증(Go concurrency, Java JVM/Virtual Threads, Python asyncio, React Server Components)은 go-/java-/python-/frontend-expert를 함께 호출."
+description: "Cross-language 시니어 코드 리뷰어 — correctness, readability, 명명, 중복, 테스트 커버리지, 일반 best practice. Use PROACTIVELY after any code change as the default reviewer. 언어 특화 깊은 검증(Rust 소유권·CRDT 수렴, Java Virtual Threads/JVM, Python asyncio)은 rust-/java-/python-expert를 함께 호출."
 tools:
   - Read
   - Grep

@@ -1,6 +1,6 @@
 ---
 name: database-expert
-description: "PostgreSQL 전문가 에이전트. PostgreSQL 성능 튜닝, PgBouncer, Streaming Replication, Kubernetes PostgreSQL 운영에 특화. Use for PostgreSQL optimization, query tuning, and PgBouncer configuration. MySQL은 database-expert-mysql 에이전트 참조."
+description: "PostgreSQL 전문가 에이전트. PostgreSQL 성능 튜닝, PgBouncer, Streaming Replication, Kubernetes PostgreSQL 운영에 특화. Use for PostgreSQL optimization, query tuning, and PgBouncer configuration."
 tools:
   - Read
   - Grep

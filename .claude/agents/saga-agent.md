@@ -1,6 +1,6 @@
 ---
 name: saga-agent
-description: "분산 트랜잭션 오케스트레이션 에이전트. Saga 패턴 설계, Temporal.io 워크플로우, 보상 트랜잭션, 멱등성 보장에 특화. Use for distributed transaction orchestration, Temporal workflows, and compensation logic."
+description: "Outbox 패턴·멱등성·보상 트랜잭션 설계 에이전트 — doc-service 이벤트 발행의 at-least-once 보장과 중복 처리 방어. Use when outbox 테이블/릴레이 설계, 멱등 키 설계, 분산 트랜잭션 경계 판단이 필요할 때 (M2 Phase 5). 장기 실행 워크플로우 오케스트레이션(Temporal 등)은 이 프로젝트 범위 밖."
 tools:
   - Read
   - Grep
