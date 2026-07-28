@@ -20,3 +20,6 @@ infra/terraform/*.tfstate.*
 
 # logs
 *.log
+
+# python
+__pycache__/
