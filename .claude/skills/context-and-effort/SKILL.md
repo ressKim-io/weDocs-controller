@@ -1,4 +1,9 @@
-# Effort Level Guide — Claude 5 / Opus 4.8 세대 기준
+---
+name: context-and-effort
+description: "모델 라인업·가격·컨텍스트 크기, effort 레벨(low~max) 정의와 이 레포 21 agents / 198 skills 티어링 매핑, tokenizer 토큰 증가율, prompt cache 최소 길이·TTL, adaptive thinking API 설정. Use when 새 agent/skill을 작성하며 effort를 정하거나, 모델을 고르거나, 캐시·토큰 수치가 필요할 때. 세션 운영 규칙(80% 재시작·/clear·subagent 위임)은 rules/token-budget.md가 상시 로드로 갖는다."
+---
+
+# 컨텍스트 · Effort 레퍼런스 (Claude 5 / Opus 4.8 세대)
 
 이 레포의 21 agents / 198 skills 가 어떤 effort level 로 호출되어야 하는지의 카테고리별 매핑 표.
 사용자가 새 작업 / 새 agent / 새 skill 을 작성할 때 "이거 effort 뭘 줘야 하지?" 의 답.

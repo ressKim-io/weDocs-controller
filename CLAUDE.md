@@ -47,14 +47,14 @@
 `@import`는 **컨텍스트를 줄이지 않는다**(공식: "imports … load at launch") — 상시로 만들 뿐이라 두지 않는다.
 
 ### 상황별 룰 (해당 작업 시 `.claude/rules/` 참조 — `paths:` frontmatter로 스코프됨)
-- `git.md`·`code-review.md`·`deep-thinking.md` — 커밋/PR/품질 (보편)
+- `code-review.md`·`deep-thinking.md` — 리뷰 품질 / 검증 깊이
 - `java.md`·`spring.md` — ws-gateway, doc-service
 - `error-handling.md`·`concurrency.md`·`layering-readability.md`·`observability.md`·`design-patterns.md`·`secure-coding.md` — 언어 무관 크래프트 표준 세트 6종(P1~N 원칙 + Java/Rust 실현 + `[B]`/`[A]` 체크리스트). `code-review.md` 크래프트 렌즈(🦀/☕)가 전부 실행
 - `istio.md`·`k8s-manifest.md` — infra/istio, infra/k8s, argocd
 - `monitoring.md` — OTel/PromQL/Grafana (폴리글랏 trace showcase)
 - `version-compatibility.md` — K8s/Istio/ArgoCD/OTel 버전 매트릭스
 - `config-contract-audit.md`·`documentation.md`·`phase-workflow.md`·`terraform.md`·`professional-writing.md`·`devlog-lifecycle.md`
-- `token-budget.md`·`effort-guide.md` — 모델 라인업·effort·캐시 수치 현행판(**Claude 5/Opus 4.8 세대, 2026-07-17 WebFetch 검증**) + 이 레포 21 agents 티어링 매핑·판단 기록. 모델/effort 관련 결정 시 참조 (⚠️ `/token-budget` 스킬 본문은 구버전일 수 있음 — rule이 우선)
+- `token-budget.md` — 세션 운영(상시). 모델/effort/캐시 **수치**는 `/context-and-effort` 스킬
 
 ### 서브에이전트 (`Agent` 도구, `subagent_type`)
 **Rust/CRDT `rust-expert`** ★(엔진 핵심) / 언어 `java-expert`·`python-expert` / 리뷰 `code-reviewer`·`cicd-reviewer`·`dockerfile-reviewer` / 아키텍처 `architect-agent`(proto·계약)·`saga-agent`(outbox) / 메시 `service-mesh-expert`(Istio Ambient) / 관측 `otel-expert`·`observability-reviewer` / K8s·GitOps `k8s-troubleshooter`·`k8s-reviewer`·`gitops-reviewer`·`platform-engineer` / 데이터 `database-expert`·`redis-expert` / 메시징 `messaging-expert` / 기타 `debugging-expert`·`git-workflow`·`tech-lead`
@@ -65,9 +65,12 @@
 
 ## 커밋·push 규칙 (이 레포 전용 오버라이드)
 
-> 일반 룰 `git.md`("main 직접 push 금지")·`user-approval.md`("push는 승인 후")를 **이 controller 레포에 한해** 오버라이드한다. controller는 솔로 컨트롤 플레인이라 PR 게이트가 불필요.
+> **브랜치·push 정책의 유일한 권위는 이 절이다.** `user-approval.md`("push는 승인 후")를 controller에 한해
+> 오버라이드한다 — 솔로 컨트롤 플레인이라 PR 게이트가 불필요. 형식(커밋 타입표·PR 템플릿)은 `/git-conventions`.
 
 - ✅ **controller는 `main`에 직접 commit·push 허용** — push마다 별도 승인 안 받아도 됨(사용자 사전 승인됨).
 - ✅ **커밋은 논리 단위로 분할** — 한 커밋에 몰지 말 것. 영역별(proto / docs / infra / ci / claude …) Conventional Commit.
-- ⛔ **서비스 레포는 예외 아님** — `backend` / `ai-service` / `crdt-engine` / `frontend`는 일반 룰 적용(브랜치 + PR + 승인).
-- 그 외(force push 금지, 시크릿 커밋 금지, `git add .` 지양·명시적 스테이징)는 `git.md` 그대로.
+- ⛔ **서비스 레포는 예외 아님** — `backend` / `ai-service` / `crdt-engine` / `frontend`는 브랜치 + PR + 건별 승인.
+- ⛔ **force push 금지** (`--force-with-lease`도 main엔 금지) · **시크릿 커밋 금지**(`.env`·`*.pem`·`*.key`·크리덴셜)
+- ⛔ **`git add .` 지양** — 파일을 명시적으로 스테이징한다.
+- ⛔ **`Co-Authored-By` trailer 금지** — 사용자가 명시 요청한 경우만. (`.claude/settings.json`의 `attribution`이 강제)

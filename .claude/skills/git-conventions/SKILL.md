@@ -1,4 +1,9 @@
-# Git Rules
+---
+name: git-conventions
+description: "Conventional Commits 타입표, 브랜치 명명, 커밋 분할 기준, PR 제목·본문 템플릿·400줄 상한, 시크릿 파일 금지 목록. Use when 커밋 메시지를 쓰거나 브랜치를 만들거나 PR을 열 때 — 형식을 정확히 맞춰야 하는 순간에만 펼치면 된다. 브랜치 정책 자체는 CLAUDE.md §커밋·push 규칙이 이 레포의 유일한 권위."
+---
+
+# Git 컨벤션 (커밋 · 브랜치 · PR)
 
 Git 작업 시 반드시 준수해야 할 규칙. 위반 시 작업을 중단하고 올바른 방식으로 재시도한다.
 
@@ -84,12 +89,9 @@ NEVER add `Co-Authored-By: Claude ...` (또는 다른 AI 어시스턴트) traile
 
 ## Branch Protection
 
-- NEVER push directly to `main` or `master`
-- NEVER force push (`--force`, `-f`) to `main` or `master`
-- ALWAYS create a feature/fix branch and open a PR
-- 긴급 핫픽스도 `hotfix/` 브랜치 생성 후 PR로 머지
-
----
+> **이 레포(controller)의 브랜치 정책은 [`CLAUDE.md`](../../../CLAUDE.md) §커밋·push 규칙이 유일한 권위다.**
+> controller는 main 직접 commit·push 허용, 서비스 레포(backend·crdt-engine·frontend)는 브랜치+PR+건별 승인.
+> 여기서 중복 규정하지 않는다 — 두 곳이 어긋나면 모델이 임의로 하나를 고른다.
 
 ## Pull Request
 
