@@ -42,14 +42,9 @@
 
 개인 에이전트 컬렉션에서 이 프로젝트에 맞는 것만 도입 (제외: Go, frontend, business/payment/legal — 비범위).
 
-### 항상 적용 (import)
-@.claude/rules/clean-code.md
-@.claude/rules/workflow.md
-@.claude/rules/security.md
-@.claude/rules/testing.md
-@.claude/rules/debugging.md
-@.claude/rules/user-approval.md
-@.claude/rules/plan-logging.md
+### 룰 로딩 (여기서 선언하지 않는다)
+`.claude/rules/`의 `paths:` frontmatter가 곧 스코프다 — `paths:` 없으면 상시, 있으면 매칭 파일을 열 때.
+`@import`는 **컨텍스트를 줄이지 않는다**(공식: "imports … load at launch") — 상시로 만들 뿐이라 두지 않는다.
 
 ### 상황별 룰 (해당 작업 시 `.claude/rules/` 참조 — `paths:` frontmatter로 스코프됨)
 - `git.md`·`code-review.md`·`deep-thinking.md` — 커밋/PR/품질 (보편)
