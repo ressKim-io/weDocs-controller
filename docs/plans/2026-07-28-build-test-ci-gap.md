@@ -1,7 +1,7 @@
 ---
 date: 2026-07-28
 slug: build-test-ci-gap
-status: planned
+status: in-progress
 related:
   - plans/2026-07-19-m2-phase2-auth-authz.md
   - plans/2026-07-03-security-quality-standards.md
@@ -74,7 +74,7 @@ v0.2.0 *내용*(`LoadSnapshot`·`DocMeta` page-tree)은 main에 커밋돼 있다
 ### 0. 선결 — proto 태그 정합 ✅ (controller, main 직접 + push 승인)
 - [x] `proto-v0.2.0` annotated 태그 생성 → push 승인 → push. **대상 = `99213c3`**("feat(proto): doc-service M2 계약 — LoadSnapshot + page-tree 메타 (v0.2.0)", proto/의 마지막 변경 커밋이라 main HEAD보다 정확). 원격 확인: `refs/tags/proto-v0.2.0^{}` → `99213c3` ✅
 - [x] **CI 명령 형태를 로컬에서 실증**(YAML 쓰기 전): ① 로컬 `.git#subdir=proto,ref=proto-v0.2.0` export → 4 proto ② **원격 URL** export → 동일 결과·0.95s·인증 불요(public repo) ③ 그 산출물로 `cargo build` + `cargo test --all-targets` → **30 green**. Makefile의 디렉토리 입력과 트리 레이아웃 동일.
-- [ ] CLAUDE.md의 "현 태그 `proto-v0.2.0`·로컬" 서술 정정(원격 존재로)
+- [x] CLAUDE.md의 태그 서술을 "원격 push 완료(2026-07-28, `99213c3`)"로 정정
 
 ### 1. 신규 도구 spec 사전 검증 ✅ (MANDATORY, `workflow.md` §신규 도구 — 전부 WebFetch 2026-07-28)
 
@@ -89,11 +89,11 @@ v0.2.0 *내용*(`LoadSnapshot`·`DocMeta` page-tree)은 main에 커밋돼 있다
 
 - 엔진은 `protoc` 설치 불요 — `build.rs`가 `protoc-bin-vendored`로 주입(기존 구현).
 
-### 2. PR① crdt-engine `ci.yml` (🦀 게이트)
-- [ ] buf 설치 → `buf export '…#subdir=proto,ref=proto-v0.2.0' -o proto` → `cargo build`
-- [ ] `cargo test --all-targets` / `cargo clippy --all-targets -- -D warnings` / `cargo fmt --check`
-- [ ] 트리거 = `pull_request` + `push: [main]`. rust-cache로 빌드 시간 단축
-- [ ] ⚠️ `Makefile`의 canonical 주석 ref를 `proto-v0.2.0`으로 갱신(코드-문서 정합)
+### 2. PR① crdt-engine `ci.yml` ✅ ([PR #12](https://github.com/ressKim-io/weDocs-crdt-engine/pull/12), 머지 대기)
+- [x] `buf-action@v1`(`setup_only: true`) → 원격 `buf export`(ref는 워크플로 `env.PROTO_REF`로 노출 = Phase 3 bump 지점) → build/test/clippy/fmt, 로컬 명령과 동일 순서
+- [x] 트리거 = `pull_request` + `push: [main]`, `rust-cache@v2`(툴체인 뒤). 첫 실행 1m58s → 캐시 후 **40s**
+- [x] `Makefile` canonical 주석 ref를 `proto-v0.2.0`으로 갱신(v0.1.0 stale 해소)
+- [x] **대조군 2종으로 게이트 작동 증명**(§검증)
 
 ### 3. PR② backend `ci.yml` (☕ 게이트)
 - [ ] Java 25 setup + Gradle 캐시 → `./gradlew build`(= compile + test, 두 모듈)
@@ -116,19 +116,30 @@ v0.2.0 *내용*(`LoadSnapshot`·`DocMeta` page-tree)은 main에 커밋돼 있다
 
 각 레포에서 **대조군**으로 증명한다 — 임시 커밋으로 의도적 실패를 주입해 CI가 **red**가 되는지 확인하고 되돌린다:
 
-| 레포 | 주입할 실패 | 기대 |
+| 레포 | 주입할 실패 | 기대 | 결과 |
+|---|---|---|---|
+| crdt-engine | ① `cargo fmt` 위반 ② 단언 뒤집은 테스트 | fmt·test 각각 red | ✅ **둘 다 red 확인**(아래) |
+| backend | 컴파일 에러 / 실패하는 테스트 | Gradle red | — |
+| frontend | 타입 에러 / 실패하는 단위 테스트 | typecheck·test red | — |
+
+**crdt-engine 대조군 실측(2026-07-28, [PR #12](https://github.com/ressKim-io/weDocs-crdt-engine/pull/12))**:
+
+| 주입 | 결과 | 증명한 것 |
 |---|---|---|
-| crdt-engine | 컴파일 에러 1줄 / 단언 뒤집은 테스트 / `cargo fmt` 위반 | build·test·fmt 각각 red |
-| backend | 컴파일 에러 / 실패하는 테스트 | Gradle red |
-| frontend | 타입 에러 / 실패하는 단위 테스트 | typecheck·test red |
+| fmt 위반(`const    OUTBOUND_BUFFER:usize`) | red — 실패 지점 = **`cargo fmt --check`** | fmt가 **마지막 단계**라, 여기서 걸렸다는 건 앞의 build·test·clippy가 **전부 실행·통과**했다는 뜻 = 체인이 끝까지 돌고 어느 단계도 조용히 건너뛰지 않는다 |
+| 테스트 단언 뒤집기(`PermissionDenied`→`Ok`) | red — 실패 지점 = **`cargo test --all-targets`** | 이 PR의 존재 이유인 테스트 단계가 실제로 머지를 막는다 |
+| 임시 커밋 제거 후(`--force-with-lease`로 `ca4ba77` 복구) | ✅ green **40s**(캐시 적중, 첫 실행 1m58s) | 복구 상태가 정상 green |
+
+> 각 주입은 PR 브랜치에 임시 커밋으로 올린 뒤 `git reset --hard` + `--force-with-lease`로 걷어냈다(feature 브랜치 — `git.md`의 force-push 금지는 main/master 대상).
+> ⚠️ clippy는 **실행·통과가 확인**됐을 뿐 "경고에 red를 낸다"를 별도 주입으로 증명하진 않았다(`-D warnings`의 문서화된 동작에 의존). 다음 두 레포에선 단계 순서를 고려해 주입 조합을 짤 것.
 
 - 트리거 전수: `pull_request` green ≠ `push: main` green (트리거별 범위 차이가 gitleaks 사고의 원인이었다)
 - 실행 시간 기록 — 캐시 미스 시 과도하게 길면 튜닝 대상
 
 ## 재개 지점 (Resume)
 
-- **마지막 완료**: (없음 — plan 작성 시점)
-- **다음 = 단계 0**(proto 태그 정합). ⚠️ 태그 push는 **승인 게이트**. 태그가 원격에 없으면 단계 2가 성립하지 않으므로 순서를 바꾸지 말 것.
+- **마지막 완료**: 단계 0(proto 태그 push `99213c3`)·1(액션 spec 검증)·**2(PR① engine CI)** — [PR #12](https://github.com/ressKim-io/weDocs-crdt-engine/pull/12) 대조군까지 완료, **머지 승인 대기**.
+- **다음 = ① PR #12 머지(승인) → ② 단계 3 backend PR② → ③ 단계 4 frontend PR③ → ④ 단계 5 마감**. backend는 **Testcontainers가 CI Docker에서 뜨는지가 최대 미지수** — 추측으로 미리 배선하지 말고 첫 실행 실패를 보고 결정(plan 단계 3). frontend는 `package.json` 스크립트 분리가 선행.
 - **주의**: 서비스 3레포는 branch+PR+건별 승인. controller만 main 직접. 신규 액션은 전부 **spec 사전 검증 후** 작성(단계 1) — 이 레포의 반복 함정이 "버전·기본값 추측"이다(`config-contract-audit.md`).
 
 ## 범위 밖
