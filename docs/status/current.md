@@ -76,12 +76,15 @@ Phase 3 엔진 저장 → 4 복원 → 5 outbox → 6 E2E. 본류 plan = [`plans
 - **doc-service 구조** = package-by-feature(ADR-0019). 신규 코드는 feature 패키지(auth/workspace/page/snapshot) 평면에, 공용은 `common/`. 도메인 에러는 카탈로그(`DocErrorCode` enum + 카테고리 예외, ADR-0018)로만.
 - **테스트 환경** — backend doc-service 테스트는 colima 필요(`DOCKER_HOST`/`TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE`), ws-gateway는 불요(in-process fake).
 - **승인 경계** — 서비스 레포(backend/crdt-engine/frontend)는 branch+PR+**건별 승인**(push·PR 생성·머지 각각). controller만 main 직접.
+- **크래프트 룰은 레포 경계를 안 넘는다**(실측 2026-07-28) — controller에서 `--add-dir`로 서비스 레포를 열어도 `paths:` 스코프 룰 10종(java·spring·error-handling·concurrency·secure-coding·design-patterns·layering-readability·observability·clean-code·security)은 **로드되지 않는다**. 상시 5개와 settings 권한/훅·에이전트는 따라온다. → 크래프트 `[B]` 게이트는 반드시 **에이전트로** 실행. 상세 = [dev-log](../dev-logs/2026-07-28-rules-do-not-cross-repo.md)
 
 ## 교훈 dev-log (같은 함정 재발 시)
 
 | 주제 | dev-log |
 |---|---|
 | CI 갭·게이트 실효성 증명 | [2026-07-28-build-test-ci-gap](../dev-logs/2026-07-28-build-test-ci-gap.md) |
+| 상시 컨텍스트 예산(−85%)·게이트 배선 | [2026-07-28-claude-context-budget](../dev-logs/2026-07-28-claude-context-budget.md) |
+| 룰이 레포 경계를 안 넘음 | [2026-07-28-rules-do-not-cross-repo](../dev-logs/2026-07-28-rules-do-not-cross-repo.md) |
 | gitleaks fingerprint ↔ squash 함정 | [2026-07-17](../dev-logs/2026-07-17-gitleaks-fingerprint-squash-trap.md) |
 | VT pinning 측정(맞는 결론·틀린 근거) | [2026-07-20](../dev-logs/2026-07-20-vt-pinning-grpc-blocking-stub.md) |
 | gateway 관측 계약·WIP 드리프트 | [2026-07-19](../dev-logs/2026-07-19-m2-gateway-authn-observability.md) |
