@@ -82,12 +82,20 @@ related:
 
 역할 해석 로직을 **새로 쓰지 않는다.** 이미 반환되는 값을 버리지 않고 흘리는 것이 전부다(드리프트 0).
 
-- [ ] **C1-1** `PageTreeService.get()`이 `pageAccess.requireRead()`의 반환값(`EffectivePermission`)을 함께 반환
-- [ ] **C1-2** `GET /api/pages/{pageId}` 응답에 `myRole`(`VIEWER|EDITOR|OWNER`) 추가.
-      목록(`PageResponse`)과 계약을 섞지 않기 위해 **단건 전용 응답 타입**을 둔다 — nullable 필드로 두 계약을 겸하지 않는다
-- [ ] **C1-3** ⚠️ `EffectiveRole.NONE`은 이 경로에 **도달 불가**(`requireRead`가 먼저 404) — 그 불변식을 타입·테스트로 고정
-- [ ] **C1-4** 테스트: owner / workspace-member(baseline editor) / 명시 viewer / **상속 viewer** 각각의 `myRole` + 비권한자 404 회귀
-- [ ] **C1-5** 크래프트 게이트(☕) → PR → 승인 → 머지
+- [x] **C1-1** `PageTreeService.get()`이 `pageAccess.requireRead()`의 반환값(`EffectivePermission`)을 함께 반환 (`PageView`)
+- [x] **C1-2** `GET /api/pages/{pageId}` 응답에 `myRole` 추가 — **단건 전용 `PageDetailResponse`**.
+      ⚠️ `myRole`(표시용) + **`canEdit`(판단용)** 을 **둘 다** 내보냈다. 역할만 주면 "editor 또는 owner가 편집 가능"이라는
+      **서버 정책을 클라이언트가 재구현**하게 되고 그 자리가 곧 드리프트 지점이다 → 프론트(C3-4)는 **반드시 `canEdit`으로 분기**한다
+- [x] **C1-3** 노출 enum(`PageDetailResponse.Role`)에서 `NONE` 제외 + 도달 시 fail-closed. 단위 테스트로 고정
+- [x] **C1-4** 테스트 154 green(+6): 해석 네 갈래(ws owner / ws member baseline / 명시 공유 / **조상 상속**) 종단 검증 + 매핑 단위
+- [x] **C1-5** 크래프트 게이트(☕ 6종, **인라인 실행**) → **[B] 1건 발견·수정** → PR
+- [x] 커밋 `099f90b` · **[backend PR #19](https://github.com/ressKim-io/weDocs-backend/pull/19)** (머지 대기)
+
+> **게이트 [B] 소거(2026-07-28)**: `toRole`의 raw `IllegalStateException` = error-handling **P7 위반**
+> (`InvariantViolationException` doc 주석이 이 금지를 명시, `DocMetaService`에 같은 위반이 retrofit으로 제거된 선례).
+> 카탈로그 예외로 교체 → 부수적으로 secure-coding **P4**(내부 상세 노출 경로)도 닫힘.
+> **교훈**: 이 레포는 "불변식 위반"에도 카탈로그 경로(`INVARIANT_BROKEN` + `isInternal()`)가 이미 있다 —
+> 새 코드에서 raw `IllegalState`/`IllegalArgument`로 서버 불변식을 표현하지 않는다.
 
 ### C2. frontend — 인증 셸 (login → 토큰) (frontend PR)
 
@@ -158,14 +166,21 @@ cd ../weDocs-frontend   && npm run test:e2e
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = (없음) — plan 작성 단계
-다음        = C0 커밋 → C1(doc-service effective role 노출, backend PR)
+마지막 완료 = C1 코드·게이트 완료 → backend PR #19 (커밋 099f90b, 머지 대기)
+              브랜치 feature/m2-phase2c-page-role · 154 green · 게이트 [B] 1건 소거
+다음        = ① PR #19 CI green 확인 → 머지 승인 요청 → 머지
+              ② C2(frontend 인증 셸)
 주의        = ① 서비스 레포는 branch+PR+건별 승인 (push·PR 생성·머지 각각)
               ② C1이 C3-4(viewer 잠금)의 선행 — 순서 역전 불가
-              ③ proto 무변경 → proto-v0.2.0 태그 bump 불요
-              ④ backend 테스트는 colima env 2개 없으면 initializationError
-              ⑤ E2E는 CI에 없다 — 로컬 4프로세스로 직접 확인해야 완료
+              ③ 프론트는 myRole이 아니라 **canEdit으로 분기**한다(정책 재구현 금지)
+              ④ proto 무변경 → proto-v0.2.0 태그 bump 불요
+              ⑤ backend 테스트는 colima env 2개 없으면 initializationError
+              ⑥ E2E는 CI에 없다 — 로컬 4프로세스로 직접 확인해야 완료
 ```
+
+**응답 계약(C2·C3가 소비)** — `GET /api/pages/{pageId}`:
+`{ id, workspaceId, parentId, title, position, archived, myRole: "VIEWER"|"EDITOR"|"OWNER", canEdit: boolean }`
+목록 `GET /api/workspaces/{id}/pages`는 **역할 없음**(구조 필드만, N+1 회피).
 
 ## 범위 밖
 
