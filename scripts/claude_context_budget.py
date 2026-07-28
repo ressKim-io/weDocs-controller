@@ -41,10 +41,10 @@ CHARS_PER_TOKEN = 1.99
 # STAGE를 올리는 것이 곧 "래칫"이다. 임계값 하향은 내용 변경과 섞지 말고
 # 항상 별도 커밋으로 — 그래야 조인 것과 되돌릴 것을 따로 볼 수 있다.
 # ─────────────────────────────────────────────────────────────
-STAGE = "baseline"
+STAGE = "stage1"
 
 TIER_A = {
-    # baseline: 현재값+5%. 스크립트를 무수정 통과시켜 "측정이 맞는지"만 먼저 검증한다.
+    # baseline: 현재값+5%. 스크립트를 무수정 통과시켜 "측정이 맞는지"만 먼저 검증했다.
     "baseline": {
         "total_lines": 2074,
         "total_chars": 59988,
@@ -53,12 +53,16 @@ TIER_A = {
         "imports": 7,
         "noop_imports": 5,
     },
+    # stage1: 기계적 정리(@import 제거 + path-scope + cloud-cli-safety 삭제) 완료 시점의
+    # 실측 961줄 / 32,142자에 소폭 헤드룸. 계획서 추정(813)은 effort-guide(143)를 빠뜨린 값이라
+    # 그대로 쓰면 게이트가 첫날부터 red — "red가 상시화된 게이트는 배선 안 한 것보다 나쁘다"
+    # (secure-coding.md §자동 스캔 게이트). 임계값은 희망이 아니라 실측을 따른다.
     "stage1": {
-        "total_lines": 900,
-        "total_chars": 26000,
-        "claude_md_lines": 150,
-        "max_rule_lines": 160,
-        "imports": 2,
+        "total_lines": 1000,
+        "total_chars": 33000,
+        "claude_md_lines": 80,
+        "max_rule_lines": 170,
+        "imports": 0,      # C2에서 이미 0 — 되돌아가는 것을 막는다
         "noop_imports": 0,
     },
     "stage2": {
