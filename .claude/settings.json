@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+
+  "skillListingBudgetFraction": 0.01,
+  "skillListingMaxDescChars": 1536,
+
+  "permissions": {
+    "allow": [
+      "Bash(buf lint:*)",
+      "Bash(buf breaking:*)",
+      "Bash(buf format:*)",
+      "Bash(buf generate:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl describe:*)",
+      "Bash(kubectl logs:*)",
+      "Bash(kubectl top:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(python3 scripts/claude_context_budget.py:*)"
+    ],
+    "deny": [
+      "Bash(kubectl apply:*)",
+      "Bash(kubectl delete:*)",
+      "Bash(kubectl patch:*)",
+      "Bash(kubectl edit:*)",
+      "Bash(kubectl scale:*)",
+      "Bash(kubectl rollout:*)",
+      "Bash(kubectl replace:*)",
+      "Read(./.env)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)"
+    ]
+  },
+
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r \".tool_input.file_path // .tool_response.filePath // \\\"\\\"\"); case \"$f\" in *CLAUDE.md|*/.claude/*) python3 \"$CLAUDE_PROJECT_DIR/scripts/claude_context_budget.py\" --quiet-if-ok --tier all || exit 2;; *) exit 0;; esac",
+            "statusMessage": "컨텍스트 예산 확인"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/guard_destructive.py\"",
+            "statusMessage": "파괴적 명령 검사"
+          }
+        ]
+      }
+    ]
+  }
+}
