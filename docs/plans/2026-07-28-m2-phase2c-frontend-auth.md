@@ -1,7 +1,7 @@
 ---
 date: 2026-07-28
 slug: m2-phase2c-frontend-auth
-status: planned
+status: in-progress
 related:
   - plans/2026-07-19-m2-phase2-auth-authz.md
   - plans/2026-06-30-m2-persistence-session.md
