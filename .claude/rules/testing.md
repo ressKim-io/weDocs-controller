@@ -1,10 +1,18 @@
 ---
+# 넓은 `**/*test*`는 문서까지 물었다 — docs/plans/2026-07-28-build-test-ci-gap.md 오발화.
+# 실제 테스트 파일 명명만 매칭한다.
 paths:
-  - "**/*test*"
-  - "**/*Test*"
-  - "**/*spec*"
-  - "**/*Spec*"
-  - "**/test/**"
+  - "**/*Test.java"
+  - "**/*Tests.java"
+  - "**/*IT.java"
+  - "**/*_test.rs"
+  - "**/test_*.py"
+  - "**/*_test.py"
+  - "**/*.spec.ts"
+  - "**/*.test.ts"
+  - "**/*.spec.tsx"
+  - "**/*.test.tsx"
+  - "**/src/test/**"
   - "**/tests/**"
 ---
 

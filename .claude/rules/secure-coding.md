@@ -3,6 +3,9 @@ paths:
   - "**/*.java"
   - "**/*.rs"
   - "**/*.py"
+  # 워크플로우는 secrets.GITHUB_TOKEN·권한 범위를 다루는 코드다 — 여기서 빠지면
+  # controller에서 보안 룰이 발화하는 경로가 0이 된다.
+  - "**/.github/workflows/**"
 ---
 
 # 시큐어 코딩 표준 (언어 무관 원칙 + 언어별 관용구)

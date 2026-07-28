@@ -1,3 +1,13 @@
+---
+paths:
+  - "**/*.java"
+  - "**/*.rs"
+  - "**/*.py"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/.github/workflows/**"
+---
+
 # Security Rules
 
 Claude Code가 코드 작성 시 반드시 준수해야 할 보안 규칙.

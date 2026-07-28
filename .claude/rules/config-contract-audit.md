@@ -1,3 +1,12 @@
+---
+paths:
+  - "**/*.yaml"
+  - "**/*.yml"
+  - "**/*.tf"
+  - "**/*.tfvars"
+  - "**/.env*"
+---
+
 # Config Contract Audit Rules
 
 설정/환경변수/dependency 버전이 시스템 동작을 좌우하는 모든 작업에 적용한다.
