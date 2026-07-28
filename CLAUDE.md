@@ -53,7 +53,7 @@
 - `istio.md`·`k8s-manifest.md` — infra/istio, infra/k8s, argocd
 - `monitoring.md` — OTel/PromQL/Grafana (폴리글랏 trace showcase)
 - `version-compatibility.md` — K8s/Istio/ArgoCD/OTel 버전 매트릭스
-- `config-contract-audit.md`·`documentation.md`·`phase-workflow.md`·`cloud-cli-safety.md`·`terraform.md`·`professional-writing.md`·`devlog-lifecycle.md`
+- `config-contract-audit.md`·`documentation.md`·`phase-workflow.md`·`terraform.md`·`professional-writing.md`·`devlog-lifecycle.md`
 - `token-budget.md`·`effort-guide.md` — 모델 라인업·effort·캐시 수치 현행판(**Claude 5/Opus 4.8 세대, 2026-07-17 WebFetch 검증**) + 이 레포 21 agents 티어링 매핑·판단 기록. 모델/effort 관련 결정 시 참조 (⚠️ `/token-budget` 스킬 본문은 구버전일 수 있음 — rule이 우선)
 
 ### 서브에이전트 (`Agent` 도구, `subagent_type`)
