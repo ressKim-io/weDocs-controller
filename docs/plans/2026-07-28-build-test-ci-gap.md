@@ -95,10 +95,12 @@ v0.2.0 *내용*(`LoadSnapshot`·`DocMeta` page-tree)은 main에 커밋돼 있다
 - [x] `Makefile` canonical 주석 ref를 `proto-v0.2.0`으로 갱신(v0.1.0 stale 해소)
 - [x] **대조군 2종으로 게이트 작동 증명**(§검증)
 
-### 3. PR② backend `ci.yml` (☕ 게이트)
-- [ ] Java 25 setup + Gradle 캐시 → `./gradlew build`(= compile + test, 두 모듈)
-- [ ] **Testcontainers 실증**: doc-service 테스트가 CI Docker에서 실제로 뜨는지 첫 실행으로 확인. 실패 시 대안 = 서비스 컨테이너(`services: postgres`) 또는 doc-service 테스트 잡 분리 — **추측으로 미리 배선하지 말고 실패를 보고 결정**
-- [ ] 기존 `dependency-submission.yml`·`security-scan.yml`과 중복 트리거 없는지 확인
+### 3. PR② backend `ci.yml` ✅ ([PR #18](https://github.com/ressKim-io/weDocs-backend/pull/18), 머지 대기)
+- [x] Java 25(temurin) + `gradle/actions/setup-gradle@v6` → `./gradlew build`(= compile + test, 두 모듈). 액션 버전은 **이 레포의 `dependency-submission.yml`이 이미 쓰던 것과 동일** — 신규 도입 0
+- [x] ⚠️ **선행 오판 교정 — backend도 proto 생성이 필요하다.** 첫 실행이 `io.wedocs.proto.*` 미존재로 **20 컴파일 에러**. Java 스텁은 `build/` 아래 생성물이라 gitignored이고 `buf.gen.yaml`의 `inputs`가 로컬 형제 경로(`../weDocs-controller/proto`)를 가리켜 CI엔 없다 — **엔진 `proto/` vendoring과 같은 구조인데 "backend는 없다"고 단정했던 것**. 처방: `buf.gen.yaml`을 고치지 않고 **CLI 인자로 input만 오버라이드**(로컬 개발은 형제 경로 유지 = 빠름 / CI만 원격 태그 핀, `plugins:`는 공통). 배선 전 로컬 실증 — 원격 input → 72 스텁 생성 → `compileJava`/`compileTestJava` 통과
+- [x] **Testcontainers 실증 = 성공.** 러너 Docker에서 **별도 배선 없이** 동작 — `@ServiceConnection` + `test/resources/application.yml`의 main 완전 대체 구조가 CI에서도 성립. 대안(서비스 컨테이너·잡 분리)은 **불필요해졌다**
+- [x] `buf.gen.yaml` canonical 주석 ref를 `proto-v0.2.0`으로 갱신(엔진 Makefile과 **같은 stale이 양쪽에 있었다** — 원격 부재 태그를 문서가 가리키던 드리프트의 잔재)
+- [x] **대조군으로 게이트 작동 증명**(§검증)
 
 ### 4. PR③ frontend `ci.yml`
 - [ ] `package.json` 스크립트 분리 — `test:unit`(E2E 제외) 신설, `test:e2e`는 E2E만 지목. 기존 `test:e2e` 의미가 바뀌므로 README 갱신 동반
@@ -119,7 +121,7 @@ v0.2.0 *내용*(`LoadSnapshot`·`DocMeta` page-tree)은 main에 커밋돼 있다
 | 레포 | 주입할 실패 | 기대 | 결과 |
 |---|---|---|---|
 | crdt-engine | ① `cargo fmt` 위반 ② 단언 뒤집은 테스트 | fmt·test 각각 red | ✅ **둘 다 red 확인**(아래) |
-| backend | 컴파일 에러 / 실패하는 테스트 | Gradle red | — |
+| backend | Testcontainers 테스트 단언 뒤집기 | Gradle red | ✅ **red 확인**(아래) |
 | frontend | 타입 에러 / 실패하는 단위 테스트 | typecheck·test red | — |
 
 **crdt-engine 대조군 실측(2026-07-28, [PR #12](https://github.com/ressKim-io/weDocs-crdt-engine/pull/12))**:
@@ -131,7 +133,20 @@ v0.2.0 *내용*(`LoadSnapshot`·`DocMeta` page-tree)은 main에 커밋돼 있다
 | 임시 커밋 제거 후(`--force-with-lease`로 `ca4ba77` 복구) | ✅ green **40s**(캐시 적중, 첫 실행 1m58s) | 복구 상태가 정상 green |
 
 > 각 주입은 PR 브랜치에 임시 커밋으로 올린 뒤 `git reset --hard` + `--force-with-lease`로 걷어냈다(feature 브랜치 — `git.md`의 force-push 금지는 main/master 대상).
-> ⚠️ clippy는 **실행·통과가 확인**됐을 뿐 "경고에 red를 낸다"를 별도 주입으로 증명하진 않았다(`-D warnings`의 문서화된 동작에 의존). 다음 두 레포에선 단계 순서를 고려해 주입 조합을 짤 것.
+> ⚠️ clippy는 **실행·통과가 확인**됐을 뿐 "경고에 red를 낸다"를 별도 주입으로 증명하진 않았다(`-D warnings`의 문서화된 동작에 의존).
+
+**backend 대조군 실측(2026-07-28, [PR #18](https://github.com/ressKim-io/weDocs-backend/pull/18))**:
+
+`PageTreePersistenceTest`(**Testcontainers** 테스트)의 단언을 뒤집어 주입 → red. 실패 로그가 결정적이다:
+
+```
+PageTreePersistenceTest > 부모-자식 페이지를 저장하면 자기참조 트리(parent_id)가 보존된다 FAILED
+  AssertionFailedError at PageTreePersistenceTest.java:73     ← 주입한 그 줄
+148 tests completed, 1 failed
+```
+
+- **`148 tests completed`가 핵심** — Testcontainers 테스트가 **skip되지 않고 전부 실행**됐고 정확히 주입한 1건만 실패했다. "Docker 없으면 조용히 skip"이라는 흔한 실패 양식이 아님을 배제(= red가 난 이유가 주입한 그것임을 확인 — 엉뚱한 이유의 red는 증명이 아니다).
+- 실행 시간: green 약 1m56s / red 2m9s(Gradle 빌드 + 148 테스트 + Postgres 컨테이너 기동 포함).
 
 - 트리거 전수: `pull_request` green ≠ `push: main` green (트리거별 범위 차이가 gitleaks 사고의 원인이었다)
 - 실행 시간 기록 — 캐시 미스 시 과도하게 길면 튜닝 대상
