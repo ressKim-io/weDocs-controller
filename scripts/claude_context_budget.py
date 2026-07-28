@@ -78,8 +78,11 @@ TIER_A = {
 # Tier B — 참고 문서 길이 예산. 상시 로드가 아니라 "읽힐 때 비싼" 문서들.
 # 오늘의 최댓값보다 살짝 위로 잡아, 진짜 회귀에만 발화하고 평소엔 조용하게 한다.
 TIER_B = {
-    "scoped_rule_lines": 200,      # 오늘 최대: debugging.md 195 (97% 소진)
-    "skill_md_lines": 300,
+    "scoped_rule_lines": 200,      # 오늘 최대: debugging.md 196 (98% 소진)
+    # 공식 권고 "Keep SKILL.md under 500 lines"(code.claude.com/docs/en/skills)를 따른다.
+    # 처음엔 임의로 300을 잡았다가 clean-code(474줄) 승격에서 훅이 물었다 —
+    # 임계값이 근거 없이 빡빡하면 정당한 변경을 막는다. 공식 수치로 교정.
+    "skill_md_lines": 500,
     "skill_md_count": 12,
     "skill_desc_chars": 400,
     "flat_skill_lines": 700,       # 오늘 최대: dx/local-dev-makefile.md 636

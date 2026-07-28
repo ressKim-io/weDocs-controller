@@ -114,4 +114,4 @@ NEVER `new Thread()` 직접 생성 — MUST `ExecutorService` 또는 Virtual Thr
 
 ---
 
-상세 가이드: `/effective-java` 스킬 참조
+상세 가이드: [`.claude/skills/spring/effective-java.md`](../skills/spring/effective-java.md) (수동 Read — 자동 발견 대상 아님)

@@ -173,4 +173,4 @@ NEVER `@MockBean` 남용 — 실제 빈 우선. 모킹이 많으면 테스트 �
 
 ---
 
-상세 가이드: `/spring-patterns` 스킬 참조
+상세 가이드: [`.claude/skills/spring/spring-patterns.md`](../skills/spring/spring-patterns.md) (수동 Read — 자동 발견 대상 아님)

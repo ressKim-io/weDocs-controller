@@ -7,6 +7,8 @@ paths:
 
 # Phase Workflow Gate Rules
 
+> ⚠️ 이 문서가 부르는 `/phase-start`·`/review-pr`·`/log-trouble` 슬래시 커맨드는 **이 레포에 도입되지 않았다** — `.claude/README.md`의 "더 필요하면 추가 도입" 목록(commands 43종)에 있다. 커맨드가 없을 뿐 절차는 유효하니, 해당 단계를 수동으로 수행한다.
+
 Phase 기반 작업 시 반드시 따라야 할 게이트 규칙.
 **이 규칙은 `/phase-start` 커맨드로 Phase를 시작한 경우에만 적용된다.**
 각 게이트를 통과하지 않으면 다음 단계로 넘어가지 않는다.

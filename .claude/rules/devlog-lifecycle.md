@@ -8,6 +8,8 @@ paths:
 
 # dev-logs Lifecycle Rules
 
+> ⚠️ 이 문서가 부르는 `/where`·`/related`·`/log-trouble`·`/log-decision`·`/log-meta`·`/consolidate-devlogs`·`/promote-devlog` 슬래시 커맨드는 **이 레포에 도입되지 않았다** — `.claude/README.md`의 "더 필요하면 추가 도입" 목록(commands 43종)에 있다. 커맨드가 없을 뿐 절차는 유효하니, 해당 단계를 수동으로 수행한다.
+
 dev-logs (`docs/dev-logs/*.md`) 작성·갱신·정리 시 반드시 따라야 할 4-Tier 정책 + frontmatter 표준.
 근거: `docs/dev-logs/2026-04-29-devlog-tier-policy.md` (SDD).
 
