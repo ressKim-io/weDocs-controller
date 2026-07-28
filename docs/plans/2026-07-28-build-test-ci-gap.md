@@ -1,8 +1,9 @@
 ---
 date: 2026-07-28
 slug: build-test-ci-gap
-status: in-progress
+status: done
 related:
+  - dev-logs/2026-07-28-build-test-ci-gap.md
   - plans/2026-07-19-m2-phase2-auth-authz.md
   - plans/2026-07-03-security-quality-standards.md
   - adr/0010-proto-distribution-buf-git-input.md
@@ -109,10 +110,11 @@ v0.2.0 *내용*(`LoadSnapshot`·`DocMeta` page-tree)은 main에 커밋돼 있다
 - [x] E2E CI 제외 + 사유를 워크플로 주석·README 양쪽에 명시
 - [x] **대조군 2종으로 게이트 작동 증명**(§검증)
 
-### 5. 마감
-- [ ] 3 PR 머지 후 각 레포 main에서 CI green 확인(**squash 후 main 트리거까지** — 2026-07-17 교훈)
-- [ ] dev-log 작성 + 이 plan `status: done`
-- [ ] CLAUDE.md·Phase 2 plan의 "CI 갭" 경고 문구 해소
+### 5. 마감 ✅
+- [x] 3 PR 머지 + 각 레포 main 트리거 green 확인(squash 후까지 — 2026-07-17 교훈): engine `fab982d` · backend `181b8de` · frontend `ff2e077`
+- [x] 대조군 임시 커밋 잔재 검사 — 3레포 워킹트리 clean, main 히스토리에 `tmp:` 커밋 0건(squash라 애초에 미유입), 머지된 트리에 주입 코드 없음
+- [x] dev-log = [2026-07-28-build-test-ci-gap](../dev-logs/2026-07-28-build-test-ci-gap.md) + 이 plan `status: done`
+- [x] CLAUDE.md·Phase 2 plan의 "CI 갭" 경고 해소
 
 ## 검증
 
@@ -164,7 +166,8 @@ PageTreePersistenceTest > 부모-자식 페이지를 저장하면 자기참조 �
 ## 재개 지점 (Resume)
 
 - **마지막 완료**: 단계 0(proto 태그 push `99213c3`)·1(액션 spec 검증)·**2(PR① engine CI)** — [PR #12](https://github.com/ressKim-io/weDocs-crdt-engine/pull/12) 대조군까지 완료, **머지 승인 대기**.
-- **다음 = ① PR #12 머지(승인) → ② 단계 3 backend PR② → ③ 단계 4 frontend PR③ → ④ 단계 5 마감**. backend는 **Testcontainers가 CI Docker에서 뜨는지가 최대 미지수** — 추측으로 미리 배선하지 말고 첫 실행 실패를 보고 결정(plan 단계 3). frontend는 `package.json` 스크립트 분리가 선행.
+- **트랙 완료(2026-07-28)** — 3레포 전부 머지·main green. 교훈은 [dev-log](../dev-logs/2026-07-28-build-test-ci-gap.md)로.
+- **다음 = M2 Phase 2c**(frontend 토큰 전달) — [phase2 plan](2026-07-19-m2-phase2-auth-authz.md) §재개 지점.
 - **주의**: 서비스 3레포는 branch+PR+건별 승인. controller만 main 직접. 신규 액션은 전부 **spec 사전 검증 후** 작성(단계 1) — 이 레포의 반복 함정이 "버전·기본값 추측"이다(`config-contract-audit.md`).
 
 ## 범위 밖
