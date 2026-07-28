@@ -12,6 +12,10 @@
 
 **M2 Phase 2(인증/인가) — 2a·2b 머지 완료, 남은 것은 2c뿐.**
 
+> 2026-07-28 사이드 트랙 완료 — Claude 상시 로드 컨텍스트 1,975 → 300줄(−85%) + 예산 게이트 3중 배선.
+> 이후 `.claude/**`·`CLAUDE.md`를 편집하면 `PostToolUse` 훅이 예산을 즉시 검사한다.
+> 회고 = [dev-logs/2026-07-28-claude-context-budget.md](../dev-logs/2026-07-28-claude-context-budget.md)
+
 M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1 전체 완료) → 인증/인가(Phase 2, 진행 중) → 엔진 저장·복원·outbox·E2E(Phase 3~6) 순.
 
 | Phase | 상태 | 산출 |
@@ -52,6 +56,9 @@ Phase 3 엔진 저장 → 4 복원 → 5 outbox → 6 E2E. 본류 plan = [`plans
 | [m2-phase2-auth-authz](../plans/2026-07-19-m2-phase2-auth-authz.md) | in-progress | 2c만 |
 | [plan-audit-improvements](../plans/2026-06-30-plan-audit-improvements.md) | in-progress | T4 잔여 4건(T4-1 NFR/DoD 트래커 · T4-2 관측 콜사이트 · T4-4 ADR 0002~0009 승격 · T4-5 ①②③⑤). **T4-3 서비스 CI는 2026-07-28 완료** |
 
+
+> **2026-07-28 역방향 점검**: 위 3건은 전부 M2 트랙이라 이번 Claude 설정 작업과 무관.
+> [claude-context-budget](../plans/2026-07-28-claude-context-budget.md)는 `done`으로 클로징했고 새로 여는 트랙 없음.
 그 외 plan은 전부 `done`.
 
 ## 이월된 findings (구현 시 소거)

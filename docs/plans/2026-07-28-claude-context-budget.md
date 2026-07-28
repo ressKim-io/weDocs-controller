@@ -1,8 +1,9 @@
 ---
 date: 2026-07-28
 slug: claude-context-budget
-status: planned
+status: done
 related:
+  - dev-logs/2026-07-28-claude-context-budget.md
   - dev-logs/2026-07-28-claude-md-restructure.md
   - plans/2026-07-28-build-test-ci-gap.md
   - plans/2026-06-30-plan-audit-improvements.md
@@ -78,24 +79,24 @@ since imported files load at launch."* / *"Rules without a `paths` field are loa
 
 ### 1단계 — 기계적 (산문 0줄 수정, 커밋 단위 revert 가능)
 
-- [ ] **C0** `docs(plans):` 이 파일 커밋 (`planned` → `in-progress`)
-- [ ] **C1** `ci:` `scripts/claude_context_budget.py` 신설 — 임계값은 현재값+5%로 두어 무수정 통과
-- [ ] **C2** `chore(claude):` `CLAUDE.md` @import 블록 삭제 → **−346줄**
-- [ ] **C3** `chore(claude):` `paths:` 스코프 전환 → **−625줄**
-- [ ] **C4** `chore(claude):` `cloud-cli-safety.md` 삭제 + `user-approval.md` 상호참조 정정 (**동일 커밋**) → −43줄
-- [ ] **C5** `ci:` `.github/workflows/claude-context-budget.yml` + 임계값 1단계 하향 + `ci/README.md` 한계 명시
+- [x] **C0** `docs(plans):` 이 파일 커밋 (`planned` → `in-progress`)
+- [x] **C1** `ci:` `scripts/claude_context_budget.py` 신설 — 임계값은 현재값+5%로 두어 무수정 통과
+- [x] **C2** `chore(claude):` `CLAUDE.md` @import 블록 삭제 → **−346줄**
+- [x] **C3** `chore(claude):` `paths:` 스코프 전환 → **−625줄**
+- [x] **C4** `chore(claude):` `cloud-cli-safety.md` 삭제 + `user-approval.md` 상호참조 정정 (**동일 커밋**) → −43줄
+- [x] **C5** `ci:` `.github/workflows/claude-context-budget.yml` + 임계값 1단계 하향 + `ci/README.md` 한계 명시
 - [ ] **── 체크포인트: 1,975 → ~813줄 (−59%). 산문 미수정 ──**
 
 ### 2단계 — 내용
 
-- [ ] **C6** `chore(claude):` `.claude/settings.json` + `scripts/guard_destructive.py`
-- [ ] **C7** `refactor(claude):` `workflow.md` 119→35 (중복 2절 삭제) + `deep-thinking` 핵심 12줄 흡수 → ~−220줄
-- [ ] **C8** `refactor(claude):` `git.md`·`effort-guide.md` **`git mv`로 skill 이동**, `token-budget.md` 64→18 → ~−329줄
-- [ ] **C9** `refactor(claude):` `user-approval.md` 159→45, `plan-logging.md` 122→45 → ~−191줄
-- [ ] **C10** `chore(claude):` 에이전트 댕글링 참조 11건 + `platform-engineer` 제거 + 설명 리타게팅 3건
-- [ ] **C11** `docs(claude):` `.claude/README.md` skill 2계층 명시, 죽은 `/슬래시` 20건 → 경로 링크
-- [ ] **C12** `ci:` 임계값을 2단계 목표로 하향 — **래칫은 별도 커밋**
-- [ ] **C13** `docs:` `status: done` + dev-log + `docs/status/current.md` §열린 트랙 역방향 점검
+- [x] **C6** `chore(claude):` `.claude/settings.json` + `scripts/guard_destructive.py`
+- [x] **C7** `refactor(claude):` `workflow.md` 119→35 (중복 2절 삭제) + `deep-thinking` 핵심 12줄 흡수 → ~−220줄
+- [x] **C8** `refactor(claude):` `git.md`·`effort-guide.md` **`git mv`로 skill 이동**, `token-budget.md` 64→18 → ~−329줄
+- [x] **C9** `refactor(claude):` `user-approval.md` 159→45, `plan-logging.md` 122→45 → ~−191줄
+- [x] **C10** `chore(claude):` 에이전트 댕글링 참조 11건 + `platform-engineer` 제거 + 설명 리타게팅 3건
+- [x] **C11** `docs(claude):` `.claude/README.md` skill 2계층 명시, 죽은 `/슬래시` 20건 → 경로 링크
+- [x] **C12** `ci:` 임계값을 2단계 목표로 하향 — **래칫은 별도 커밋**
+- [x] **C13** `docs:` `status: done` + dev-log + `docs/status/current.md` §열린 트랙 역방향 점검
 
 ---
 
@@ -323,15 +324,23 @@ ls .claude/skills/*/SKILL.md | wc -l             # C8 이후 7 (상한 12)
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = (없음 — C0 작성 중)
-다음        = C0 커밋 → C1 스크립트 작성
-주의        = ① C4는 파일 삭제와 user-approval.md 상호참조 정정을 반드시 같은 커밋에
-              ② C3에서 secure-coding.md paths:에 .github/workflows 추가를 빼먹으면 워크플로우 편집 시 보안 룰 0
-              ③ C5 시점에 961 > 900이므로 testing.md 글롭 타이트닝을 C3에 포함하거나 C5를 C7 뒤로
-              ④ 삭제는 cloud-cli-safety.md 1건뿐 — 나머지는 paths: 보관 (사용자 결정)
+마지막 완료 = C13 (전 단계 완료 — 2026-07-28)
+다음        = 없음. 이 plan은 done.
+결과        = 상시 로드 1,975 → 300줄 (−85%) / 57,131 → 12,296자 / ~28.7k → ~6.2k토큰
+              게이트 3중 배선(스크립트 + push:main CI + PostToolUse 훅), stage2 임계값 래칫 완료
+회고        = docs/dev-logs/2026-07-28-claude-context-budget.md
 ```
 
----
+### 계획 대비 달라진 것 (근거와 함께)
+
+| 항목 | 계획 | 실제 | 왜 |
+|---|---|---|---|
+| `security.md` rename | `security-appsec.md` | 유지 | ADR-0021·secure-coding·plan 3곳이 파일명으로 참조 — `paths:`만으로 토큰 결과 동일 |
+| stage1 임계값 | 900줄 / 26,000자 | 1,000 / 33,000 | 계획 추정이 `effort-guide`(143줄)를 누락. 실측 961줄 |
+| stage2 임계값 | 300줄 / 9,000자 | 340 / 14,000 | 자수 추정이 한글 밀도를 낮게 봄. 실측 12,296자 |
+| SKILL.md 상한 | 300줄 | 500줄 | 300은 임의값, 공식 권고가 "under 500". 훅이 `clean-code`(474줄)를 막아 발견 |
+| 댕글링 에이전트 | 11건 | **9건** | `grafana-agent`(Grafana 제품명)·`pilot-agent`(Istio CLI)는 오탐 — 서브에이전트 아님 |
+| C3 내용 재작성 | `documentation`·`config-contract-audit` 본문 trim 포함 | frontmatter만 | 1단계의 "산문 0줄 수정" 성질 유지. 스코프 후엔 예산 무관이라 급하지 않음 |
 
 ## 범위 밖
 
