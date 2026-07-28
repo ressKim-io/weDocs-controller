@@ -44,7 +44,7 @@ effort: xhigh                                   # outlier (haiku/opus) 만 명�
 description: |
   K8s manifest / Helm chart / Kustomize 종합 리뷰어 — Pod Security Standards, RBAC, 리소스 관리,
   고가용성, 이미지 정책. Use PROACTIVELY when K8s manifest files change. Red team 관점 공격 시나리오
-  (MITRE ATT&CK, container escape, lateral movement) 는 k8s-security-reviewer 를 함께 호출.
+  (MITRE ATT&CK, container escape, lateral movement) 는 rules/secure-coding.md 체크리스트로.
 ```
 
 ❌ **Bad** (현재 49 중 20 개 — 40%):
@@ -68,9 +68,8 @@ description: AI-powered FinOps cost analyzer. Use to analyze cloud spending.
 [1] MSA 아키텍처 설계 에이전트. 서비스 경계 정의, API 계약(protobuf/OpenAPI) 설계, Bounded Context
     매핑, 의존성 분석에 특화.
 [2] Use for microservice architecture design, service decomposition, and API contract definition.
-[3] compliance-strategy-agent 의 compliance-blueprint 를 consume 하여 data-model 에 규제 제약
-    (PIPA/GDPR) 반영. business-decision-agent 의 4 ADR(tenancy/auth/payment/notification) 을
-    consume 하여 api-contract 설계.
+[3] 다른 에이전트의 산출물을 consume 한다면 그 관계를 여기 적는다.
+    (참조 대상은 .claude/agents/ 에 실재하는 에이전트여야 한다 — 댕글링 금지)
 ```
 
 ### Trigger 패턴
@@ -90,7 +89,7 @@ description: AI-powered FinOps cost analyzer. Use to analyze cloud spending.
 | Model | Effort | 사용 상황 | 본 레포 예 |
 |---|---|---|---|
 | `haiku` | `low` | 단순 자동화, 기록, template 적용 | dev-logger / git-workflow / pr-review-bot |
-| `sonnet` | `xhigh` (default) | 일반 expert / reviewer / 분석 (대다수) | code-reviewer / go-expert / k8s-reviewer 42 개 |
+| `sonnet` | `high` (default) | 일반 expert / reviewer / 분석 (대다수) | code-reviewer / java-expert / k8s-reviewer 등 16 개 |
 | `opus` | `max` | cascade failure / 트레이드오프 / 전사 RFC | architect-agent / debugging-expert / tech-lead |
 
 **model 선택 self-check**:
@@ -119,7 +118,7 @@ agent 가 다른 agent / skill 과 협력하는 경우 description 에 명시 (�
 Cross-language 시니어 코드 리뷰어 — correctness, readability, 명명, 중복, 테스트 커버리지,
 일반 best practice. Use PROACTIVELY after any code change as the default reviewer.
 언어 특화 깊은 검증(Go concurrency, Java JVM/Virtual Threads, Python asyncio, React Server
-Components) 은 go-/java-/python-/frontend-expert 를 함께 호출.
+소유권·CRDT 수렴) 은 rust-/java-/python-expert 를 함께 호출.
 ```
 
 ---
@@ -134,7 +133,7 @@ Components) 은 go-/java-/python-/frontend-expert 를 함께 호출.
 | 150-250 줄 | OK |
 | **250-450 줄** | **Sweet spot** |
 | 450-600 줄 | 검토 필요 — 일부 섹션 skill 로 분리 |
-| >600 줄 | 분할 / 압축 필수 (현재 go-expert / java-expert 605 줄) |
+| >600 줄 | 분할 / 압축 필수 (현재 java-expert 606 줄 — Tier B 상한 620) |
 
 ### 표준 섹션 순서
 

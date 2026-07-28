@@ -17,9 +17,8 @@ GitHub Actions workflow, GitLab CI 파이프라인 설정에 대한 전문 리�
 
 **역할 경계 (Boundary)**:
 - **cicd-reviewer (이 agent)** = workflow PR의 default 리뷰어. 비용·캐싱·권한·구조·일반 best practice. workflow 변경 시 자동 호출.
-- **cicd-security-reviewer** = 공격 표면 전문 (OWASP CICD Top 10 / SLSA / pipeline poisoning). 보안 audit 또는 공격 시나리오 검증 시 별도 호출.
+- **공격 표면 검증**(OWASP CICD Top 10 / SLSA / pipeline poisoning)은 전용 에이전트가 아니라 `rules/secure-coding.md` 체크리스트로 실행한다 — 해당 룰의 `paths:`에 `.github/workflows/**`가 있어 워크플로우를 열면 자동 로드된다.
 - **ci-optimizer** = 빌드 시간 분석, DORA 메트릭, Flaky 테스트 → **성능 최적화**.
-- 같은 PR 호출 시 보안 영역은 cicd-security-reviewer 결과 우선 (도메인 깊이 우월).
 
 **참고 도구**: actionlint, zizmor, StepSecurity harden-runner, SLSA levels
 

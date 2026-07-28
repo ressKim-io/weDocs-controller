@@ -19,8 +19,7 @@ Dockerfile, docker-compose.yml에 대한 전문 리뷰어.
 
 **역할 경계 (Boundary)**:
 - **dockerfile-reviewer (이 agent)** = Dockerfile/Compose PR의 default 리뷰어. base image, 레이어 최적화, multi-stage, 캐시, 이미지 size, Compose 품질 위주.
-- **container-security-reviewer** = 공격 표면 전문 (CIS Docker Benchmark + 공급망 공격 방지). Container escape vectors, signed image, runtime security 검증. 컨테이너 hardening / 공급망 audit 시 별도 호출.
-- 같은 PR 호출 시 공격 표면 영역은 container-security-reviewer 결과 우선.
+- **공격 표면 검증**(CIS Docker Benchmark, container escape, signed image, 공급망)은 전용 에이전트가 아니라 `rules/secure-coding.md` 체크리스트로 실행한다.
 
 ---
 

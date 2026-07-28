@@ -302,7 +302,7 @@ groups:
 
 Remember: **Connection Pooling은 필수**입니다. PostgreSQL은 프로세스 기반이라 연결당 약 10MB 메모리를 사용합니다. PgBouncer를 사용하면 실제 DB 연결 수를 줄이면서 많은 애플리케이션 연결을 처리할 수 있습니다.
 
-관련 에이전트: `database-expert-mysql` - MySQL/InnoDB 튜닝, ProxySQL
+이 프로젝트의 DB는 PostgreSQL 하나다(doc-service). MySQL 전용 에이전트는 도입하지 않았다.
 
 Sources:
 - [PostgreSQL on Kubernetes - Percona](https://www.percona.com/blog/run-postgresql-on-kubernetes-a-practical-guide-with-benchmarks-best-practices/)

@@ -19,8 +19,7 @@ K8s 운영 환경에서 발생하는 보안·성능·안정성 이슈를 리뷰 
 
 **역할 경계 (Boundary)**:
 - **k8s-reviewer (이 agent)** = manifest PR의 default 리뷰어. PSS, RBAC, 리소스, HA, 이미지 정책 등 일반 best practice. manifest 변경 시 자동 호출.
-- **k8s-security-reviewer** = 공격 표면 전문 (CIS K8s Benchmark + MITRE ATT&CK Containers). Container escape, lateral movement, privilege escalation 검증. red team / 보안 audit 시 별도 호출.
-- 같은 PR 호출 시 공격 시나리오 영역은 k8s-security-reviewer 결과 우선.
+- **공격 표면 검증**(CIS K8s Benchmark, container escape, lateral movement, privilege escalation)은 전용 에이전트가 아니라 `rules/k8s-manifest.md`·`rules/secure-coding.md`의 `[B]`/`[A]` 체크리스트로 실행한다.
 
 ---
 
