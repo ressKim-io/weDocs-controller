@@ -27,7 +27,7 @@
 - infra → `infra/` (kustomize · istio ambient · argocd)
 
 ## 현재 상태
-**M1 ✅ 완료(2026-06-30) + M2 readiness 게이트 ✅ 완료(2026-06-30).** M1 = "두 브라우저 동시 편집 수렴"(Phase 1~3) + 폴리글랏 단일 trace(Phase 4) + 마감(Phase 5), **proto 변경 없이 완수**. M2 readiness = 4 ADR + proto-v0.2.0 확정 → **M2 구현 착수 가능**(아래). proto 배포 = buf 원격 git input(ADR-0010, 현 태그 `proto-v0.2.0`·로컬, push는 서비스 레포 착수 시 승인).
+**M1 ✅ 완료(2026-06-30) + M2 readiness 게이트 ✅ 완료(2026-06-30).** M1 = "두 브라우저 동시 편집 수렴"(Phase 1~3) + 폴리글랏 단일 trace(Phase 4) + 마감(Phase 5), **proto 변경 없이 완수**. M2 readiness = 4 ADR + proto-v0.2.0 확정 → **M2 구현 착수 가능**(아래). proto 배포 = buf 원격 git input(ADR-0010, 현 태그 **`proto-v0.2.0`·원격 push 완료**(2026-07-28, `99213c3`)).
 - **Phase 1 ✅ crdt-engine(PR #1 머지, fbd25fe)**: yrs v1 권위 머지 + `tokio::broadcast` fan-out + gRPC bidi `Sync` 브리지. proptest 수렴·criterion 벤치 통과, 코드리뷰 8건 반영. doc-id=gRPC 메타데이터, 모든 인코딩 lib0 v1(Yjs 호환).
 - **Phase 2 ✅ ws-gateway 브리지(Java, PR #1 머지, e0e8277)**: lib0 코덱(`varUint`/`varBuffer`) TDD + `DocWebSocketHandler` 세션당 Sync 스트림(메타데이터 `doc-id`=URL room) + `ServerFrame`→WS `Update(2)` + awareness/auth drop. 22 test pass, java-expert+code-reviewer 2-lens 반영.
 - **Phase 3 ✅ frontend E2E 수렴(React, PR #1 머지, e8f0c83)**: `?room=` 다중문서 + vitest 2클라 y-websocket E2E(`disableBc:true`로 게이트웨이 경로만). 로컬 engine+gateway 실기동 → `WS→gateway→gRPC→engine→fan-out` 수렴 실측 green(gateway 로그로 gRPC 경로 확인). 'synced' 비의존 텍스트 폴링.

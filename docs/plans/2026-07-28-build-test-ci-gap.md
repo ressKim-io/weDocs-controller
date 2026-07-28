@@ -71,16 +71,23 @@ v0.2.0 *내용*(`LoadSnapshot`·`DocMeta` page-tree)은 main에 커밋돼 있다
 
 ## 실행 체크리스트
 
-### 0. 선결 — proto 태그 정합 (controller, main 직접 + push 승인)
-- [ ] `proto-v0.2.0` 태그를 main HEAD에 생성 → **push 승인 요청** → push
+### 0. 선결 — proto 태그 정합 ✅ (controller, main 직접 + push 승인)
+- [x] `proto-v0.2.0` annotated 태그 생성 → push 승인 → push. **대상 = `99213c3`**("feat(proto): doc-service M2 계약 — LoadSnapshot + page-tree 메타 (v0.2.0)", proto/의 마지막 변경 커밋이라 main HEAD보다 정확). 원격 확인: `refs/tags/proto-v0.2.0^{}` → `99213c3` ✅
+- [x] **CI 명령 형태를 로컬에서 실증**(YAML 쓰기 전): ① 로컬 `.git#subdir=proto,ref=proto-v0.2.0` export → 4 proto ② **원격 URL** export → 동일 결과·0.95s·인증 불요(public repo) ③ 그 산출물로 `cargo build` + `cargo test --all-targets` → **30 green**. Makefile의 디렉토리 입력과 트리 레이아웃 동일.
 - [ ] CLAUDE.md의 "현 태그 `proto-v0.2.0`·로컬" 서술 정정(원격 존재로)
-- [ ] ⚠️ 태그가 원격에 존재함을 `git ls-remote --tags` 로 확인한 뒤에야 CI 작성 착수
 
-### 1. 신규 도구 spec 사전 검증 (MANDATORY, `workflow.md` §신규 도구)
-- [ ] **buf GitHub Action**: `bufbuild/buf-setup-action` vs `bufbuild/buf-action` 중 `buf export`만 필요한 경우의 올바른 선택·현행 major를 **공식 문서로 확인**(controller `proto-ci.yml`은 `buf-action@v1`을 lint/breaking 용도로 사용 중 — 용도가 다름). 추측 금지.
-- [ ] `actions/setup-java` 현행 major + Java 25 배포처(`temurin` 25 GA 여부) 확인
-- [ ] Rust 툴체인 액션(`dtolnay/rust-toolchain` 등) 현행 사용법 확인
-- [ ] 각 캐시 액션(`Swatinem/rust-cache`·`gradle/actions/setup-gradle`·`actions/setup-node` npm 캐시) 현행 major 확인
+### 1. 신규 도구 spec 사전 검증 ✅ (MANDATORY, `workflow.md` §신규 도구 — 전부 WebFetch 2026-07-28)
+
+| 도구 | 검증 결과 | 출처 |
+|---|---|---|
+| buf action | ⚠️ **`buf-setup-action`은 deprecated** → `bufbuild/buf-action@v1` 사용. **`setup_only: true` 필수** — 미지정 시 PR에서 `lint`/`format`/`breaking`이 **기본 true**로 돌아 proto 원본이 없는 엔진 레포에서 오작동한다(`action.yml` inputs 확인) | [buf-setup(deprecation)](https://github.com/marketplace/actions/buf-setup) · [buf-action action.yml](https://raw.githubusercontent.com/bufbuild/buf-action/main/action.yml) |
+| `actions/setup-java` | **v5가 현행 stable**(v5.6.0, 2026-07-16). ⚠️ v6는 `main`에서 개발 중·**프로덕션 비권장**. `temurin` + `java-version: '25'` 지원 확인 | [releases](https://github.com/actions/setup-java/releases) |
+| `dtolnay/rust-toolchain` | ⚠️ **@v1 태그 방식이 아니다** — `@stable`/`@1.89.0` 같은 **rev 자체가 툴체인 선택**. 컴포넌트는 `with: components: clippy, rustfmt` | [repo](https://github.com/dtolnay/rust-toolchain) |
+| `Swatinem/rust-cache` | **v2**. ⚠️ **툴체인 설정 step 뒤에 배치 필수** — rustc 버전을 캐시 키로 쓰기 때문 | [repo](https://github.com/Swatinem/rust-cache) |
+| `gradle/actions/setup-gradle` | **v6**(v6.2.0) | [releases](https://github.com/gradle/actions/releases) |
+| `actions/setup-node` | v7이 2026-07-14 릴리스(ESM 마이그레이션)이나 **2주밖에 안 됐다** → 베이스라인은 **v6**(v6.5.0)로 세우고 green 확인 후 bump 판단(근거 있는 보수 선택, 워크플로 주석에 기록) | [releases](https://github.com/actions/setup-node/releases) |
+
+- 엔진은 `protoc` 설치 불요 — `build.rs`가 `protoc-bin-vendored`로 주입(기존 구현).
 
 ### 2. PR① crdt-engine `ci.yml` (🦀 게이트)
 - [ ] buf 설치 → `buf export '…#subdir=proto,ref=proto-v0.2.0' -o proto` → `cargo build`
