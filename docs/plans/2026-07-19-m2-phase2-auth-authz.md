@@ -97,11 +97,11 @@ related:
 - [x] **config**(config-contract-audit 3곳 동시): `DocServiceProperties`(`wedocs.doc-service`, `GatewayAuthProperties` fail-fast 패턴) + `@DefaultValue` + `application.yml`.
 - [x] 테스트: 단위(`AuthzHandshakeInterceptorTest`, 2a-1 테스트 구조 미러링 — `SimpleMeterRegistry` 실계측·Mock 서블릿·fake 클라이언트, 모킹 라이브러리 없음) 비UUID·denied·UNSPECIFIED·backend_error 403 + **H-1 회귀**(403 시 ok 미증가) / 통합 `FakeDocService`(랜덤 포트 실 TCP + `@DynamicPropertySource`, `FakeCrdtEngine` 패턴 — ws-gateway엔 `grpc-inprocess` 없음) + **기존 통합 테스트 room·subject UUID화**(D1 필연) + viewer write drop·editor 양방향·role 헤더 캡처 + **VT pinning 실측**(JFR `jdk.VirtualThreadPinned`; Java 25 JEP 491로 무해 가능성 높으나 **추정 금지·측정**).
 
-### 2b. crdt-engine 방어층 (crdt-engine PR, 🦀 `rust-expert` + `code-reviewer` 2-렌즈) — 진행 중
+### 2b. crdt-engine 방어층 ✅ ([crdt-engine PR #11](https://github.com/ressKim-io/weDocs-crdt-engine/pull/11) 머지, squash `4d9c39e`)
 
 > 게이트웨이 무변경. `service.rs` 358줄 / `handle_inbound`(:223-263)의 read·write 분기는 **독립 `if` 2개**(oneof 아님 → 한 프레임에 둘 다 가능) / 엔진 `grep -rn "role" src/` = 0건 / 엔진엔 메트릭 익스포터 없음(tracing만).
 
-> **진행 상태(2026-07-28)**: 구현·테스트 완료 + **크래프트 게이트 리뷰 완료(BLOCKING [B] 0 → PASS)**. 브랜치 `feature/m2-phase2b-engine-role-enforcement`, **미푸시**. 30 테스트 green(lib 18 + proptest 3 + fanout 3 + **sync_role 6**), clippy `-D warnings`·fmt clean.
+> **완료(2026-07-28)**: [PR #11](https://github.com/ressKim-io/weDocs-crdt-engine/pull/11) squash 머지 `4d9c39e`. 크래프트 게이트 **BLOCKING [B] 0 → PASS**, 30 테스트 green(lib 18 + proptest 3 + fanout 3 + **sync_role 6**), clippy `-D warnings`·fmt clean, CI green(gitleaks·cargo-audit). ⚠️ 원 커밋 `7fb01b5` 메시지의 과장 서술은 **squash 메시지에서 정정**해 머지(방어 범위 = 게이트웨이 회귀·계약 위반).
 >
 > ⚠️ **게이트 실행 방식 변경**: `rust-expert`+`code-reviewer` 서브에이전트 병렬 spawn이 **2세션 연속 세션 한도로 중단**(각자 표준 6종+엔진 소스를 콜드 스타트로 재적재 = 예산 2배) → 3회차는 **인라인 직접 실행**으로 전환해 완주. 같은 규모의 단일 레포 게이트는 인라인이 비용·완주율 모두 우위.
 >
@@ -144,8 +144,9 @@ related:
 - **이전 완료**: **2a-1 gateway 인증 핸드셰이크 ✅ 머지** — [backend PR #16](https://github.com/ressKim-io/weDocs-backend/pull/16) squash 머지(`583b065`, main), 69 테스트 green·CI green(gitleaks/dependency-review pass). ADR-0021(`8e08af5`)도 완료. 교훈 = [dev-log](../dev-logs/2026-07-19-m2-gateway-authn-observability.md).
 - **마지막 완료**: **2a-2 gateway 인가 + viewer 다층 1차 ✅ 머지** — [backend PR #17](https://github.com/ressKim-io/weDocs-backend/pull/17) squash `4cb750d`, main 100 테스트 green·CI green(gitleaks/dependency-review pass, **squash 후 main 스캔도 success** 확인). 크래프트 게이트 2-렌즈 BLOCKING 0, advisory 전량 반영. **VT pinning 이월 검증점 종결** — JFR 0건 + `isVirtual()` 프로브로 공허한 green 배제, ⚠️ 안전 근거는 JEP 491이 아니라 grpc-java `LockSupport.park`라 **재측정 트리거 = grpc-java 메이저 업그레이드**([dev-log](../dev-logs/2026-07-20-vt-pinning-grpc-blocking-stub.md)).
 
-- **진행 중 = 2b crdt-engine 방어층 — 구현·게이트 완료, PR 전**. 브랜치 `feature/m2-phase2b-engine-role-enforcement`(**미푸시**): 커밋 `7fb01b5` + CR-001 테스트 반영분(미커밋). **크래프트 게이트 BLOCKING [B] 0 → PASS**, 30 테스트 green(`tests/sync_role.rs` 6건 = 실 gRPC 스트림), clippy `-D warnings`·fmt clean. findings·검증 내역은 위 §2b 진행 상태.
-- **다음 액션 = ① CR-001 테스트 커밋 → ② push(승인) → ③ PR 생성(승인) → ④ CI green 확인 → ⑤ 머지**. PR 본문은 **정정된 서술**로 쓴다(아래 "왜 미루면 안 되나" 참조 — "직접 gRPC 우회 차단" ❌ / "게이트웨이 회귀에 대한 다층 방어" ⭕). ⚠️ 커밋 `7fb01b5`의 **메시지 본문에도 같은 과장이 남아 있다**("엔진에 직접 gRPC로 붙으면 인가를 통째로 우회할 수 있었다") — squash 머지 시 새로 쓰는 메시지에서 정정할 것.
+- **마지막 완료 = 2b crdt-engine role 강제 ✅ 머지** — [crdt-engine PR #11](https://github.com/ressKim-io/weDocs-crdt-engine/pull/11) squash `4d9c39e`, 크래프트 게이트 BLOCKING 0, 30 green, CI green. **→ Phase 2에서 남은 것은 2c뿐.**
+- **다음 = 2c frontend 토큰 전달**(frontend 레포, branch+PR+건별 승인): `WebsocketProvider`의 `protocols` 옵션으로 로그인 JWT 전달(**subprotocol 지원 spec 사전검증** — workflow.md 신규도구 검증) + **데모 `?room=demo` → 실제 페이지 UUID화**(2a-2 D1 이월, 비UUID는 gRPC 왕복 없이 403) + E2E 스모크(editor 양방향·viewer read-only·무토큰 실패). ⚠️ 기존 무인증 수렴 E2E가 전부 토큰 경로로 바뀌므로 회귀 정비가 실제 작업량의 변수다.
+- ⚠️ **2c 착수 전 권고 = CI 갭 사이드트랙**(2026-07-28 발견): 서비스 3레포에 **빌드·테스트 CI가 없다** — `.github/workflows/`가 backend=dependency-submission+security-scan / crdt-engine·frontend=security-scan **뿐**. `cargo test`·Gradle 테스트·vitest가 CI에서 한 번도 돌지 않아 **빌드를 깨는 PR도 all-green으로 보인다**(2b의 30 green도 전부 로컬 실행). controller만 `proto-ci.yml`로 실질 게이트 보유. 상세·제약 = 별도 plan.
 - **Minor findings 이월(게이트 2026-07-28, PR에 미반영)**: CR-003 `extract_role` 거절 로그에 `doc_id`·`trace_id` 없음(span 생성 이전에 발화 + 함수가 `MetadataMap`만 수신) — 2b가 만드는 유일한 보안 신호인데 대상 문서 추적 불가, observability [A] P3/P6 · CR-004 `Cargo.toml` dev-dep 주석의 "테스트 빌드에서만 net/time" 주장이 사실과 다름(`cargo tree -e features,no-dev` 확인 = 프로덕션 빌드에도 tonic/hyper-util 전이로 이미 활성. dev-dep 선언 자체는 옳은 관행이니 **근거 문구만** 교체) · CR-005 `let _ = out_tx.send(...)`(:322) 무시 근거 주석 없음(기존 :309 동일 패턴 → 함께) · CR-006 plan이 명시한 `INVALID_ROLE_MSG` 상수 미도입(발화점 1곳이라 **plan 문구를 코드에 맞추는 쪽** 권장).
 - 2b 설계 요지(Rust, `rust-expert` 🦀 + code-reviewer 2-렌즈). **2a-2가 이미 `role` 메타데이터를 보내고 있다** — 엔진은 지금 그것을 무시하므로, 2b는 수신·강제만 하면 된다(게이트웨이 무변경).
   - 입력 계약(2a-2가 확정, 이미 wire에 흐름): `Sync` 스트림 open 시 gRPC 메타데이터 **`role` = `"viewer"` | `"editor"`** (`doc-id`와 같은 open-time 채널, **proto 무변경**). 게이트웨이측 생성 지점 = `EngineClient.openSync`, 값의 출처 = `SessionRole.wireValue()`.
