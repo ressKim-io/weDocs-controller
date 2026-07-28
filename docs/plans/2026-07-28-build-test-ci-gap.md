@@ -102,10 +102,12 @@ v0.2.0 *내용*(`LoadSnapshot`·`DocMeta` page-tree)은 main에 커밋돼 있다
 - [x] `buf.gen.yaml` canonical 주석 ref를 `proto-v0.2.0`으로 갱신(엔진 Makefile과 **같은 stale이 양쪽에 있었다** — 원격 부재 태그를 문서가 가리키던 드리프트의 잔재)
 - [x] **대조군으로 게이트 작동 증명**(§검증)
 
-### 4. PR③ frontend `ci.yml`
-- [ ] `package.json` 스크립트 분리 — `test:unit`(E2E 제외) 신설, `test:e2e`는 E2E만 지목. 기존 `test:e2e` 의미가 바뀌므로 README 갱신 동반
-- [ ] `npm ci` → `npm run typecheck` → `npm run build` → `npm run test:unit`
-- [ ] E2E는 CI 제외 + **제외 사유를 워크플로 주석에 명시**(다른 레포 서비스 2개 기동 필요 → M5 배포 파이프라인과 함께)
+### 4. PR③ frontend `ci.yml` ✅ ([PR #4](https://github.com/ressKim-io/weDocs-frontend/pull/4), 머지 대기)
+- [x] `package.json` 스크립트 분리 — `test:unit` 신설(`vitest run --exclude 'test/e2e/**'`, 로컬 실증으로 단위 5건만 잡음 확인), `test:e2e`·`test:e2e:watch`는 `test/e2e`만 지목. **README가 이미 `test:e2e`를 E2E 명령으로 문서화**하고 있어 좁히는 쪽이 이름과 실제를 맞춘다 + README에 테스트 구분 표 추가
+- [x] `npm ci` → `npm run build` → `npm run test:unit`. ⚠️ **`typecheck` 별도 실행 안 함** — `build`가 `tsc --noEmit && vite build`라 이미 포함(중복 제거)
+- [x] **node 24 근거를 추측 대신 도출** — 레포에 `.nvmrc`·`engines` 핀이 없어 설치 툴체인의 `engines`를 직접 읽어 교집합: vite 8.1.0 `^20.19.0 || >=22.12.0` ∩ vitest 4.1.9 `^20.0.0 || ^22.0.0 || >=24.0.0` → 24(LTS). 근거는 워크플로 주석에
+- [x] E2E CI 제외 + 사유를 워크플로 주석·README 양쪽에 명시
+- [x] **대조군 2종으로 게이트 작동 증명**(§검증)
 
 ### 5. 마감
 - [ ] 3 PR 머지 후 각 레포 main에서 CI green 확인(**squash 후 main 트리거까지** — 2026-07-17 교훈)
@@ -122,7 +124,7 @@ v0.2.0 *내용*(`LoadSnapshot`·`DocMeta` page-tree)은 main에 커밋돼 있다
 |---|---|---|---|
 | crdt-engine | ① `cargo fmt` 위반 ② 단언 뒤집은 테스트 | fmt·test 각각 red | ✅ **둘 다 red 확인**(아래) |
 | backend | Testcontainers 테스트 단언 뒤집기 | Gradle red | ✅ **red 확인**(아래) |
-| frontend | 타입 에러 / 실패하는 단위 테스트 | typecheck·test red | — |
+| frontend | ① 실패하는 단위 테스트 ② 타입 에러 | test·build red | ✅ **둘 다 red 확인**(아래) |
 
 **crdt-engine 대조군 실측(2026-07-28, [PR #12](https://github.com/ressKim-io/weDocs-crdt-engine/pull/12))**:
 
@@ -147,6 +149,14 @@ PageTreePersistenceTest > 부모-자식 페이지를 저장하면 자기참조 �
 
 - **`148 tests completed`가 핵심** — Testcontainers 테스트가 **skip되지 않고 전부 실행**됐고 정확히 주입한 1건만 실패했다. "Docker 없으면 조용히 skip"이라는 흔한 실패 양식이 아님을 배제(= red가 난 이유가 주입한 그것임을 확인 — 엉뚱한 이유의 red는 증명이 아니다).
 - 실행 시간: green 약 1m56s / red 2m9s(Gradle 빌드 + 148 테스트 + Postgres 컨테이너 기동 포함).
+
+**frontend 대조군 실측(2026-07-28, [PR #4](https://github.com/ressKim-io/weDocs-frontend/pull/4))**:
+
+| 주입 | 결과 | 증명한 것 |
+|---|---|---|
+| 단위 테스트 단언 뒤집기(`toBe(raw)`→`toBe('WRONG')`) | red — 실패 지점 = **`npm run test:unit`** | test가 **마지막 단계**라, 앞의 `build`(타입체크 포함)가 실행·통과했다는 것까지 동시 증명 |
+| 타입 에러(`const x: number = "not-a-number"`) | red — 실패 지점 = **`npm run build`** | `build`에 포함된 `tsc --noEmit`이 실제로 게이트로 작동(typecheck를 별도 step으로 두지 않은 판단이 안전함을 확인) |
+| 임시 커밋 제거 후 복구 | ✅ green, 주입 잔재 grep 0건 | |
 
 - 트리거 전수: `pull_request` green ≠ `push: main` green (트리거별 범위 차이가 gitleaks 사고의 원인이었다)
 - 실행 시간 기록 — 캐시 미스 시 과도하게 길면 튜닝 대상
