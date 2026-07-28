@@ -117,9 +117,18 @@ related:
 - [x] **CR-001 반영(게이트, 2026-07-28)**: **혼합 프레임**(한 프레임에 `update`+`state_vector` 동시) viewer 케이스 추가 — 인라인 `inbound_rejects_viewer_mixed_frame_before_replying_diff` + 통합 `viewer_mixed_frame_is_denied_without_diff`(루프로 Ok를 건너뛰지 않고 **바로 다음** 프레임이 거절임을 단언 = 순서 증명). 게이트웨이 코덱은 SyncStep1→`state_vector`/Step2·Update→`update`로 **둘 다 채우지 않으므로**, 이 프레임은 우회 호출자만 만든다 = 2b의 존재 이유인 경로가 무테스트였다. **대조군으로 실효성 증명**: 가드를 read 블록 뒤로 옮기면 신규 2건만 FAIL하고 **기존 5건은 전부 통과** — 순서 회귀가 실제로 무방비였음을 실증(억제와 무력화 구분, `secure-coding.md` 대조군 규율).
 - [x] 검증: `make proto-sync && cargo build && cargo test && cargo clippy --all-targets -- -D warnings && cargo fmt --check` (⚠️ `proto/`는 gitignore·미생성 시 빌드 자체 실패, Makefile에 clippy/fmt 타깃 없음).
 
-### 2c. frontend 토큰 전달 (frontend PR)
-- [ ] y-websocket `WebsocketProvider`가 로그인 JWT를 `Sec-WebSocket-Protocol`(`protocols` 옵션)로 전달. 버전의 subprotocol 지원 **spec 사전검증**(workflow.md 신규도구 검증). read-only(viewer) UI 반영은 최소.
-- [ ] E2E 스모크(로컬): editor 양방향·viewer read-only·무토큰 연결 실패.
+### 2c. frontend 인증·페이지 선택·역할 인지 → **별도 plan으로 분리**
+
+> **상세 SSOT = [`2026-07-28-m2-phase2c-frontend-auth.md`](2026-07-28-m2-phase2c-frontend-auth.md).**
+> 체크리스트·재개 지점은 그쪽에만 둔다(사본 금지 — `plan-logging.md` §재개 정보의 SSOT).
+
+- [ ] **2c 완료** ← 위 plan의 C0~C3 전 단계 완료 시 체크
+
+**왜 분리했나(2026-07-28)**: 원래 2c는 "`protocols` 옵션으로 JWT 전달" 한 줄이었으나, 착수 탐색에서
+프론트엔드에 **로그인이 전혀 없고**(토큰 출처 없음) **페이지 UUID를 얻을 방법도 없음**(1c REST 미소비)이
+드러났다. 또한 **클라이언트가 자기 역할을 알 방법이 없어**(`PageResponse`에 역할 필드 없음 · 핸드셰이크는
+SENTINEL만 echo) viewer의 로컬 `Y.Doc`이 조용히 divergent해지는 **정합성 버그**가 확인됐다.
+사용자 결정 = 우회하지 말고 **로그인 + 페이지 목록 + 역할 노출까지 근본 해결** → 2레포 3~4 PR 규모라 별도 트랙.
 
 ## 관측(Observability) 계약 — 운영 문제없게 (사용자 요구, ADR-0021)
 
@@ -145,7 +154,7 @@ related:
 - **마지막 완료**: **2a-2 gateway 인가 + viewer 다층 1차 ✅ 머지** — [backend PR #17](https://github.com/ressKim-io/weDocs-backend/pull/17) squash `4cb750d`, main 100 테스트 green·CI green(gitleaks/dependency-review pass, **squash 후 main 스캔도 success** 확인). 크래프트 게이트 2-렌즈 BLOCKING 0, advisory 전량 반영. **VT pinning 이월 검증점 종결** — JFR 0건 + `isVirtual()` 프로브로 공허한 green 배제, ⚠️ 안전 근거는 JEP 491이 아니라 grpc-java `LockSupport.park`라 **재측정 트리거 = grpc-java 메이저 업그레이드**([dev-log](../dev-logs/2026-07-20-vt-pinning-grpc-blocking-stub.md)).
 
 - **마지막 완료 = 2b crdt-engine role 강제 ✅ 머지** — [crdt-engine PR #11](https://github.com/ressKim-io/weDocs-crdt-engine/pull/11) squash `4d9c39e`, 크래프트 게이트 BLOCKING 0, 30 green, CI green. **→ Phase 2에서 남은 것은 2c뿐.**
-- **다음 = 2c frontend 토큰 전달**(frontend 레포, branch+PR+건별 승인): `WebsocketProvider`의 `protocols` 옵션으로 로그인 JWT 전달(**subprotocol 지원 spec 사전검증** — workflow.md 신규도구 검증) + **데모 `?room=demo` → 실제 페이지 UUID화**(2a-2 D1 이월, 비UUID는 gRPC 왕복 없이 403) + E2E 스모크(editor 양방향·viewer read-only·무토큰 실패). ⚠️ 기존 무인증 수렴 E2E가 전부 토큰 경로로 바뀌므로 회귀 정비가 실제 작업량의 변수다.
+- **다음 = 2c** → **[`2026-07-28-m2-phase2c-frontend-auth.md`](2026-07-28-m2-phase2c-frontend-auth.md)로 분리됨**(2026-07-28). 그 plan의 §재개 지점이 이 트랙의 유일한 재개점이다 — 여기에 사본을 두지 않는다. 요지: 착수 탐색 결과 2c는 "토큰 전달 한 줄"이 아니라 **로그인 부재 + 페이지 UUID 획득 경로 부재 + 클라이언트가 자기 역할을 모르는 정합성 버그**까지 묶인 2레포 3~4 PR 트랙이다(§2c 참조). ✅ `protocols` 옵션 지원은 **설치된 소스로 사전검증 완료**(y-websocket 3.0.0 `src/y-websocket.js:176·274·294`).
 - ✅ **CI 갭 사이드트랙 완료(2026-07-28)** — 2c 착수 전 권고였던 항목 해소. 서비스 3레포에 빌드·테스트 CI가 없어 `cargo test`·Gradle·vitest가 CI에서 한 번도 안 돌던 상태를 3 PR로 정합(engine `fab982d`·backend `181b8de`·frontend `ff2e077`, 전부 main 트리거까지 green). 이제 **2c PR의 초록은 실제 검증을 뜻한다**. ⚠️ 단 프론트 **E2E는 여전히 CI 밖**(engine+gateway 실기동 필요) — 2c의 E2E 스모크는 로컬 실행으로 확인해야 한다. 상세 = [plan](2026-07-28-build-test-ci-gap.md)(done) · [dev-log](../dev-logs/2026-07-28-build-test-ci-gap.md).
 - **Minor findings 이월(게이트 2026-07-28, PR에 미반영)**: CR-003 `extract_role` 거절 로그에 `doc_id`·`trace_id` 없음(span 생성 이전에 발화 + 함수가 `MetadataMap`만 수신) — 2b가 만드는 유일한 보안 신호인데 대상 문서 추적 불가, observability [A] P3/P6 · CR-004 `Cargo.toml` dev-dep 주석의 "테스트 빌드에서만 net/time" 주장이 사실과 다름(`cargo tree -e features,no-dev` 확인 = 프로덕션 빌드에도 tonic/hyper-util 전이로 이미 활성. dev-dep 선언 자체는 옳은 관행이니 **근거 문구만** 교체) · CR-005 `let _ = out_tx.send(...)`(:322) 무시 근거 주석 없음(기존 :309 동일 패턴 → 함께) · CR-006 plan이 명시한 `INVALID_ROLE_MSG` 상수 미도입(발화점 1곳이라 **plan 문구를 코드에 맞추는 쪽** 권장).
 - 2b 설계 요지(Rust, `rust-expert` 🦀 + code-reviewer 2-렌즈). **2a-2가 이미 `role` 메타데이터를 보내고 있다** — 엔진은 지금 그것을 무시하므로, 2b는 수신·강제만 하면 된다(게이트웨이 무변경).

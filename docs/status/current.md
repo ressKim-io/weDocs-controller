@@ -23,20 +23,21 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1 전체 완료) →
 | 2a-1 gateway 인증 | ✅ 머지 | backend `583b065` |
 | 2a-2 gateway 인가 + viewer write-drop | ✅ 머지 | backend `4cb750d` |
 | 2b engine role 강제 | ✅ 머지 | engine `4d9c39e` |
-| **2c frontend 토큰** | **← 다음** | — |
+| **2c frontend 인증·페이지·역할** | **← 다음** (별도 plan으로 분리) | — |
 
 ## 다음 액션 — Phase 2c
 
-frontend 레포, branch + PR + 건별 승인.
+**상세 SSOT = [`plans/2026-07-28-m2-phase2c-frontend-auth.md`](../plans/2026-07-28-m2-phase2c-frontend-auth.md) §재개 지점.**
+착수 탐색(2026-07-28)에서 2c가 "토큰 전달 한 줄"이 아님이 드러나 **별도 plan으로 분리**했다.
 
-1. `WebsocketProvider`의 `protocols` 옵션으로 로그인 JWT 전달. ⚠️ **y-websocket의 subprotocol 지원을 spec 사전검증**(`workflow.md` §신규 도구 — 추측 금지).
-2. 데모 `?room=demo` → **실제 페이지 UUID화**. 2a-2 D1의 이월 — doc-service가 `doc_id`/`user_id`를 UUID로 파싱하므로 비UUID는 gRPC 왕복 없이 403.
-3. E2E 스모크: editor 양방향 / viewer read-only / 무토큰 실패.
+- **현재 프론트엔드는 깨져 있다** — 토큰 없이 접속(401) + 기본 room `demo`가 비UUID(403). 기존 수렴 E2E도 실패 상태. 2c는 신규 기능이 아니라 **복구**다.
+- 프론트엔드에 **로그인이 없고**(토큰 출처 없음) **페이지 UUID 획득 경로도 없다**(1c REST 미소비) → 사용자 결정 = 우회 말고 **로그인 + 페이지 목록까지 제대로**.
+- **viewer는 자기 역할을 알 방법이 없다** → 타이핑이 게이트웨이에서 조용히 drop되고 로컬 `Y.Doc`만 divergent(새로고침 시 유실). **정합성 버그**라 근본 해결 = doc-service가 effective role 노출 → 프론트가 `editable: false`.
 
-**작업량 변수**: 기존 무인증 수렴 E2E가 전부 토큰 경로로 바뀐다 — 회귀 정비가 실제 시간을 좌우한다.
-**⚠️ 프론트 E2E는 CI 밖이다**(engine+gateway 실기동 필요) → 로컬에서 직접 띄워 확인해야 한다.
+순서: **C1 backend**(role 노출) → **C2 frontend**(인증 셸) → **C3 frontend**(페이지 선택 + 에디터 + E2E).
+서비스 레포는 branch + PR + 건별 승인.
 
-상세 SSOT = [`plans/2026-07-19-m2-phase2-auth-authz.md`](../plans/2026-07-19-m2-phase2-auth-authz.md) §재개 지점
+**⚠️ 프론트 E2E는 CI 밖**(로컬 실기동) — 사전조건이 engine+gateway 2개 → **+postgres+doc-service = 4프로세스**로 늘어난다.
 
 ## 이후
 
@@ -53,7 +54,8 @@ Phase 3 엔진 저장 → 4 복원 → 5 outbox → 6 E2E. 본류 plan = [`plans
 | plan | status | 실제 남은 것 |
 |---|---|---|
 | [m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md) | in-progress | M2 Phase 2c → 3~6 |
-| [m2-phase2-auth-authz](../plans/2026-07-19-m2-phase2-auth-authz.md) | in-progress | 2c만 |
+| [m2-phase2-auth-authz](../plans/2026-07-19-m2-phase2-auth-authz.md) | in-progress | 2c만 — 상세는 아래 분리 plan이 소유 |
+| [m2-phase2c-frontend-auth](../plans/2026-07-28-m2-phase2c-frontend-auth.md) | planned | C0~C3 전체(backend role 노출 1 PR + frontend 2~3 PR) |
 | [plan-audit-improvements](../plans/2026-06-30-plan-audit-improvements.md) | in-progress | T4 잔여 4건(T4-1 NFR/DoD 트래커 · T4-2 관측 콜사이트 · T4-4 ADR 0002~0009 승격 · T4-5 ①②③⑤). **T4-3 서비스 CI는 2026-07-28 완료** |
 
 
