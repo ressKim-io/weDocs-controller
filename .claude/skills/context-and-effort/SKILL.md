@@ -1,75 +1,85 @@
 ---
 name: context-and-effort
-description: "모델 라인업·가격·컨텍스트 크기, effort 레벨(low~max) 정의와 이 레포 21 agents / 198 skills 티어링 매핑, tokenizer 토큰 증가율, prompt cache 최소 길이·TTL, adaptive thinking API 설정. Use when 새 agent/skill을 작성하며 effort를 정하거나, 모델을 고르거나, 캐시·토큰 수치가 필요할 때. 세션 운영 규칙(80% 재시작·/clear·subagent 위임)은 rules/token-budget.md가 상시 로드로 갖는다."
+description: "모델 라인업·가격·컨텍스트 크기, effort 레벨(low~max) 정의와 이 레포 20 agents / 200 skills 티어링 매핑, tokenizer 토큰 증가율, prompt cache 최소 길이·TTL, adaptive thinking API 설정. Use when 새 agent/skill을 작성하며 effort를 정하거나, 모델을 고르거나, 캐시·토큰 수치가 필요할 때. 세션 운영 규칙(80% 재시작·/clear·subagent 위임)은 rules/token-budget.md가 상시 로드로 갖는다."
 ---
 
-# 컨텍스트 · Effort 레퍼런스 (Claude 5 / Opus 4.8 세대)
+# 컨텍스트 · Effort 레퍼런스 (Claude 5 세대)
 
-이 레포의 21 agents / 198 skills 가 어떤 effort level 로 호출되어야 하는지의 카테고리별 매핑 표.
+이 레포의 20 agents / 200 skills 가 어떤 effort level 로 호출되어야 하는지의 카테고리별 매핑 표.
 사용자가 새 작업 / 새 agent / 새 skill 을 작성할 때 "이거 effort 뭘 줘야 하지?" 의 답.
 
 상세 룰(캐시·tokenizer·adaptive thinking)은 [`token-budget.md`](token-budget.md) 참조. 이 문서는 매핑에 집중.
 
-> **출처**: [effort](https://platform.claude.com/docs/en/docs/build-with-claude/effort) · [models overview](https://platform.claude.com/docs/en/docs/about-claude/models/overview) (✅ verified 2026-07-17, WebFetch)
+> **출처**: [effort](https://platform.claude.com/docs/en/docs/build-with-claude/effort) · [models overview](https://platform.claude.com/docs/en/docs/about-claude/models/overview) (✅ verified 2026-07-17 · **재검증 2026-07-29** — Opus 5 출시·Opus 4.8 legacy 강등 반영, WebFetch)
 
 ---
 
-## 단계 정의 (Anthropic 공식, 2026-07-17)
+## 단계 정의 (Anthropic 공식, 2026-07-29)
 
 | 레벨 | 정의 | 권장 사용 상황 |
 |---|---|---|
 | `low` | 최소 토큰, 속도·비용 우선 | 단순 조회 / 분류 / subagent 대량 fan-out / latency 민감 |
 | `medium` | 균형 — 중간 절약 | 평균 워크플로우의 비용 절감 스텝다운 |
 | `high` | **API·Claude Code 기본값** (파라미터 생략과 동일) | 복잡 추론 · 일반 코딩 · agentic 최소 기준 |
-| `xhigh` | 장기 agentic/코딩 확장 (30분+ · 수백만 토큰 급) | **Opus 4.8 코딩/agentic 권장 시작점** · 반복 탐색 |
+| `xhigh` | 장기 agentic/코딩 확장 (30분+ · 수백만 토큰 급) | 고난도 코딩/agentic — **명시 지정으로만**(Claude 5 세대에선 어느 surface 도 기본 아님) · 반복 탐색 |
 | `max` | 상한 없음 | frontier 문제만 — 비용 대비 품질 이득 작고 overthinking 위험 |
 
 > 구버전 가이드의 레벨별 비용 %(~25%/~50%/~200% 등)는 공식 문서가 더 이상 제공하지 않음 → 수치 삭제(정성 서술만). "max는 상당한 비용 추가 대비 품질 이득이 작다"는 정성 가이드는 유지됨.
 
-**모델별 지원 (2026-07-17)**:
-- effort 파라미터 지원: Fable 5 · Opus 4.8 / 4.7 / 4.6 / 4.5 · Sonnet 5 / 4.6 (+Mythos 계열)
+**모델별 지원 (2026-07-29)**:
+- effort 파라미터 지원: Fable 5 · **Opus 5** · Opus 4.8 / 4.7 / 4.6 / 4.5 · Sonnet 5 / 4.6 (+Mythos 계열)
 - **Haiku 4.5 는 effort 미지원** (구 가이드의 "Haiku 4.5: low~max" 는 폐기)
-- `xhigh` 지원: Fable 5 · Opus 4.8 / 4.7 · Sonnet 5
+- `xhigh` 지원: Fable 5 · **Opus 5** · Opus 4.8 / 4.7 · Sonnet 5
 - `max` 지원: 위 + Opus 4.6 · Sonnet 4.6
 
 **기본값 — 구버전 가이드와 달라진 것**:
 - **모든 surface 기본 = `high`** (API·Claude Code·claude.ai). "Claude Code 코딩 기본 xhigh" 는 Opus 4.7 시절 정보 — 폐기. 코딩/agentic 에서 xhigh 를 원하면 **명시 지정**.
-- Opus 4.8: 코딩/agentic 은 xhigh 로 시작 권장(4.7 가이드 승계), 그 외 지능 민감 작업은 high.
+- **Opus 5: high(기본)로 시작** — evals 근거가 있을 때만 xhigh(고난도 코딩/agentic)·max(무제약) 상향. "코딩은 xhigh 로 시작" 은 Opus 4.7/4.8 시절 가이드 — Opus 5 에선 폐기.
 - Fable 5: **high(기본)로 시작** — 낮은 effort 로도 이전 세대 xhigh 이상인 경우가 많음. capability-critical 만 xhigh.
 - Sonnet 5: 기본 high. 스텝다운 medium ≈ Sonnet 4.6 high 수준.
+- **effort 는 세션 중간에 바꾸면 prompt cache 를 무효화**한다 — 세션 시작에 정해 유지(공식 best practice).
 - Claude Code "ultracode" = `xhigh` + 멀티에이전트 상시 허용 — 별도 API 레벨 아님.
 
-## 모델 라인업 (2026-07-17)
+## 모델 라인업 (2026-07-29)
 
 | 모델 | API ID | 가격 (in/out MTok) | ctx | 비고 |
 |---|---|---|---|---|
-| Fable 5 | `claude-fable-5` | $10 / $50 | 1M | 최상위 · adaptive thinking 상시 on |
-| Opus 4.8 | `claude-opus-4-8` | $5 / $25 | 1M | 복잡 agentic 코딩 기본 추천 |
+| Fable 5 | `claude-fable-5` | $10 / $50 | 1M | 최상위(광역 출시) · adaptive thinking 상시 on · latency Slower |
+| **Opus 5** | `claude-opus-5` | $5 / $25 | 1M | 복잡 agentic 코딩 기본 추천 · **이 레포 전역 기본**(2026-07-29) |
 | Sonnet 5 | `claude-sonnet-5` | $3 / $15 (~2026-08-31 인트로 $2/$10) | 1M | 속도·지능 균형 |
 | Haiku 4.5 | `claude-haiku-4-5-20251001` | $1 / $5 | 200k | 최속 · effort 미지원 |
 
-(Opus 4.1 은 deprecated — 2026-08-05 retire. Opus 4.7/4.6·Sonnet 4.6/4.5 = legacy.)
+(Opus 4.1 은 deprecated — 2026-08-05 retire, Opus 5 로 마이그레이션. **Opus 4.8**/4.7/4.6/4.5·Sonnet 4.6/4.5 = legacy.)
 
 ---
 
-## Agents 매핑 (이 레포 21개)
+## Agents 매핑 (이 레포 20개)
 
 | Effort | 대상 (model) | 정당화 |
 |---|---|---|
 | `low` | git-workflow (haiku — frontmatter 명시) | 커밋 메시지 / 단순 자동화 — 깊은 추론 불필요 |
-| 기본(`high`) | sonnet 16개 — code-reviewer / java-expert / python-expert / cicd·dockerfile·gitops·k8s·observability-reviewer / database·messaging·otel·redis-expert / k8s-troubleshooter / platform-engineer / saga-agent / service-mesh-expert | 게이트 체크리스트 실행·단일 도메인 리뷰 — sonnet + 기본 effort 로 충분 |
-| `max` | rust-expert / architect-agent / tech-lead / debugging-expert (opus — frontmatter 명시) | CRDT 정확성 · cascade · 아키텍처 트레이드오프 — frontier 추론 |
+| 기본(`high`) | sonnet 15개 — code-reviewer / java-expert / python-expert / cicd·dockerfile·gitops·k8s·observability-reviewer / database·messaging·otel·redis-expert / k8s-troubleshooter / saga-agent / service-mesh-expert | 게이트 체크리스트 실행·단일 도메인 리뷰 — sonnet + 기본 effort 로 충분 |
+| `xhigh` | architect-agent / tech-lead / debugging-expert (opus — frontmatter 명시) | 아키텍처 트레이드오프 · cascade 분석 — 깊은 추론 필요하나 frontier 아님 (2026-07-29 max 에서 하향) |
+| `max` | rust-expert (opus — frontmatter 명시) | CRDT 수렴 정확성 — 엔진 코어 frontier 추론 |
 
-**Outlier note**: opus 4개 + haiku 1개만 frontmatter 에 `effort:` 명시. 나머지 16개는 기본(`high`). Claude Code 는 frontmatter 의 `effort` 필드를 직접 읽지 않으므로 본 표가 사람/스크립트/agent prompt 의 SOT.
+**Outlier note**: opus 4개 + haiku 1개만 frontmatter 에 `effort:` 명시. 나머지 15개는 기본(`high`).
+~~"Claude Code 는 frontmatter 의 `effort` 필드를 직접 읽지 않는다"~~ — **폐기(2026-07-29)**: 현 harness 는
+agent frontmatter 의 `model`·`effort` 를 실제로 읽어 그대로 구동한다(Agent 도구 스펙: "model, reasoning
+effort, and tools come from its definition"). **명시값 = 실구동값**이므로 effort 상향은 곧 실비용이다.
 
-## 모델 티어링 판단 기록 (2026-07-17)
+## 모델 티어링 판단 기록 (2026-07-17 · 2026-07-29)
 
+- **2026-07-29 세션 저속 진단 후 재조정** (plan: `docs/plans/2026-07-29-context-speed-tuning.md`):
+  전역 설정의 `effortLevel: "xhigh"` 상시 강제 + `claude-fable-5[1m]` 기본 모델이 체감 저속의 주범
+  ("느린데 퀄리티 이득 없음" — 본 문서의 기본값 가이드와 모순이었음) → 전역 = **Opus 5 + effort 기본(high)**
+  으로 교정. opus 에이전트 중 architect-agent/tech-lead/debugging-expert 는 max→**xhigh** 하향
+  ("max = frontier only" 정합), rust-expert 만 max 유지. 어려운 단발 작업은 세션 단위로 `/model` 상향.
 - **리뷰·언어 expert = sonnet 유지.** 근거: 크래프트 게이트는 자유 리뷰가 아니라 **[B]/[A] 기계적 체크리스트 실행** — sonnet + 체크리스트로 일관성 충분("리뷰는 sonnet" 현업 패턴 정합). frontier 판단(cascade·트레이드오프·난해 디버깅)은 opus+max 에이전트(architect-agent / tech-lead / debugging-expert)로 에스컬레이션.
 - **☕/🦀 게이트 비대칭 유지** (java-expert=sonnet vs rust-expert=opus/max): rust 는 CRDT 수렴 정확성이 걸린 엔진 코어라 상향 정당. Java 게이트에서 체크리스트 miss 가 반복 관측되면 재판단.
 
 ---
 
-## Skills 매핑 (198개, 카테고리 default)
+## Skills 매핑 (200개, 카테고리 default)
 
 | Effort | 카테고리 | 정당화 |
 |---|---|---|
