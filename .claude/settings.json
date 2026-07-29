@@ -62,7 +62,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/guard_destructive.py\"",
+            "command": "in=$(cat); case \"$in\" in *kubectl*|*argocd*|*git*push*) printf '%s' \"$in\" | python3 \"$CLAUDE_PROJECT_DIR/scripts/guard_destructive.py\";; esac",
             "statusMessage": "파괴적 명령 검사"
           }
         ]

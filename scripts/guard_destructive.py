@@ -16,6 +16,11 @@ deny 리스트가 완전하다고 착각하지 않는 것이 이 파일의 존�
   .claude/rules/user-approval.md §ArgoCD Force Sync 금지 (실제 사고 2026-03-28)
   .claude/rules/user-approval.md §kubectl 변경 금지 (실제 사고 2026-03-22)
   .claude/rules/git.md §Branch Protection (force push 금지)
+
+⚠️ settings.json의 훅이 shell case 프리필터(`*kubectl*|*argocd*|*git*push*`)로 이 스크립트를
+감싼다 — python 기동 비용을 무해한 Bash 호출에서 생략하기 위해서다(2026-07-29). RULES에
+새 명령어를 추가하면 **프리필터 패턴에도 그 리터럴을 추가**해야 한다. 안 하면 가드가 조용히
+뚫린다(프리필터가 python을 아예 안 부름).
 """
 
 from __future__ import annotations
