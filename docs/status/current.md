@@ -10,13 +10,13 @@
 
 ## 지금
 
-**M2 Phase 2(인증/인가) — 2a·2b·2c-C1·2c-C2 머지 완료, 남은 것은 2c-C3뿐.**
+**M2 Phase 2(인증/인가) 전체 완료. 다음은 Phase 3(엔진 저장).**
 
-> 2026-07-28 사이드 트랙 완료 — Claude 상시 로드 컨텍스트 1,975 → 300줄(−85%) + 예산 게이트 3중 배선.
-> 이후 `.claude/**`·`CLAUDE.md`를 편집하면 `PostToolUse` 훅이 예산을 즉시 검사한다.
-> 회고 = [dev-logs/2026-07-28-claude-context-budget.md](../dev-logs/2026-07-28-claude-context-budget.md)
+> 2026-07-29 Phase 2c 종료 — 로그인 → 워크스페이스 → 페이지 → **두 클라 수렴**이 실기동으로 확인된다.
+> 회고 = [dev-logs/2026-07-29-m2-phase2c-frontend-auth.md](../dev-logs/2026-07-29-m2-phase2c-frontend-auth.md)
 
-M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1 전체 완료) → 인증/인가(Phase 2, 진행 중) → 엔진 저장·복원·outbox·E2E(Phase 3~6) 순.
+M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가(Phase 2) **여기까지 완료** →
+엔진 저장·복원·outbox·E2E(Phase 3~6)가 남았다.
 
 | Phase | 상태 | 산출 |
 |---|---|---|
@@ -25,45 +25,14 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1 전체 완료) →
 | 2b engine role 강제 | ✅ 머지 | engine `4d9c39e` |
 | 2c-C1 doc-service effective role 노출 | ✅ 머지 | backend `4c1678e` (PR #19) |
 | 2c-C2 frontend 인증 셸 | ✅ 머지 | frontend `de002f5` (PR #5) |
-| **2c-C3 frontend 페이지 선택 + 에디터 + E2E** | **← 다음** (Phase 2의 마지막 조각) | — |
+| 2c-C3 페이지 선택 + 에디터 + E2E | ✅ 머지 | frontend `9161fbc`·`336964f`·`b12e026` (PR #6·#7·#8) |
+| **3 엔진 저장** | **← 다음** | — |
 
-## 다음 액션 — Phase 2c (C3)
+## 다음 액션 — Phase 3 (엔진 저장)
 
-**상세 SSOT = [`plans/2026-07-28-m2-phase2c-frontend-auth.md`](../plans/2026-07-28-m2-phase2c-frontend-auth.md) §재개 지점.**
-착수 탐색(2026-07-28)에서 2c가 "토큰 전달 한 줄"이 아님이 드러나 **별도 plan으로 분리**했다.
+**상세 SSOT = [`plans/2026-06-30-m2-persistence-session.md`](../plans/2026-06-30-m2-persistence-session.md) §재개 지점.**
 
-2c는 신규 기능이 아니라 **복구**다(2a/2b가 서버측을 세우며 끊긴 클라이언트 경로를 잇는 일). 세 조각 중 둘이 끝났다:
-
-| 원래 문제 | 상태 |
-|---|---|
-| 프론트에 **로그인이 없다**(토큰 출처 없음) | ✅ **C2가 해소** — 로그인/회원가입 + 메모리 토큰 스토어 |
-| **viewer가 자기 역할을 모른다** → 타이핑이 게이트웨이에서 조용히 drop되고 로컬 `Y.Doc`만 divergent(새로고침 시 유실). UX가 아니라 **정합성 버그** | ⚠️ **절반** — C1이 서버측 노출(`myRole`·`canEdit`) 완료, **프론트 소비는 C3-4** |
-| **페이지 UUID 획득 경로가 없다**(1c REST 미소비) + 기본 room `demo`가 비UUID → 403 | ❌ **C3가 할 일** — 워크스페이스/페이지 목록 + `DEFAULT_ROOM` 제거 |
-
-→ 즉 **C3 = 남은 두 줄을 잇는 작업**이다. 기존 수렴 E2E도 여기서 함께 복구된다.
-
-순서: ~~C1 backend(role 노출)~~ ✅ → ~~C2 frontend(인증 셸)~~ ✅ → **C3 frontend**(페이지 선택 + 에디터 + E2E).
-서비스 레포는 branch + PR + 건별 승인.
-
-**C3는 3 PR로 분할한다**(2026-07-29 결정 D4): ① REST 소비 계층 → ② 화면 배선 → ③ E2E+문서.
-한 PR이면 850줄+라 리뷰가 불가능하고, C2가 966줄로 상한을 넘긴 선례를 반복하게 된다.
-
-⚠️ **지금 앱은 로그인까지만 된다** — 에디터는 여전히 `demo` room으로 403이다. 의도된 중간 상태이고
-C3-3(DEFAULT_ROOM 제거 + 페이지 선택)에서 해소된다. **회귀로 오판하지 말 것.**
-
-⚠️ **C3 파일 배치는 `src/page/api.ts`·`src/workspace/api.ts`다** — `src/api/*`가 아니다.
-C2 게이트에서 `src/api/`가 layering P7(전역 계층 통패키지 금지) 위반으로 반려돼 feature 평면으로
-재배치했다. 전송은 기존 `src/common/http/client.ts`의 `apiRequest`를 재사용한다.
-
-**⚠️ 프론트 E2E는 CI 밖**(로컬 실기동) — 사전조건이 engine+gateway 2개 → **+postgres+doc-service = 4프로세스**로 늘어난다.
-
-## 이후
-
-Phase 3 엔진 저장 → 4 복원 → 5 outbox → 6 E2E. 본류 plan = [`plans/2026-06-30-m2-persistence-session.md`](../plans/2026-06-30-m2-persistence-session.md)
-
-⚠️ **Phase 3은 `build_client` flip부터가 아니다** — 2b가 이미 `true`로 선반영했다. `SaveSnapshot` 호출 배선부터 시작한다.
-
----
+⚠️ **`build_client` flip부터가 아니다** — 2b가 이미 `true`로 선반영했다. **`SaveSnapshot` 호출 배선부터** 시작한다.
 
 ## 열린 트랙 (완료 시 여기부터 확인)
 
@@ -71,15 +40,14 @@ Phase 3 엔진 저장 → 4 복원 → 5 outbox → 6 E2E. 본류 plan = [`plans
 
 | plan | status | 실제 남은 것 |
 |---|---|---|
-| [m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md) | in-progress | M2 Phase 2c → 3~6 |
-| [m2-phase2-auth-authz](../plans/2026-07-19-m2-phase2-auth-authz.md) | in-progress | 2c만 — 상세는 아래 분리 plan이 소유 |
-| [m2-phase2c-frontend-auth](../plans/2026-07-28-m2-phase2c-frontend-auth.md) | in-progress | **C3만** — frontend 1~2 PR. C0·C1·C2 완료(C1 = backend #19, C2 = frontend #5) |
+| [m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md) | in-progress | **M2 Phase 3~6** (Phase 1·2 완료) |
 | [plan-audit-improvements](../plans/2026-06-30-plan-audit-improvements.md) | in-progress | T4 잔여 4건(T4-1 NFR/DoD 트래커 · T4-2 관측 콜사이트 · T4-4 ADR 0002~0009 승격 · T4-5 ①②③⑤). **T4-3 서비스 CI는 2026-07-28 완료** |
 
 
-> **2026-07-28 역방향 점검**: 위 3건은 전부 M2 트랙이라 이번 Claude 설정 작업과 무관.
-> [claude-context-budget](../plans/2026-07-28-claude-context-budget.md)는 `done`으로 클로징했고 새로 여는 트랙 없음.
-그 외 plan은 전부 `done`.
+> **2026-07-29 역방향 점검**(Phase 2c 완료 후): `m2-phase2-auth-authz`·`m2-phase2c-frontend-auth` 둘 다
+> `done`으로 클로징하고 이 표에서 제거했다. 본류 `m2-persistence-session`의 §재개 지점도 Phase 3으로 옮겼다
+> — 하위 트랙 완료로 부모 재개 조건이 바뀌었는데 부모를 안 고치면, 부모만 여는 세션이 끝난 트랙을 재실행한다.
+> `plan-audit-improvements`는 M2와 무관한 별개 트랙. 그 외 plan은 전부 `done`.
 
 ## 이월된 findings (구현 시 소거)
 
@@ -104,6 +72,15 @@ Phase 3 엔진 저장 → 4 복원 → 5 outbox → 6 E2E. 본류 plan = [`plans
   (프레임워크 경로). 실측 확인 2026-07-29 → 클라이언트는 `code` 부재를 전제한 폴백이 필요하고,
   분기는 `code`/`status`로만 한다(`detail` 파싱은 서버가 금지).
 - **`POST /api/auth/signup`은 토큰을 주지 않는다** — 201 + `UserResponse`뿐. 세션이 필요하면 login을 이어 부른다.
+- **편집 가능 여부는 `canEdit`이 단일 출처다** — `myRole`은 **표시용**(배지)이다. "editor 또는 owner가 편집 가능"은
+  서버 정책이라 클라가 재유도하면 역할 추가 시 즉시 갈라진다. 목록 응답에는 역할이 **없다**(N+1 회피, 계약).
+- **room = 페이지 UUID** — `parseRoom`이 UUID 형식을 요구한다. 게이트웨이는 비UUID `doc_id`를 `CheckPermission`
+  왕복 **없이 403**으로 끊는다(실측 2026-07-29). 옛 기본값 `demo`는 그래서 **무조건 실패**였다.
+- **브라우저는 WS 실패의 상태 코드를 볼 수 없다**(code 1006뿐) — 401/403은 Node `ws`에서만 관측된다.
+  그래서 토큰 만료·room 형식은 **연결 전에** 클라가 판단하고, 어긋나면 provider를 아예 만들지 않는다.
+  관측 불가능한 실패는 "알려주기"가 아니라 **발생시키지 않기**가 유일한 처방이다.
+- **프론트 E2E 사전조건 = 4프로세스**(postgres·doc-service·gateway·engine). 테스트가 계정·워크스페이스·페이지를
+  **스스로 만든다** — 토큰 주입 방식으로는 viewer 케이스를 검증할 수 없어서다. 여전히 **CI 밖**.
 - **프론트엔드 파일 배치 = feature 평면** — `src/<feature>/…` + `src/common/<관심사>/…`.
   `src/api/`·`src/service/` 류 전역 계층 통패키지는 크래프트 게이트 layering P7이 **이름까지 지목해 금지**한다
   (C2에서 실제 반려됨). "Java 패키지 규칙"으로 읽히지만 프론트 관행에도 그대로 발화한다.
@@ -116,6 +93,7 @@ Phase 3 엔진 저장 → 4 복원 → 5 outbox → 6 E2E. 본류 plan = [`plans
 
 | 주제 | dev-log |
 |---|---|
+| 프론트 인증 배선·폴백이 감춘 403 | [2026-07-29-m2-phase2c-frontend-auth](../dev-logs/2026-07-29-m2-phase2c-frontend-auth.md) |
 | CI 갭·게이트 실효성 증명 | [2026-07-28-build-test-ci-gap](../dev-logs/2026-07-28-build-test-ci-gap.md) |
 | 상시 컨텍스트 예산(−85%)·게이트 배선 | [2026-07-28-claude-context-budget](../dev-logs/2026-07-28-claude-context-budget.md) |
 | 룰이 레포 경계를 안 넘음 | [2026-07-28-rules-do-not-cross-repo](../dev-logs/2026-07-28-rules-do-not-cross-repo.md) |
