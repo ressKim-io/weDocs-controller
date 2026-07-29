@@ -51,7 +51,7 @@ ADR-0013이 **엔진 push**를 결정해뒀다 — 엔진이 dirty 시점을 알
 
 - [x] **C1** `docs(plan):` 이 파일 신설 + `status: in-progress` — **코드 작업 전 필수** — `3d9aef6`
 - [x] **C2** `docs(adr):` ADR-0013 개정 3건 (재시도 정책 · 복원 실패 fail-closed · T 표현) — `2bf8542`
-- [x] **C3** engine PR1a `feat(engine): 스냅샷 복원-우선 open + SnapshotStore 포트` — [PR #13](https://github.com/ressKim-io/weDocs-crdt-engine/pull/13) (CI 3/3 green, **머지 대기**).
+- [x] **C3** engine PR1a `feat(engine): 스냅샷 복원-우선 open + SnapshotStore 포트` — [PR #13](https://github.com/ressKim-io/weDocs-crdt-engine/pull/13) **머지** `2ab925e`.
       커밋 `b943959`(포트+슬롯) · `37c9b77`(벤치) · `4d93c91`·`61a8399`(게이트 반영).
       실제 736줄(프로덕션 ~405 / 테스트 ~330) — 추정 355줄을 넘겼다. 초과분은 대부분 테스트 10건과 근거 주석
 - [x] **C3.5** engine `refactor: 모듈 구조 + 에러 wire 매핑 + 설정 일원화` ([ADR-0022](../adr/0022-module-structure-rust.md))
@@ -114,33 +114,47 @@ pub async fn open(&self, doc_id: &DocId) -> Result<Subscription, EngineError>   
 
 ### C4 — 복원 배선
 
+> ⚠️ **이 절은 C3.5(ADR-0022) 이후 구조로 갱신됐다.** 옛 버전은 `src/persistence.rs`·`service.rs`를
+> 지시했으나 그 파일들은 더 이상 없다.
+
 ```
-build.rs             compile_protos에 "proto/doc/doc.proto" + rerun-if-changed
-src/lib.rs           pub mod doc { tonic::include_proto!("doc"); } + pub mod persistence;
-.github/ci.yml:16    stale 주석 정정(bump 불요)
-src/persistence.rs   ← 신규. tonic이 사는 유일한 곳(어댑터)
+build.rs                    compile_protos에 "proto/doc/doc.proto" + rerun-if-changed
+src/lib.rs                  pub mod doc { tonic::include_proto!("doc"); }
+.github/workflows/ci.yml:16 stale 주석 정정(bump 불요)
+src/snapshot/doc_service.rs ← 신규. tonic이 사는 유일한 곳(포트의 형제 어댑터)
+src/config.rs               doc_service_addr 필드 추가 (env는 여기서만 읽는다)
 ```
 
+**C3·C3.5에서 이미 끝난 것 — C4에서 다시 하지 않는다:**
+- fail-closed `Status` 매핑 → `sync/status.rs`의 `WireFault`가 소유(문구 추가도 거기서만)
+- `registry.open()`의 span 배선 → `.instrument(span.clone()).await` 적용 완료
+- `SnapshotStore` 포트·`StoredSnapshot`·에러 3분류 → `snapshot/mod.rs`에 존재
+
+**C4에서 새로 할 것:**
+- **`StoredSnapshot::from_wire`를 반드시 통과시킨다** — `(version>0, blob=[])` 모순 쌍을 거르는
+  유일한 관문이다(C3 게이트 M1이 잡은 데이터 유실 경로). 어댑터가 proto 응답을 직접
+  `StoredSnapshot`으로 조립하면 그 가드가 무력화된다
 - **채널 = `Endpoint::connect_lazy`**(eager 아님): ① doc-service가 죽어 있어도 엔진이 부팅돼야
-  한다(eager면 기동 순서 의존) ② 장애가 호출당 `Unavailable`로 드러나 fail-closed 분류와 맞물린다
+  한다(eager면 기동 순서 의존) ② 장애가 호출당 `Unavailable`로 드러나 재시도 분류와 맞물린다
   ③ 반대편(doc-service의 `EngineClient`)도 lazy라 대칭
 - 상수: `CONNECT_TIMEOUT=2s` · `RPC_TIMEOUT=3s` · `MAX_MESSAGE_BYTES=4MiB`(doc-service 인바운드
   한도와 명시 정합) · keepalive 30s/10s. **`Request::set_timeout`도 함께** — `Endpoint::timeout`은
   클라 측만 끊고 `grpc-timeout` 헤더를 안 보내 Java 쪽 JDBC 트랜잭션이 고아로 남는다
-- **`MetadataInjector`(신규)** = `service::MetadataExtractor`의 역방향. 게이트웨이 → 엔진 →
-  doc-service 3-hop을 한 trace로(가드레일 4).
-  ⚠️ **호출부 배선 주의**: `registry.open()`이 지금 `crdt.sync` span **밖**에서 호출된다(span은
-  `tokio::spawn(...).instrument()`에만 붙음) → 복원 RPC에 traceparent가 안 실린다.
-  `registry.open(&doc_id).instrument(span.clone()).await`로 고친다. `span.enter()` 가드를
-  `.await` 너머로 들고 가는 방식은 **금지**(전형적 tracing 함정)
-- **fail-closed 매핑**: `service.rs`의 `map_err`가 지금 모든 에러를 `resource_exhausted`로 접는다.
-  명시 match로 분리 — `CapExceeded`→`resource_exhausted` · `RestoreFailed`→`unavailable` ·
-  나머지는 도달 불가라 `internal`(조용한 오분류 대신 드러낸다). 클라 메시지는 분류만(P4)
-- **손상된 저장 블롭도 fail-closed** — 디코드 실패 시 빈 Doc로 열면 첫 저장이 살아있는 행을 덮는다
+- **`MetadataInjector`** = `sync/metadata.rs`의 `MetadataExtractor` 역방향. 게이트웨이 → 엔진 →
+  doc-service 3-hop을 한 trace로(가드레일 4). 어댑터가 outbound 메타에 주입한다.
+  `span.enter()` 가드를 `.await` 너머로 들고 가는 방식은 **금지**(전형적 tracing 함정)
+- **`classify(&Status) -> SnapshotStoreError`** — tonic code를 포트 3분류로 접는 유일한 지점.
+  분류표는 C6 절 참조(저장 경로와 공용)
 - **env 스위치 = `DOC_SERVICE_ADDR` 하나.** 미설정 → `NoopSnapshotStore`(현 동작과 동일),
-  설정 → `DocServiceStore`. "enabled인데 주소 없음"이라는 불가능 상태를 표현 불가로 만든다.
-  기동 로그에 활성/비활성 명시. **C4·C6 내내 기본값은 미설정** → 기존 테스트·`make run`·E2E가
-  무변경으로 돌고 Phase 6에서 켠다
+  설정 → `DocServiceStore`. "enabled인데 주소 없음"을 표현 불가로 만든다. 기동 로그에 활성/비활성
+  명시. **C4·C6 내내 기본값은 미설정** → 기존 테스트·`make run`·E2E가 무변경으로 돌고 Phase 6에서 켠다.
+  ⚠️ `ConfigError`는 이미 변수 이름을 담는 형태다(C3.5 m2) — 새 주소도 그 경로로 파싱한다
+- **어댑터를 `snapshot/mod.rs`에서 재수출하지 않는다**(`mod doc_service;` 비공개) — 그래야
+  "포트 파일은 tonic을 모른다"가 유지된다(ADR-0022)
+
+파일: `build.rs` · `lib.rs` · `.github/workflows/ci.yml` · `snapshot/doc_service.rs`(신규) ·
+`snapshot/mod.rs`(mod 선언) · `config.rs` · `main.rs` · `tests/support/mod.rs`(신규, 페이크
+DocService) · `tests/persistence_restore.rs`(신규). **~380줄**
 
 ### C5 — dirty 회계 (핫패스 훅)
 
