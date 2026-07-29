@@ -51,7 +51,9 @@ ADR-0013이 **엔진 push**를 결정해뒀다 — 엔진이 dirty 시점을 알
 
 - [x] **C1** `docs(plan):` 이 파일 신설 + `status: in-progress` — **코드 작업 전 필수** — `3d9aef6`
 - [x] **C2** `docs(adr):` ADR-0013 개정 3건 (재시도 정책 · 복원 실패 fail-closed · T 표현) — `2bf8542`
-- [ ] **C3** engine PR1a `feat(engine): SnapshotStore 포트 + 복원-우선 open (OnceCell 슬롯)` — ~355줄
+- [x] **C3** engine PR1a `feat(engine): 스냅샷 복원-우선 open + SnapshotStore 포트` — [PR #13](https://github.com/ressKim-io/weDocs-crdt-engine/pull/13) (CI 3/3 green, **머지 대기**).
+      커밋 `b943959`(포트+슬롯) · `37c9b77`(벤치) · `4d93c91`·`61a8399`(게이트 반영).
+      실제 736줄(프로덕션 ~405 / 테스트 ~330) — 추정 355줄을 넘겼다. 초과분은 대부분 테스트 10건과 근거 주석
 - [ ] **C4** engine PR1b `feat(persistence): doc-service 복원 배선 + fail-closed` — ~380줄
 - [ ] **C5** engine PR2a `feat(engine): 스냅샷 dirty 회계 + 저장 대상 수집` — ~280줄, `bench-compare` 첨부
 - [ ] **C6** engine PR2b `feat(sweeper): 전역 스냅샷 스위퍼 + graceful flush` — ~400줄
@@ -264,14 +266,17 @@ make bench-compare        # main baseline 대비. baseline은 C3에서 main에 �
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = C2 (ADR-0013 개정 2bf8542). C1 plan 커밋 3d9aef6
-다음        = C3 — crdt-engine 레포에 브랜치 생성 후 PR1a 구현
-              (SnapshotStore 포트 + DocSlot/OnceCell 복원-우선 open + registry_apply 벤치)
+마지막 완료 = C3 (engine PR #13, CI 3/3 green). 브랜치 feature/m2-phase34-snapshot-restore
+다음        = PR #13 머지 승인 → C4(PR1b: build.rs에 doc.proto 추가 · persistence 모듈 ·
+              MetadataInjector · DOC_SERVICE_ADDR · 페이크 DocService 통합 테스트)
 주의        = ① 실행 순서가 plan 번호와 반대다(복원 C3·C4 먼저, 저장 C5·C6 나중, D1)
               ② proto 태그 bump·PROTO_REF 변경 **불요** — proto-v0.2.0에 이미 다 있다
-              ③ 벤치 baseline(registry_apply)은 C3에서 main에 심어야 C5의 bench-compare가 성립
+              ③ 벤치 baseline(registry_apply)은 C3에서 심었다 → C5에서 bench-compare 성립.
+                 단 **main에 머지된 뒤에야** `--baseline main`이 의미를 갖는다
               ④ DOC_SERVICE_ADDR 기본 미설정 유지 — Phase 6에서 켠다
               ⑤ 서비스 레포는 push·PR 생성·머지 **각각** 승인
+              ⑥ C4 어댑터는 반드시 `StoredSnapshot::from_wire`를 통과시킬 것 —
+                 (version>0, blob=[]) 모순 쌍을 거르는 유일한 관문이다(C3 게이트 M1)
 ```
 
 ## 범위 밖
