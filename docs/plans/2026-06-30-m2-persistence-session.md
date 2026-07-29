@@ -124,9 +124,10 @@ outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published
 > 저장을 먼저 넣으면 엔진 재시작 후 빈 Doc에 stale 클라가 붙어 정상 DB 스냅샷을 열화된 상태로
 > 덮어쓰는 구간이 생긴다.
 > **주의**: 서비스 레포(backend/crdt-engine/frontend)는 전부 건별 승인(브랜치·PR·push). controller만 main 직접.
-> ⚠️ **옛 지시 정정(2026-07-29 실측)**: 이 자리에 있던 "flip은 2b에서 끝났으니 `SaveSnapshot` 호출
-> 배선부터"는 **부정확했다** — `build.rs`의 `compile_protos`에 `doc.proto`가 없어 `DocServiceClient`가
-> 생성조차 안 된다. 시작점은 한 칸 앞(codegen 대상 추가)이다.
+> ~~⚠️ **옛 지시 정정(2026-07-29 실측)**: `build.rs`의 `compile_protos`에 `doc.proto`가 없어
+> `DocServiceClient`가 생성조차 안 된다 — 시작점은 한 칸 앞(codegen 대상 추가)이다.~~
+> → **C4에서 해소**(2026-07-30, engine `1a14f13`). codegen·어댑터·복원 배선이 전부 들어갔고
+> 복원은 와이어 끝까지 동작한다. **저장(Phase 3)은 아직 없다** — 잔여는 하위 plan의 C5~C8.
 > ⚠️ **proto 태그 bump 불요** — `proto-v0.2.0`에 `SaveSnapshot`·`LoadSnapshot`이 이미 다 있다
 > (`git diff proto-v0.2.0 -- proto/` 비어 있음). 향후 proto가 **실제로 바뀔 때**만 태그 push·다운스트림
 > `ref` bump가 승인 게이트다. **이 §재개 지점 = M2 본류의 상세 SSOT**. ⚠️ **CLAUDE.md를 함께 고치지 않는다**(2026-07-28 재구조화로 무효가 된 옛 지시를 2026-07-29 교체) — CLAUDE.md는 이제 `docs/status/current.md`를 가리키는 **포인터만** 갖고 진척 내용이 0이라 동기화할 사본이 없다. 프로젝트 전체의 "지금 위치"는 `current.md`가 소유한다. CLAUDE.md에 진척을 쓰는 것은 `plan-logging.md` §절대 금지에 해당한다. 게이트 트랙(T3 done·T4) = [plan-audit](2026-06-30-plan-audit-improvements.md). 1a 빌드 함정 = [dev-log](../dev-logs/2026-06-30-m2-doc-service-1a-version-traps.md)(Spring Boot 4.x=스타터 필수·TC 2.x=좌표).

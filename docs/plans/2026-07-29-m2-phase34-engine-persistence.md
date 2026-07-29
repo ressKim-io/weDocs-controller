@@ -58,7 +58,11 @@ ADR-0013이 **엔진 push**를 결정해뒀다 — 엔진이 dirty 시점을 알
       — [PR #14](https://github.com/ressKim-io/weDocs-crdt-engine/pull/14) **머지** `28e1b9c`.
       `engine.rs`→`doc.rs`+`snapshot/`, `service.rs`→`sync/{mod,session,metadata,status}`, `config.rs` 신설.
       동작 무변경(기존 40 테스트 통과, 벤치 166µs 동일)
-- [ ] **C4** engine PR1b `feat(persistence): doc-service 복원 배선 + fail-closed` — ~380줄
+- [x] **C4** engine PR1b `feat(persistence): doc-service 복원 배선 + fail-closed`
+      — [PR #15](https://github.com/ressKim-io/weDocs-crdt-engine/pull/15) **머지** `1a14f13` (+1,112/-7).
+      커밋 `cda705e`(codegen) · `5a66154`(config) · `0e2e3a4`(어댑터) · `62cb8a2`(게이트 반영).
+      추정 380줄을 크게 넘겼다 — 초과분은 대부분 통합 테스트 2파일(페이크 DocService + 실경로
+      trace 검증)과 근거 주석. 회고 = [dev-log](../dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md)
 - [ ] **C5** engine PR2a `feat(engine): 스냅샷 dirty 회계 + 저장 대상 수집` — ~280줄, `bench-compare` 첨부
       ⚠️ **C4 게이트 이월 1건 동승**: `StoredSnapshot::Present`의 필드가 enum variant라 **어디서든
       `from_wire` 없이 직접 조립 가능**하다 — C4는 지켰지만 컴파일러가 막지 못한다. C6가 저장
@@ -304,14 +308,10 @@ make bench-compare        # main baseline 대비. baseline은 C3에서 main에 �
 
 ```
 마지막 완료 = C3.5 머지(engine 28e1b9c). C3 = 2ab925e. dev-log 2건 기록됨
-현재        = **C4 코드 + 게이트 반영 완료, 로컬 브랜치에만 있다**
-              (engine `feature/m2-phase4-doc-service-restore`, 커밋 4개:
-               cda705e codegen · 5a66154 config · 0e2e3a4 어댑터 · 62cb8a2 게이트 반영)
-              검증 통과: 64 테스트 · clippy -D warnings · fmt · make proto-sync 후 빌드
-              크래프트 게이트(rust-expert) = Blocker 0 · Major 6 · Minor 9 →
-              [B] 위반 1건(observability P5 중복 로깅) 포함 15건 반영, 1건만 C5로 이월
-              남은 것 = **push + PR 생성 + 머지(각각 건별 승인)** — 아직 아무것도 push 안 됨
-다음        = C4 머지 후 C5(PR2a: dirty 회계). C5는 이월 M5(b)를 동승한다
+마지막 완료 = **C4 머지**(engine `1a14f13`, PR #15). CI 3종 초록. dev-log 기록됨
+다음        = **C5**(PR2a: dirty 회계 + 저장 대상 수집) — `bench-compare` 첨부 필수(핫패스)
+              C5는 게이트 이월 M5(b)를 **동승**한다 — `StoredSnapshot::Present`를 newtype으로
+              닫는다(C6가 두 번째 조립 지점을 만들기 **전**이어야 한다)
               ⚠️ C4는 ADR-0022 구조를 따른다 — 어댑터는 `snapshot/doc_service.rs`(형제),
               env는 `config.rs`에 필드 추가, wire 문구는 `sync/status.rs`에만.
               ⚠️ C4 절의 지시 3건은 착수 실측에서 정정됐다(§C4 m1~m3) — 생성 모듈은

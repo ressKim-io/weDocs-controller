@@ -4,16 +4,16 @@
 > CLAUDE.md는 이 파일을 가리키는 포인터만 갖는다(진척 이력을 CLAUDE.md에 두지 않는 이유 = 공식 가이드의 "자주 바뀌는 정보 제외" + 그 편집 지점이 곧 드리프트 지점이었다는 실증).
 > 완료 이력 = [`history.md`](history.md) · 상세 실행 계획 = `docs/plans/`
 
-**최종 갱신**: 2026-07-29
+**최종 갱신**: 2026-07-30
 
 ---
 
 ## 지금
 
-**M2 Phase 2 완료. Phase 3+4(엔진 스냅샷) 진행 중 — 복원·구조 정리 머지, 다음은 C4(어댑터 배선).**
+**M2 Phase 2 완료. Phase 3+4(엔진 스냅샷) 진행 중 — 복원이 와이어 끝까지 붙었다. 다음은 C5(저장 회계).**
 
-> 2026-07-29 Phase 2c 종료 — 로그인 → 워크스페이스 → 페이지 → **두 클라 수렴**이 실기동으로 확인된다.
-> 회고 = [dev-logs/2026-07-29-m2-phase2c-frontend-auth.md](../dev-logs/2026-07-29-m2-phase2c-frontend-auth.md)
+> 2026-07-30 C4 종료 — 엔진이 doc-service에서 스냅샷을 **복원**한다(fail-closed). 저장은 아직 없다.
+> 회고 = [dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md](../dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md)
 
 M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가(Phase 2) **여기까지 완료** →
 엔진 저장·복원·outbox·E2E(Phase 3~6)가 남았다.
@@ -26,12 +26,12 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 | 2c-C1 doc-service effective role 노출 | ✅ 머지 | backend `4c1678e` (PR #19) |
 | 2c-C2 frontend 인증 셸 | ✅ 머지 | frontend `de002f5` (PR #5) |
 | 2c-C3 페이지 선택 + 에디터 + E2E | ✅ 머지 | frontend `9161fbc`·`336964f`·`b12e026` (PR #6·#7·#8) |
-| **3+4 엔진 스냅샷** | **← 진행 중** | C3 `2ab925e` · C3.5 `28e1b9c` 머지 — 다음 C4 |
+| **3+4 엔진 스냅샷** | **← 진행 중** | C3 `2ab925e` · C3.5 `28e1b9c` · C4 `1a14f13` 머지 — 다음 C5 |
 
 ## 다음 액션 — Phase 3+4 (엔진 스냅샷 복원·저장)
 
 **상세 SSOT = [`plans/2026-07-29-m2-phase34-engine-persistence.md`](../plans/2026-07-29-m2-phase34-engine-persistence.md) §재개 지점.**
-다음 = **C4**(doc-service 어댑터 배선 — `snapshot/doc_service.rs`).
+다음 = **C5**(스냅샷 dirty 회계 + 저장 대상 수집). **핫패스 변경이라 `make bench-compare` 필수**(가드레일 5).
 
 ⚠️ **실행 순서가 plan 번호와 반대다** — **복원(Phase 4) 먼저, 저장(Phase 3) 나중**.
 저장을 먼저 넣으면 엔진 재시작 후 빈 Doc에 stale 클라가 붙어 **정상 DB 스냅샷을 열화된 상태로
@@ -67,6 +67,10 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
   ① **`tonic-health`**(0.14.6, tonic과 동일 버전 — K8s liveness/readiness probe에 필요)
   ② **metrics 노출**(`metrics` + exporter 또는 OTel metrics — 현재 trace만 있고 metric은 0)
   ③ `tonic-reflection`(grpcurl 개발 편의). 지금 넣으면 쓸 곳이 없어 YAGNI이고 M2 DoD에도 없다.
+- **`StoredSnapshot::Present`가 `from_wire` 없이 직접 조립 가능**(2026-07-30 C4 게이트 M5(b)) —
+  enum variant 필드는 enum과 같은 가시성이라 관문을 우회하는 조립을 **컴파일러가 막지 못한다**.
+  C4는 지켰지만 C6가 저장 경로에서 **두 번째 조립 지점**을 만든다. → **소거 = C5**(newtype + private 필드).
+  소비자가 `doc.rs` match 한 곳뿐이라 지금이 가장 싸다.
 - **doc-service `SaveSnapshot`의 경계 검증 갭 2건**(2026-07-29 Phase 3+4 착수 조사에서 발견) —
   ① blob 크기 무검증(4MiB gRPC 한도가 유일한 방어) ② `DataIntegrityViolationException`을 전부
   `PAGE_NOT_FOUND`로 접어 **FK 위반과 PK 경합을 구분 못 한다**. 엔진은 `NotFound`를 영구 실패로
@@ -81,10 +85,11 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
   ⚠️ **Phase 3+4는 bump가 불요하다**(실측 2026-07-29) — `proto-v0.2.0`에 `SaveSnapshot`·`LoadSnapshot`이
   이미 다 있고 `git diff proto-v0.2.0 -- proto/`가 비어 있다. engine `ci.yml:16`의 "Phase 3에서
   bump 필요" 주석은 **stale**(C4에서 정정).
-- **엔진에 아웃바운드 gRPC 클라이언트가 없다**(실측 2026-07-29). `build.rs`의 `build_client(true)`는
-  flip돼 있지만 `compile_protos`에 **`doc.proto`가 없어** `DocServiceClient`가 생성조차 안 된다.
-  2b가 한 일은 게이트웨이가 넘긴 `role` 메타 강제였을 뿐 doc-service 호출이 아니다 →
-  채널·데드라인·재시도·traceparent 주입이 **전부 신규**다.
+- ~~**엔진에 아웃바운드 gRPC 클라이언트가 없다**~~ → **C4에서 생겼다**(2026-07-30, `1a14f13`).
+  어댑터 = `snapshot/doc_service.rs`가 **tonic이 사는 유일한 곳**(포트 파일은 tonic을 모른다).
+  채널은 `connect_lazy` · `concurrency_limit(8)` · `Request::set_timeout`(3s) · traceparent 주입.
+  `DOC_SERVICE_ADDR` **미설정이 기본**이라 현재 기동은 여전히 `NoopSnapshotStore`다 → Phase 6에서 켠다.
+  ⚠️ 저장(`SaveSnapshot`)은 **아직 없다** — 포트에 `load`만 있다(C5·C6에서 추가).
 - **`registry.open()`은 `crdt.sync` span 밖에서 호출된다** — span은 `tokio::spawn(...).instrument()`에만
   붙는다. 그래서 open 경로에서 나가는 RPC는 `.instrument(span.clone())`을 붙이지 않으면
   traceparent가 실리지 않는다(가드레일 4 구멍).
@@ -127,6 +132,7 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 | 주제 | dev-log |
 |---|---|
 | 엔진 스냅샷 복원·fork 방지·순서 역전 | [2026-07-29-m2-phase34-engine-restore](../dev-logs/2026-07-29-m2-phase34-engine-restore.md) |
+| **keepalive가 꺼져 있었다 · 공허한 관측 테스트 · 지시문 stale** | [2026-07-30-m2-phase4-doc-service-adapter](../dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md) |
 | **표준이 Rust에서 덜 발화한 지점**(ADR 분석 대기) | [2026-07-29-rust-module-structure-and-standards-gap](../dev-logs/2026-07-29-rust-module-structure-and-standards-gap.md) |
 | 프론트 인증 배선·폴백이 감춘 403 | [2026-07-29-m2-phase2c-frontend-auth](../dev-logs/2026-07-29-m2-phase2c-frontend-auth.md) |
 | CI 갭·게이트 실효성 증명 | [2026-07-28-build-test-ci-gap](../dev-logs/2026-07-28-build-test-ci-gap.md) |
