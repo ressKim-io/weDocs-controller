@@ -148,7 +148,17 @@ related:
 > `detail` 문자열을 파싱해 분기하지 않는다(서버 주석이 금지) — 분기는 `code`/`status`로만.
 > 주요 코드: `invalid-credentials`(401) · `email-already-used`(409) · 5xx는 detail 고정 `"unexpected error"`.
 
-### C3. frontend — 페이지 선택 + 에디터 배선 + E2E (frontend PR)
+### C3. frontend — 페이지 선택 + 에디터 배선 + E2E (frontend PR ×3)
+
+> **착수 결정(2026-07-29)** — 실코드 확인 후 확정. 아래 둘은 추측이 아니라 서버 소스에서 읽은 사실이 근거다.
+>
+> | # | 결정 | 근거 |
+> |---|---|---|
+> | D4 | **C3을 3 PR로 분할** — ① REST 소비 계층(C3-1) ② 화면 배선(C3-2·3·4) ③ E2E+문서(C3-5·6) | 한 PR로 묶으면 850줄+로 리뷰 불가. C2가 966줄로 상한을 넘긴 선례를 반복하지 않는다. ①은 UI 무변경이라 계약 검증만으로 자기완결 |
+> | D5 | **`parseRoom`은 UUID 형식까지 요구**한다(기존 charset 규칙만으로는 부족) | 게이트웨이 `AuthzHandshakeInterceptor`가 doc_id 비UUID면 `CheckPermission` 왕복 **없이 403**이다. 엔진 `DocId`([A-Za-z0-9_-] 1..128)보다 **엄격**이므로 이쪽을 통과한 값은 항상 저쪽도 통과 — false-accept 없음. charset만 검사하면 `demo` 제거 후에도 "형식은 맞는데 무조건 403"인 room이 그대로 통과한다 |
+>
+> **REST 401은 본문이 없다**(실코드: `SecurityConfig`의 `oauth2ResourceServer` = Spring Security 필터 경로).
+> JSON이 아니므로 `ApiError.code`는 **null**이고, 토큰 만료 분기는 **`status === 401`로만** 한다.
 
 - [ ] **C3-1** `src/page/api.ts` + `src/workspace/api.ts` — 워크스페이스 목록/생성 · 페이지 목록/생성 · 단건 조회(`myRole`·`canEdit`).
       ⚠️ **`src/api/pages.ts`가 아니다** — C2 게이트에서 `src/api/`가 layering P7 위반으로 반려됐다(위 §C2).
@@ -164,8 +174,7 @@ related:
       ① editor 2클라 양방향 수렴(기존 테스트 이관) ② **viewer read-only**(공유 PUT으로 viewer 부여 → 쓰기 미반영 + 읽기 정상 수신)
       ③ 무토큰 연결 실패
 - [ ] **C3-6** README §E2E + `.env.example` 갱신(사전조건 **2 → 4 프로세스**)
-- [ ] **C3-7** 크래프트 게이트 → PR → 승인 → 머지
-- ⚠️ C3이 **400줄 초과 시 E2E(C3-5·C3-6)를 별도 PR로 분리**하고 PR 본문에 근거 명시(2a-2 D2 선례)
+- [ ] **C3-7** 크래프트 게이트 → PR → 승인 → 머지 (**PR마다** 실행 — PR 직전이 아니라 구현 중에)
 
 ## 검증
 
@@ -210,8 +219,8 @@ cd ../weDocs-frontend   && npm run test:e2e
               로그인 셸 완성 · CI 3종 green · 31 tests · 게이트 [B] 3건 소거 · 실서버 검증 6/6
               부수: main에서 red였던 npm-audit 게이트를 postcss 8.5.24로 복구
 다음        = C3(페이지 선택 + 에디터 배선 + E2E) — 마지막 조각. Phase 2c 완료 = Phase 2 완료
-              C3-1 page/workspace api → C3-2 목록 UI → C3-3 DEFAULT_ROOM 제거
-              → C3-4 protocols+viewer 잠금 → C3-5 E2E 재작성 → C3-6 문서 → C3-7 게이트+PR
+              **3 PR로 분할**(D4): ① C3-1 REST 소비 계층 → ② C3-2·3·4 화면 배선
+              → ③ C3-5·6 E2E+문서. 각 PR마다 게이트(C3-7)
 주의        = ① 서비스 레포는 branch+PR+건별 승인 (push·PR 생성·머지 각각)
               ② 프론트는 myRole이 아니라 **canEdit으로 분기**한다(정책 재구현 금지)
               ③ **파일 배치는 feature 평면이다** — `src/page/api.ts`, `src/workspace/api.ts`.
@@ -221,8 +230,7 @@ cd ../weDocs-frontend   && npm run test:e2e
                  C3-4는 그 값을 `protocols: [SENTINEL, token]`에 넣고, null이면 provider를 만들지 않는다
               ⑤ proto 무변경 → proto-v0.2.0 태그 bump 불요
               ⑥ E2E는 CI에 없다 — 로컬 **4프로세스**(+gateway +engine)로 직접 확인해야 완료
-              ⑦ 400줄 상한: C2가 966줄로 초과해 근거 명시로 통과했다. C3는 E2E 분리(C3-5·C3-6)를
-                 **처음부터 별도 PR로 계획**하는 편이 낫다
+              ⑦ 400줄 상한: C2가 966줄로 초과해 근거 명시로 통과했다 → C3는 D4로 **3 PR 분할 확정**
               ⑧ 크래프트 공통 [B]는 프론트엔드에도 그대로 발화한다 — C2에서 3건 나왔다.
                  게이트는 PR 직전이 아니라 **구현 중에** 의식할 것
 ```
