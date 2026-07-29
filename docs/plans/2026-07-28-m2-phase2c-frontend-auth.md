@@ -99,21 +99,40 @@ related:
 
 ### C2. frontend — 인증 셸 (login → 토큰) (frontend PR)
 
-- [ ] **C2-1** `src/api/client.ts` — fetch 래퍼. base = `VITE_API_URL`(기본 `http://localhost:8081`),
-      `Authorization: Bearer`, **RFC 9457 ProblemDetail 파싱**(doc-service `problemdetails.enabled: true`)
-- [ ] **C2-2** `src/api/auth.ts` — `signup`/`login`.
-      ⚠️ **`POST /api/auth/signup`은 토큰을 주지 않는다** — 201 + `UserResponse{id,email,displayName}`
-      (`AuthController` 실측 2026-07-29) → 가입 성공 후 **login을 이어 호출**해야 토큰을 얻는다
-- [ ] **C2-3** `src/auth/token.ts` — 토큰 + **만료 시각** 보관, `isExpired()`(스큐 마진 포함).
+> ✅ **C2 완료 (2026-07-29)** — [frontend PR #5](https://github.com/ressKim-io/weDocs-frontend/pull/5)
+> squash 머지 `de002f5`. CI 3종 green · 31 tests green · 실서버 검증 6/6.
+> ⚠️ 파일 경로는 아래 체크리스트와 다르다 — 게이트에서 `src/api/`가 **layering P7이 명시적으로 금지한
+> 전역 계층 통패키지**임이 드러나 `src/auth/{api,token,session,LoginForm}` + `src/common/http/client.ts`로
+> 재배치했다(ADR-0019 미러링). **C3도 `src/api/pages.ts`가 아니라 `src/page/api.ts`로 간다.**
+
+- [x] **C2-1** `src/common/http/client.ts` — fetch 래퍼. base = `VITE_API_URL`(기본 `http://localhost:8081`),
+      `Authorization: Bearer`, **RFC 9457 ProblemDetail 파싱** + 10s 타임아웃 + cause 보존
+- [x] **C2-2** `src/auth/api.ts` — `signup`/`login` + **토큰 응답 경계 검증**(게이트에서 추가).
+      ⚠️ **`POST /api/auth/signup`은 토큰을 주지 않는다** — 201 + `UserResponse{id,email,displayName}`.
+      **실서버로 재확인 완료**(2026-07-29) → 가입 성공 후 **login을 이어 호출**(`session.ts`가 소유)
+- [x] **C2-3** `src/auth/token.ts` — 토큰 + **만료 시각** 보관, `isExpired()`(스큐 마진 30s).
       **왜 만료를 클라가 아나**: 만료 토큰으로 재접속하면 게이트웨이가 401을 주는데 브라우저는 그걸 볼 수 없어
       무한 재시도에 빠진다(§사전검증) → 만료를 알면 재접속 대신 재로그인으로 보낸다.
       **D3(2026-07-29)**: 저장은 **메모리 전용**으로 확정 — localStorage/sessionStorage 미사용.
       XSS 시 토큰 탈취(secure-coding P1/P5). 대가 = 새로고침 시 재로그인(의도된 동작)
-- [ ] **C2-4** `src/LoginForm.tsx` + `App.tsx` 토큰 게이팅(회원가입 전환 + 로그아웃 포함)
-- [ ] **C2-5** 테스트(vitest, **CI 게이트 대상**): 만료 판정 경계 · ProblemDetail 에러 매핑 · 로그인 실패 표시.
-      **D2(2026-07-29)**: 컴포넌트 렌더까지 검증하기로 결정 → `jsdom`·`@testing-library/react`
-      (+peer `@testing-library/dom`)·`jest-dom` devDep 도입. 배선 주의 3가지는 §C2 배선 함정 참조
-- [ ] **C2-6** 크래프트 게이트(**인라인 실행**) → PR → 승인 → 머지
+- [x] **C2-4** `src/auth/LoginForm.tsx` + `App.tsx` 토큰 게이팅(회원가입 전환 + 로그아웃 포함)
+- [x] **C2-5** 테스트 **31 green**(기존 6 + 신규 25). D2대로 jsdom·RTL 도입 — 배선 함정 3가지 전부 실증됨
+- [x] **C2-6** 크래프트 게이트 **인라인 실행 → [B] 3건 발견·소거** → PR #5 → 머지 `de002f5`
+- [x] **C2-보너스** postcss 취약점(GHSA-r28c-9q8g-f849) 해소 — 이 작업과 무관한 기존 문제지만
+      **main의 `security-scan/npm-audit`이 2026-07-28부터 red**여서 PR을 초록으로 만들려면 필수였다
+
+> **게이트 [B] 3건 소거(2026-07-29)** — 전부 이 PR이 만든 코드에서 발화:
+> 1. **layering P7** — `src/api/`는 룰이 **이름까지 지목해 금지한** 전역 계층 통패키지였다
+>    (`api/`·`service/`·`repository/` 류). doc-service의 package-by-feature(ADR-0019)를 미러링해
+>    `src/auth/{api,token,session,LoginForm}` + `src/common/http/client.ts`로 재배치.
+> 2. **error-handling P4** — 본문 파싱 실패가 원인(SyntaxError)을 버렸다. 성공 경로는 `cause` 보존해
+>    던지고, 오류 응답 경로의 관대한 파싱은 "삼킴이 아니라 폴백이 설계"임을 주석으로 고정.
+> 3. **secure-coding P1** — 서버 응답을 무검증 `as T` 캐스트. 계약이 깨지면 `setToken(undefined, NaN)`이
+>    조용히 성립하고 증상은 한참 뒤 "로그인은 됐는데 매 요청이 401"로 나타난다 → 경계 검증 + 4케이스 테스트.
+>
+> **교훈**: 프론트엔드에도 크래프트 표준의 **공통 [B]가 그대로 적용된다.** 특히 layering P7은
+> "Java 패키지 규칙"으로 읽히기 쉽지만 `src/api/` 같은 프론트 관행에도 정확히 발화한다.
+> 이 레포에서 **`src/<layer>/` 디렉터리를 새로 만들지 않는다** — feature 평면 + `common/<관심사>/`.
 
 > **C2 배선 함정** (설치본 직접 확인, 2026-07-29 — 추측 아님)
 > 1. **`environmentMatchGlobs`는 vitest 4에서 제거됐다**(설치본 grep 0건). 전역은 `environment: 'node'`를
@@ -131,7 +150,9 @@ related:
 
 ### C3. frontend — 페이지 선택 + 에디터 배선 + E2E (frontend PR)
 
-- [ ] **C3-1** `src/api/pages.ts` — 워크스페이스 목록/생성 · 페이지 목록/생성 · 단건 조회(`myRole`)
+- [ ] **C3-1** `src/page/api.ts` + `src/workspace/api.ts` — 워크스페이스 목록/생성 · 페이지 목록/생성 · 단건 조회(`myRole`·`canEdit`).
+      ⚠️ **`src/api/pages.ts`가 아니다** — C2 게이트에서 `src/api/`가 layering P7 위반으로 반려됐다(위 §C2).
+      전송은 기존 `src/common/http/client.ts`의 `apiRequest`를 재사용한다(새로 만들지 않는다)
 - [ ] **C3-2** `WorkspaceBootstrap.tsx`(없으면 생성 유도) + `PageList.tsx`(평면 목록 + "새 페이지") — 선택한 `page.id`(UUID)가 곧 room
 - [ ] **C3-3** `connection.ts`: **`DEFAULT_ROOM = 'demo'` 제거**. `sanitizeRoom` → `parseRoom(raw): string | null`.
       **왜**: `demo` 폴백은 2a-2 D1에 의해 **무조건 403**이라, 폴백을 남기는 것은 "조용히 실패하는 경로"를 유지하는 것과 같다.
@@ -185,20 +206,25 @@ cd ../weDocs-frontend   && npm run test:e2e
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = C1 전부 종료 — backend PR #19 squash 머지(4c1678e, 2026-07-29).
-              main에 PageDetailResponse{myRole, canEdit} 반영 · 154 green · 게이트 [B] 1건 소거
-다음        = C2(frontend 인증 셸) — 브랜치 feature/m2-phase2c-auth-shell
-              C2-1 api/client → C2-2 api/auth → C2-3 auth/token → C2-4 LoginForm+App
-              → C2-5 jsdom/RTL 배선+테스트 → C2-6 게이트+PR
+마지막 완료 = C2 전부 종료 — frontend PR #5 squash 머지(de002f5, 2026-07-29).
+              로그인 셸 완성 · CI 3종 green · 31 tests · 게이트 [B] 3건 소거 · 실서버 검증 6/6
+              부수: main에서 red였던 npm-audit 게이트를 postcss 8.5.24로 복구
+다음        = C3(페이지 선택 + 에디터 배선 + E2E) — 마지막 조각. Phase 2c 완료 = Phase 2 완료
+              C3-1 page/workspace api → C3-2 목록 UI → C3-3 DEFAULT_ROOM 제거
+              → C3-4 protocols+viewer 잠금 → C3-5 E2E 재작성 → C3-6 문서 → C3-7 게이트+PR
 주의        = ① 서비스 레포는 branch+PR+건별 승인 (push·PR 생성·머지 각각)
-              ② C2는 C1에 의존하지 않는다(myRole 소비는 C3-4) — 병렬 진행 가능했던 이유
-              ③ 프론트는 myRole이 아니라 **canEdit으로 분기**한다(정책 재구현 금지)
-              ④ proto 무변경 → proto-v0.2.0 태그 bump 불요
-              ⑤ backend 테스트는 colima env 2개 없으면 initializationError
-              ⑥ E2E는 CI에 없다 — 로컬 4프로세스로 직접 확인해야 완료
-              ⑦ **C2 머지 후에도 앱은 여전히 demo room으로 403이다** — 의도된 중간 상태.
-                 C3-3(DEFAULT_ROOM 제거 + 페이지 선택)에서 해소된다. 회귀로 오판하지 말 것
-              ⑧ C2 수동 확인 사전조건은 **2프로세스**(postgres + doc-service). 4프로세스는 C3-5 E2E부터
+              ② 프론트는 myRole이 아니라 **canEdit으로 분기**한다(정책 재구현 금지)
+              ③ **파일 배치는 feature 평면이다** — `src/page/api.ts`, `src/workspace/api.ts`.
+                 `src/api/*`는 C2 게이트에서 layering P7 위반으로 반려됐다. 전송은
+                 기존 `src/common/http/client.ts`의 `apiRequest`를 재사용(중복 생성 금지)
+              ④ **토큰은 이미 있다** — `src/auth/token.ts`의 `getToken()`이 만료까지 판정한다.
+                 C3-4는 그 값을 `protocols: [SENTINEL, token]`에 넣고, null이면 provider를 만들지 않는다
+              ⑤ proto 무변경 → proto-v0.2.0 태그 bump 불요
+              ⑥ E2E는 CI에 없다 — 로컬 **4프로세스**(+gateway +engine)로 직접 확인해야 완료
+              ⑦ 400줄 상한: C2가 966줄로 초과해 근거 명시로 통과했다. C3는 E2E 분리(C3-5·C3-6)를
+                 **처음부터 별도 PR로 계획**하는 편이 낫다
+              ⑧ 크래프트 공통 [B]는 프론트엔드에도 그대로 발화한다 — C2에서 3건 나왔다.
+                 게이트는 PR 직전이 아니라 **구현 중에** 의식할 것
 ```
 
 **응답 계약(C2·C3가 소비)** — `GET /api/pages/{pageId}`:

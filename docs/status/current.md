@@ -24,10 +24,10 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1 전체 완료) →
 | 2a-2 gateway 인가 + viewer write-drop | ✅ 머지 | backend `4cb750d` |
 | 2b engine role 강제 | ✅ 머지 | engine `4d9c39e` |
 | 2c-C1 doc-service effective role 노출 | ✅ 머지 | backend `4c1678e` (PR #19) |
-| **2c-C2 frontend 인증 셸** | **← 진행 중** | — |
-| 2c-C3 frontend 페이지 선택 + 에디터 + E2E | 대기 | — |
+| 2c-C2 frontend 인증 셸 | ✅ 머지 | frontend `de002f5` (PR #5) |
+| **2c-C3 frontend 페이지 선택 + 에디터 + E2E** | **← 다음** (Phase 2의 마지막 조각) | — |
 
-## 다음 액션 — Phase 2c (C2)
+## 다음 액션 — Phase 2c (C3)
 
 **상세 SSOT = [`plans/2026-07-28-m2-phase2c-frontend-auth.md`](../plans/2026-07-28-m2-phase2c-frontend-auth.md) §재개 지점.**
 착수 탐색(2026-07-28)에서 2c가 "토큰 전달 한 줄"이 아님이 드러나 **별도 plan으로 분리**했다.
@@ -36,11 +36,15 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1 전체 완료) →
 - 프론트엔드에 **로그인이 없고**(토큰 출처 없음) **페이지 UUID 획득 경로도 없다**(1c REST 미소비) → 사용자 결정 = 우회 말고 **로그인 + 페이지 목록까지 제대로**.
 - **viewer는 자기 역할을 알 방법이 없다** → 타이핑이 게이트웨이에서 조용히 drop되고 로컬 `Y.Doc`만 divergent(새로고침 시 유실). **정합성 버그**라 근본 해결 = doc-service가 effective role 노출 → 프론트가 `editable: false`.
 
-순서: ~~C1 backend(role 노출)~~ ✅ → **C2 frontend**(인증 셸, 진행 중) → **C3 frontend**(페이지 선택 + 에디터 + E2E).
+순서: ~~C1 backend(role 노출)~~ ✅ → ~~C2 frontend(인증 셸)~~ ✅ → **C3 frontend**(페이지 선택 + 에디터 + E2E).
 서비스 레포는 branch + PR + 건별 승인.
 
-⚠️ **C2가 머지돼도 앱은 아직 `demo` room으로 403이다** — 의도된 중간 상태이고 C3-3에서 해소된다.
-회귀로 오판하지 말 것. C2 수동 확인 사전조건은 **2프로세스**(postgres + doc-service)뿐이다.
+⚠️ **지금 앱은 로그인까지만 된다** — 에디터는 여전히 `demo` room으로 403이다. 의도된 중간 상태이고
+C3-3(DEFAULT_ROOM 제거 + 페이지 선택)에서 해소된다. **회귀로 오판하지 말 것.**
+
+⚠️ **C3 파일 배치는 `src/page/api.ts`·`src/workspace/api.ts`다** — `src/api/*`가 아니다.
+C2 게이트에서 `src/api/`가 layering P7(전역 계층 통패키지 금지) 위반으로 반려돼 feature 평면으로
+재배치했다. 전송은 기존 `src/common/http/client.ts`의 `apiRequest`를 재사용한다.
 
 **⚠️ 프론트 E2E는 CI 밖**(로컬 실기동) — 사전조건이 engine+gateway 2개 → **+postgres+doc-service = 4프로세스**로 늘어난다.
 
@@ -60,7 +64,7 @@ Phase 3 엔진 저장 → 4 복원 → 5 outbox → 6 E2E. 본류 plan = [`plans
 |---|---|---|
 | [m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md) | in-progress | M2 Phase 2c → 3~6 |
 | [m2-phase2-auth-authz](../plans/2026-07-19-m2-phase2-auth-authz.md) | in-progress | 2c만 — 상세는 아래 분리 plan이 소유 |
-| [m2-phase2c-frontend-auth](../plans/2026-07-28-m2-phase2c-frontend-auth.md) | in-progress | **C2·C3만** — frontend 2~3 PR. C0·C1은 완료(C1 = backend PR #19 머지) |
+| [m2-phase2c-frontend-auth](../plans/2026-07-28-m2-phase2c-frontend-auth.md) | in-progress | **C3만** — frontend 1~2 PR. C0·C1·C2 완료(C1 = backend #19, C2 = frontend #5) |
 | [plan-audit-improvements](../plans/2026-06-30-plan-audit-improvements.md) | in-progress | T4 잔여 4건(T4-1 NFR/DoD 트래커 · T4-2 관측 콜사이트 · T4-4 ADR 0002~0009 승격 · T4-5 ①②③⑤). **T4-3 서비스 CI는 2026-07-28 완료** |
 
 
@@ -80,6 +84,16 @@ Phase 3 엔진 저장 → 4 복원 → 5 outbox → 6 E2E. 본류 plan = [`plans
 - **2b의 방어 범위** = 게이트웨이 **회귀·계약 위반**이지 "엔진 직접 gRPC 우회" 차단이 **아니다**. `role`은 클라이언트 통제 메타라 악의적 직접 호출자는 `editor`를 자칭해 통과한다 — 그 차단은 M5(mTLS STRICT·NetworkPolicy) 몫.
 - **proto 태그** = `proto-v0.2.0` **원격 push 완료**(`99213c3`). engine/backend CI가 이 ref를 핀한다 → proto 계약이 바뀌면 태그 bump + 양 레포 워크플로 `PROTO_REF` 갱신.
 - **CI** = 4레포 전부 빌드·테스트 게이트 보유(2026-07-28). PR 초록이 이제 실제 검증을 뜻한다. 단 **프론트 E2E는 제외**.
+  ⚠️ **"게이트 보유"와 "게이트 초록"은 다르다** — frontend `security-scan/npm-audit`은 `ci.yml` 신설 시점부터
+  main에서 계속 red였는데(vite 8.1.0 전이 의존 postcss) `ci.yml`이 초록이라 가려져 있었다(2026-07-29 발견·해소).
+  **새 게이트를 붙였으면 기존 게이트의 main 상태도 함께 확인한다.**
+- **doc-service 에러 계약** — 도메인 예외만 RFC 9457 확장 멤버 `code`를 갖는다. **Bean validation 400에는 없다**
+  (프레임워크 경로). 실측 확인 2026-07-29 → 클라이언트는 `code` 부재를 전제한 폴백이 필요하고,
+  분기는 `code`/`status`로만 한다(`detail` 파싱은 서버가 금지).
+- **`POST /api/auth/signup`은 토큰을 주지 않는다** — 201 + `UserResponse`뿐. 세션이 필요하면 login을 이어 부른다.
+- **프론트엔드 파일 배치 = feature 평면** — `src/<feature>/…` + `src/common/<관심사>/…`.
+  `src/api/`·`src/service/` 류 전역 계층 통패키지는 크래프트 게이트 layering P7이 **이름까지 지목해 금지**한다
+  (C2에서 실제 반려됨). "Java 패키지 규칙"으로 읽히지만 프론트 관행에도 그대로 발화한다.
 - **doc-service 구조** = package-by-feature(ADR-0019). 신규 코드는 feature 패키지(auth/workspace/page/snapshot) 평면에, 공용은 `common/`. 도메인 에러는 카탈로그(`DocErrorCode` enum + 카테고리 예외, ADR-0018)로만.
 - **테스트 환경** — backend doc-service 테스트는 colima 필요(`DOCKER_HOST`/`TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE`), ws-gateway는 불요(in-process fake).
 - **승인 경계** — 서비스 레포(backend/crdt-engine/frontend)는 branch+PR+**건별 승인**(push·PR 생성·머지 각각). controller만 main 직접.
