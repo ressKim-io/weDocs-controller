@@ -10,7 +10,7 @@
 
 ## 지금
 
-**M2 Phase 2 완료. Phase 3+4(엔진 스냅샷) 착수 — 계획·ADR 개정 완료, 엔진 코드 착수 전.**
+**M2 Phase 2 완료. Phase 3+4(엔진 스냅샷) 진행 중 — 복원(C3) 머지, 구조 정리(C3.5) 머지 대기.**
 
 > 2026-07-29 Phase 2c 종료 — 로그인 → 워크스페이스 → 페이지 → **두 클라 수렴**이 실기동으로 확인된다.
 > 회고 = [dev-logs/2026-07-29-m2-phase2c-frontend-auth.md](../dev-logs/2026-07-29-m2-phase2c-frontend-auth.md)
@@ -62,11 +62,6 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
   **클라에서 자르지 않는다** — 자르면 "내 워크스페이스가 안 보인다"는 무증상 버그가 되고 서버의 무상한
   조회는 그대로 남는다. 상한은 조회가 있는 곳에 둔다.
   → **소거 예정 = Phase 3+4의 C7**(backend PR3)에 동승 확정.
-- **crdt-engine 모듈 구조 = 관심사 모듈**([ADR-0022](../adr/0022-module-structure-rust.md), 2026-07-29).
-  `doc.rs`(도메인) · `snapshot/`(포트+어댑터 평면) · `sync/`(전송 경계) · `config.rs`(env 유일 지점) ·
-  `sync/status.rs`(wire 실패 문구 유일 지점). **계층 폴더(`domain/`·`service/`) 금지** —
-  프로덕션 Rust 서비스(linkerd2-proxy·vector) 실측과 hexagonal 가이드 자신의 제외 조건이 근거.
-  **분할 트리거는 응집도이지 줄 수가 아니다**(yrs 중앙값 502줄 — Rust는 테스트 동거로 줄 수가 부푼다).
 - **crdt-engine 운영 기능 미도입 3건 → M5(클러스터 배포) 트랙** (2026-07-29 [ADR-0022](../adr/0022-module-structure-rust.md) §범위 밖에서 등록).
   Spring Boot Actuator 대응물이 Rust엔 프레임워크가 아니라 **개별 크레이트**로 존재하는데 아직 조립을 안 했다:
   ① **`tonic-health`**(0.14.6, tonic과 동일 버전 — K8s liveness/readiness probe에 필요)
@@ -113,6 +108,11 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 - **프론트엔드 파일 배치 = feature 평면** — `src/<feature>/…` + `src/common/<관심사>/…`.
   `src/api/`·`src/service/` 류 전역 계층 통패키지는 크래프트 게이트 layering P7이 **이름까지 지목해 금지**한다
   (C2에서 실제 반려됨). "Java 패키지 규칙"으로 읽히지만 프론트 관행에도 그대로 발화한다.
+- **crdt-engine 모듈 구조 = 관심사 모듈**([ADR-0022](../adr/0022-module-structure-rust.md), 2026-07-29).
+  `doc.rs`(도메인) · `snapshot/`(포트+어댑터 평면) · `sync/`(전송 경계) · `config.rs`(env 유일 지점) ·
+  `sync/status.rs`(wire 실패 문구 유일 지점). **계층 폴더(`domain/`·`service/`) 금지** —
+  프로덕션 Rust 서비스(linkerd2-proxy·vector) 실측과 hexagonal 가이드 자신의 제외 조건이 근거.
+  **분할 트리거는 응집도이지 줄 수가 아니다**(yrs 중앙값 502줄 — Rust는 테스트 동거로 줄 수가 부푼다).
 - **doc-service 구조** = package-by-feature(ADR-0019). 신규 코드는 feature 패키지(auth/workspace/page/snapshot) 평면에, 공용은 `common/`. 도메인 에러는 카탈로그(`DocErrorCode` enum + 카테고리 예외, ADR-0018)로만.
 - **테스트 환경** — backend doc-service 테스트는 colima 필요(`DOCKER_HOST`/`TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE`), ws-gateway는 불요(in-process fake).
 - **승인 경계** — 서비스 레포(backend/crdt-engine/frontend)는 branch+PR+**건별 승인**(push·PR 생성·머지 각각). controller만 main 직접.
