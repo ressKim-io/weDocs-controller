@@ -119,11 +119,26 @@ pub async fn open(&self, doc_id: &DocId) -> Result<Subscription, EngineError>   
 
 ```
 build.rs                    compile_protos에 "proto/doc/doc.proto" + rerun-if-changed
-src/lib.rs                  pub mod doc { tonic::include_proto!("doc"); }
+src/lib.rs                  pub mod doc_proto { tonic::include_proto!("doc"); }   ← 이름 주의(m1)
 .github/workflows/ci.yml:16 stale 주석 정정(bump 불요)
 src/snapshot/doc_service.rs ← 신규. tonic이 사는 유일한 곳(포트의 형제 어댑터)
-src/config.rs               doc_service_addr 필드 추가 (env는 여기서만 읽는다)
+src/config.rs               doc_service 필드 추가 (env는 여기서만 읽는다)
+src/sync/mod.rs             CrdtEngineService::with_store — main이 포트를 주입하는 유일한 구멍
 ```
+
+#### 착수 실측 — 이 절의 지시 3건 정정 (2026-07-29)
+
+C4 절은 C3.5(ADR-0022) **이전**에 쓰였고, 위 경로 갱신 때 아래 3건이 함께 갱신되지 않았다.
+
+| # | 원문 지시 | 실측 · 대체 |
+|---|---|---|
+| **m1** | `pub mod doc { tonic::include_proto!("doc"); }` | **불가 — 이름 충돌.** `src/doc.rs`가 이미 `pub mod doc`(도메인 `DocRegistry`)다. proto 패키지명과 도메인 관심사명이 같은 단어를 쓴다. → **`pub mod doc_proto`**. `include_proto!`의 인자는 생성 파일명이라 모듈명은 자유롭고, 생성 코드의 `super::common` 참조도 크레이트 루트 기준이라 그대로 해석된다(`crdt` 모듈과 동일 조건) |
+| **m2** | 어댑터를 `mod doc_service;`로 **비공개** | **불가 — `main.rs`는 별도 바이너리 크레이트**라 `pub(crate)`조차 닿지 않는다. → **`pub mod doc_service;`** 로 두되 `snapshot/mod.rs`는 어댑터 타입을 **`use`하지 않는다**(재수출 0). 원 목적("포트 파일은 tonic을 모른다")은 그대로 성립한다 — 지켜야 할 것은 *가시성*이 아니라 *의존 방향*이다 |
+| **m3** | "`config.rs`에 `doc_service_addr` 필드" (타입 미지정) | 주소가 `SocketAddr`가 **아니다** — gRPC 엔드포인트라 스킴이 필요하다(`http://doc-service:50052`). → `Option<Endpoint>`로 쥔다. `Endpoint: Clone + Debug`(실측 tonic 0.14 `endpoint.rs:22,704`)라 `Config`의 derive가 유지되고, 파싱을 기동으로 끌어올려 **오타 주소가 첫 RPC가 아니라 부팅에서** 드러난다. 스킴 부재도 여기서 거절 — `Endpoint::from_shared`는 `"host:port"`를 스킴 `host`로 읽어 통과시키고 **connect 시점에야** 깨진다 |
+
+> m1·m2는 "구조 리팩토링(C3.5)이 그 뒤 단계의 지시문을 stale하게 만든다"의 두 번째 사례다.
+> 첫 번째가 이 절 머리의 ⚠️(`persistence.rs`·`service.rs` 경로)였고, 그때 **경로만** 고치고
+> 코드 스니펫은 두었다. 다음 단계 지시문은 경로·이름·가시성을 **함께** 재검한다.
 
 **C3·C3.5에서 이미 끝난 것 — C4에서 다시 하지 않는다:**
 - fail-closed `Status` 매핑 → `sync/status.rs`의 `WireFault`가 소유(문구 추가도 거기서만)
@@ -285,10 +300,13 @@ make bench-compare        # main baseline 대비. baseline은 C3에서 main에 �
 
 ```
 마지막 완료 = C3.5 머지(engine 28e1b9c). C3 = 2ab925e. dev-log 2건 기록됨
-다음        = C4(PR1b: build.rs에 doc.proto 추가 · snapshot/doc_service.rs ·
+다음        = C4 **실행 중**(PR1b: build.rs에 doc.proto 추가 · snapshot/doc_service.rs ·
               MetadataInjector · DOC_SERVICE_ADDR · 페이크 DocService 통합 테스트)
               ⚠️ C4는 ADR-0022 구조를 따른다 — 어댑터는 `snapshot/doc_service.rs`(형제),
               env는 `config.rs`에 필드 추가, wire 문구는 `sync/status.rs`에만.
+              ⚠️ C4 절의 지시 3건은 착수 실측에서 정정됐다(§C4 m1~m3) — 생성 모듈은
+              `doc_proto`(도메인 `doc`와 충돌), 어댑터는 `pub mod`(main은 별도 크레이트),
+              주소는 `Option<Endpoint>`(SocketAddr 아님). **원문 스니펫을 따르면 컴파일 실패한다**
 주의        = ① 실행 순서가 plan 번호와 반대다(복원 C3·C4 먼저, 저장 C5·C6 나중, D1)
               ② proto 태그 bump·PROTO_REF 변경 **불요** — proto-v0.2.0에 이미 다 있다
               ③ 벤치 baseline(registry_apply)은 C3에서 심었다 → C5에서 bench-compare 성립.
