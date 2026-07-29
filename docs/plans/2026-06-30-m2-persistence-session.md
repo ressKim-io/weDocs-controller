@@ -105,7 +105,10 @@ outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published
 ## 재개 지점 (Resume)
 
 > **마지막 완료**: **품질·보안 소급 트랙 완료**(2026-07-18) — ① **리팩토링 트랙**(에러 카탈로그·package-by-feature) backend 4 PR([plan](2026-07-17-error-catalog-package-by-feature.md) **done**, [dev-log](../dev-logs/2026-07-18-m2-refactor-track-backend.md)): PR #10 `a40bae5`가 **1c PR② 게이트 findings**(아카이브 도달성 BFS·move 인가→락→clear·InOrder 가드) 반영, #11 `080cec7`(에러 카탈로그)·#12 `9c870a5`(dedup, IDOR 보존)·#13 `3b51772`(package-by-feature). ② **secure-coding retrofit**(3-레포 관통 DoS 체인 소급 차단) 4레포 4 PR([plan](2026-07-03-secure-coding-retrofit.md) **done**, [dev-log](../dev-logs/2026-07-18-secure-coding-retrofit-completion.md)): engine PR #9 `5854b72`·backend PR #14 `1d94a9a`/#15 `a74667b`·frontend PR #3 `f7b5b92`. 그 전 = **Phase 1c 전체**(1a `54a8b48`·1b `1d7ce7b`·1c① `a7e3a27`·1c② `290bf69`, [1c plan](2026-07-12-m2-phase1c-rest-jwt.md) **done**). **→ Phase 1 + 품질/보안 소급 전부 클리어.**
-> **다음(새 세션 진입점)**: **Phase 3(엔진 저장) 착수** — Phase 2(인증/인가)는 **2026-07-29 전체 완료**다.
+> **다음(새 세션 진입점)**: **Phase 3+4는 하위 트랙이 소유한다** →
+> [`plans/2026-07-29-m2-phase34-engine-persistence.md`](2026-07-29-m2-phase34-engine-persistence.md) §재개 지점을 열어라.
+> **이 파일에서 Phase 3을 재도출하지 말 것.** 본류가 직접 재개하는 지점은 **Phase 5(outbox)**부터다.
+> Phase 2(인증/인가)는 **2026-07-29 전체 완료**다.
 > 2a-1 인증(`583b065`) · 2a-2 인가+viewer write-drop(`4cb750d`) · 2b engine role 강제(`4d9c39e`) ·
 > 2c-C1 doc-service effective role 노출(backend #19 `4c1678e`) · 2c-C2 인증 셸(frontend #5 `de002f5`) ·
 > **2c-C3 페이지 선택+에디터 배선+E2E**(frontend #6 `9161fbc` · #7 `336964f` · #8 `b12e026`).
@@ -116,5 +119,14 @@ outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published
 > ⚠️ **프론트 E2E는 여전히 CI 밖**(4프로세스 실기동 필요) — 로컬 실행이 유일한 검증 경로다.
 > ⚠️ 2b의 방어 범위 = **게이트웨이 회귀·계약 위반**이지 "엔진 직접 gRPC 우회" 차단이 아니다
 > (`role`은 클라 통제 메타 — 악의적 직접 호출자는 `editor` 자칭 통과, 차단은 M5 mTLS/NetworkPolicy).
-> **다음 작업 = Phase 3 `SaveSnapshot` 호출 배선** → 4(복원) → 5(outbox) → 6(E2E).
-> **주의**: 서비스 레포(backend/crdt-engine/frontend)는 전부 건별 승인(브랜치·PR·push). controller만 main 직접. 엔진 `build_client(false)→true` flip은 **Phase 2b에서 선반영 완료**(D5, 실 gRPC 스트림 테스트 목적) — Phase 3은 flip이 아니라 `SaveSnapshot` 호출 배선부터 시작한다. **proto 태그 push·다운스트림 `ref` bump = 승인 게이트**(CI 정합 시). **이 §재개 지점 = M2 본류의 상세 SSOT**. ⚠️ **CLAUDE.md를 함께 고치지 않는다**(2026-07-28 재구조화로 무효가 된 옛 지시를 2026-07-29 교체) — CLAUDE.md는 이제 `docs/status/current.md`를 가리키는 **포인터만** 갖고 진척 내용이 0이라 동기화할 사본이 없다. 프로젝트 전체의 "지금 위치"는 `current.md`가 소유한다. CLAUDE.md에 진척을 쓰는 것은 `plan-logging.md` §절대 금지에 해당한다. 게이트 트랙(T3 done·T4) = [plan-audit](2026-06-30-plan-audit-improvements.md). 1a 빌드 함정 = [dev-log](../dev-logs/2026-06-30-m2-doc-service-1a-version-traps.md)(Spring Boot 4.x=스타터 필수·TC 2.x=좌표).
+> **잔여 순서 = Phase 3+4(하위 트랙) → 5(outbox) → 6(E2E).**
+> ⚠️ **Phase 3+4의 실행 순서는 번호와 반대다** — 복원(4) 먼저, 저장(3) 나중(하위 plan D1).
+> 저장을 먼저 넣으면 엔진 재시작 후 빈 Doc에 stale 클라가 붙어 정상 DB 스냅샷을 열화된 상태로
+> 덮어쓰는 구간이 생긴다.
+> **주의**: 서비스 레포(backend/crdt-engine/frontend)는 전부 건별 승인(브랜치·PR·push). controller만 main 직접.
+> ⚠️ **옛 지시 정정(2026-07-29 실측)**: 이 자리에 있던 "flip은 2b에서 끝났으니 `SaveSnapshot` 호출
+> 배선부터"는 **부정확했다** — `build.rs`의 `compile_protos`에 `doc.proto`가 없어 `DocServiceClient`가
+> 생성조차 안 된다. 시작점은 한 칸 앞(codegen 대상 추가)이다.
+> ⚠️ **proto 태그 bump 불요** — `proto-v0.2.0`에 `SaveSnapshot`·`LoadSnapshot`이 이미 다 있다
+> (`git diff proto-v0.2.0 -- proto/` 비어 있음). 향후 proto가 **실제로 바뀔 때**만 태그 push·다운스트림
+> `ref` bump가 승인 게이트다. **이 §재개 지점 = M2 본류의 상세 SSOT**. ⚠️ **CLAUDE.md를 함께 고치지 않는다**(2026-07-28 재구조화로 무효가 된 옛 지시를 2026-07-29 교체) — CLAUDE.md는 이제 `docs/status/current.md`를 가리키는 **포인터만** 갖고 진척 내용이 0이라 동기화할 사본이 없다. 프로젝트 전체의 "지금 위치"는 `current.md`가 소유한다. CLAUDE.md에 진척을 쓰는 것은 `plan-logging.md` §절대 금지에 해당한다. 게이트 트랙(T3 done·T4) = [plan-audit](2026-06-30-plan-audit-improvements.md). 1a 빌드 함정 = [dev-log](../dev-logs/2026-06-30-m2-doc-service-1a-version-traps.md)(Spring Boot 4.x=스타터 필수·TC 2.x=좌표).

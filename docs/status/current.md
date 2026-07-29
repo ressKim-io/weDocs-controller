@@ -10,7 +10,7 @@
 
 ## 지금
 
-**M2 Phase 2(인증/인가) 전체 완료. 다음은 Phase 3(엔진 저장).**
+**M2 Phase 2 완료. Phase 3+4(엔진 스냅샷) 착수 — 계획·ADR 개정 완료, 엔진 코드 착수 전.**
 
 > 2026-07-29 Phase 2c 종료 — 로그인 → 워크스페이스 → 페이지 → **두 클라 수렴**이 실기동으로 확인된다.
 > 회고 = [dev-logs/2026-07-29-m2-phase2c-frontend-auth.md](../dev-logs/2026-07-29-m2-phase2c-frontend-auth.md)
@@ -26,13 +26,16 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 | 2c-C1 doc-service effective role 노출 | ✅ 머지 | backend `4c1678e` (PR #19) |
 | 2c-C2 frontend 인증 셸 | ✅ 머지 | frontend `de002f5` (PR #5) |
 | 2c-C3 페이지 선택 + 에디터 + E2E | ✅ 머지 | frontend `9161fbc`·`336964f`·`b12e026` (PR #6·#7·#8) |
-| **3 엔진 저장** | **← 다음** | — |
+| **3+4 엔진 스냅샷** | **← 진행 중** | 계획 `3d9aef6` · ADR 개정 `2bf8542` |
 
-## 다음 액션 — Phase 3 (엔진 저장)
+## 다음 액션 — Phase 3+4 (엔진 스냅샷 복원·저장)
 
-**상세 SSOT = [`plans/2026-06-30-m2-persistence-session.md`](../plans/2026-06-30-m2-persistence-session.md) §재개 지점.**
+**상세 SSOT = [`plans/2026-07-29-m2-phase34-engine-persistence.md`](../plans/2026-07-29-m2-phase34-engine-persistence.md) §재개 지점.**
+다음 = **C3 = crdt-engine PR1a**(SnapshotStore 포트 + 복원-우선 open).
 
-⚠️ **`build_client` flip부터가 아니다** — 2b가 이미 `true`로 선반영했다. **`SaveSnapshot` 호출 배선부터** 시작한다.
+⚠️ **실행 순서가 plan 번호와 반대다** — **복원(Phase 4) 먼저, 저장(Phase 3) 나중**.
+저장을 먼저 넣으면 엔진 재시작 후 빈 Doc에 stale 클라가 붙어 **정상 DB 스냅샷을 열화된 상태로
+덮어쓰는** 구간이 생기고 version 카운터도 0으로 리셋된다. 복원이 먼저면 그 구간이 없다.
 
 ## 열린 트랙 (완료 시 여기부터 확인)
 
@@ -40,7 +43,8 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 
 | plan | status | 실제 남은 것 |
 |---|---|---|
-| [m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md) | in-progress | **M2 Phase 3~6** (Phase 1·2 완료) |
+| [m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md) | in-progress | **M2 Phase 5~6** (Phase 1·2 완료, 3+4는 아래 하위 트랙이 소유) |
+| [m2-phase34-engine-persistence](../plans/2026-07-29-m2-phase34-engine-persistence.md) | in-progress | **C3~C8** — engine PR1a/1b/2a/2b + backend PR3 + 완료 처리 |
 | [plan-audit-improvements](../plans/2026-06-30-plan-audit-improvements.md) | in-progress | T4 잔여 4건(T4-1 NFR/DoD 트래커 · T4-2 관측 콜사이트 · T4-4 ADR 0002~0009 승격 · T4-5 ①②③⑤). **T4-3 서비스 CI는 2026-07-28 완료** |
 
 
@@ -56,7 +60,12 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 - **`WorkspaceService.listMine`에 조회 상한 없음** (backend, secure-coding P2) — 2026-07-29 C3-1 게이트에서 발견.
   같은 서비스의 `PageTreeService.list`는 `MAX_PAGE_LIST`(1,000)로 자르는데 워크스페이스 목록만 무상한이다.
   **클라에서 자르지 않는다** — 자르면 "내 워크스페이스가 안 보인다"는 무증상 버그가 되고 서버의 무상한
-  조회는 그대로 남는다. 상한은 조회가 있는 곳에 둔다 → 다음 backend PR에 동승.
+  조회는 그대로 남는다. 상한은 조회가 있는 곳에 둔다.
+  → **소거 예정 = Phase 3+4의 C7**(backend PR3)에 동승 확정.
+- **doc-service `SaveSnapshot`의 경계 검증 갭 2건**(2026-07-29 Phase 3+4 착수 조사에서 발견) —
+  ① blob 크기 무검증(4MiB gRPC 한도가 유일한 방어) ② `DataIntegrityViolationException`을 전부
+  `PAGE_NOT_FOUND`로 접어 **FK 위반과 PK 경합을 구분 못 한다**. 엔진은 `NotFound`를 영구 실패로
+  보고 그 문서의 영속화를 끄므로, PK 경합이 조용한 데이터 유실이 된다. → 같은 C7에서 소거.
 
 ---
 
@@ -64,6 +73,16 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 
 - **2b의 방어 범위** = 게이트웨이 **회귀·계약 위반**이지 "엔진 직접 gRPC 우회" 차단이 **아니다**. `role`은 클라이언트 통제 메타라 악의적 직접 호출자는 `editor`를 자칭해 통과한다 — 그 차단은 M5(mTLS STRICT·NetworkPolicy) 몫.
 - **proto 태그** = `proto-v0.2.0` **원격 push 완료**(`99213c3`). engine/backend CI가 이 ref를 핀한다 → proto 계약이 바뀌면 태그 bump + 양 레포 워크플로 `PROTO_REF` 갱신.
+  ⚠️ **Phase 3+4는 bump가 불요하다**(실측 2026-07-29) — `proto-v0.2.0`에 `SaveSnapshot`·`LoadSnapshot`이
+  이미 다 있고 `git diff proto-v0.2.0 -- proto/`가 비어 있다. engine `ci.yml:16`의 "Phase 3에서
+  bump 필요" 주석은 **stale**(C4에서 정정).
+- **엔진에 아웃바운드 gRPC 클라이언트가 없다**(실측 2026-07-29). `build.rs`의 `build_client(true)`는
+  flip돼 있지만 `compile_protos`에 **`doc.proto`가 없어** `DocServiceClient`가 생성조차 안 된다.
+  2b가 한 일은 게이트웨이가 넘긴 `role` 메타 강제였을 뿐 doc-service 호출이 아니다 →
+  채널·데드라인·재시도·traceparent 주입이 **전부 신규**다.
+- **`registry.open()`은 `crdt.sync` span 밖에서 호출된다** — span은 `tokio::spawn(...).instrument()`에만
+  붙는다. 그래서 open 경로에서 나가는 RPC는 `.instrument(span.clone())`을 붙이지 않으면
+  traceparent가 실리지 않는다(가드레일 4 구멍).
 - **CI** = 4레포 전부 빌드·테스트 게이트 보유(2026-07-28). PR 초록이 이제 실제 검증을 뜻한다. 단 **프론트 E2E는 제외**.
   ⚠️ **"게이트 보유"와 "게이트 초록"은 다르다** — frontend `security-scan/npm-audit`은 `ci.yml` 신설 시점부터
   main에서 계속 red였는데(vite 8.1.0 전이 의존 postcss) `ci.yml`이 초록이라 가려져 있었다(2026-07-29 발견·해소).

@@ -1,7 +1,7 @@
 ---
 date: 2026-07-29
 slug: m2-phase34-engine-persistence
-status: planned
+status: in-progress
 related:
   - plans/2026-06-30-m2-persistence-session.md
   - adr/0013-snapshot-persistence-lifecycle.md
@@ -49,8 +49,8 @@ ADR-0013이 **엔진 push**를 결정해뒀다 — 엔진이 dirty 시점을 알
 > ⛔ **서비스 레포(crdt-engine·backend)는 브랜치+PR+건별 승인**(push·PR 생성·머지 각각).
 > controller(C1·C2·C8)만 main 직접.
 
-- [ ] **C1** `docs(plan):` 이 파일 신설 + `status: in-progress` — **코드 작업 전 필수**
-- [ ] **C2** `docs(adr):` ADR-0013 §트레이드오프 재시도 정책 개정 (아래 §ADR 개정 사유)
+- [x] **C1** `docs(plan):` 이 파일 신설 + `status: in-progress` — **코드 작업 전 필수** — `3d9aef6`
+- [x] **C2** `docs(adr):` ADR-0013 개정 3건 (재시도 정책 · 복원 실패 fail-closed · T 표현) — `2bf8542`
 - [ ] **C3** engine PR1a `feat(engine): SnapshotStore 포트 + 복원-우선 open (OnceCell 슬롯)` — ~355줄
 - [ ] **C4** engine PR1b `feat(persistence): doc-service 복원 배선 + fail-closed` — ~380줄
 - [ ] **C5** engine PR2a `feat(engine): 스냅샷 dirty 회계 + 저장 대상 수집` — ~280줄, `bench-compare` 첨부
@@ -264,8 +264,9 @@ make bench-compare        # main baseline 대비. baseline은 C3에서 main에 �
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = (없음 — plan 신설)
-다음        = C1 커밋 → C2(ADR-0013 개정) → C3(engine PR1a 브랜치)
+마지막 완료 = C2 (ADR-0013 개정 2bf8542). C1 plan 커밋 3d9aef6
+다음        = C3 — crdt-engine 레포에 브랜치 생성 후 PR1a 구현
+              (SnapshotStore 포트 + DocSlot/OnceCell 복원-우선 open + registry_apply 벤치)
 주의        = ① 실행 순서가 plan 번호와 반대다(복원 C3·C4 먼저, 저장 C5·C6 나중, D1)
               ② proto 태그 bump·PROTO_REF 변경 **불요** — proto-v0.2.0에 이미 다 있다
               ③ 벤치 baseline(registry_apply)은 C3에서 main에 심어야 C5의 bench-compare가 성립
