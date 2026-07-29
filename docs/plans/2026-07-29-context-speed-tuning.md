@@ -1,9 +1,10 @@
 ---
 date: 2026-07-29
 slug: context-speed-tuning
-status: planned
+status: done
 related:
   - plans/2026-07-28-claude-context-budget.md
+  - dev-logs/2026-07-29-context-speed-tuning.md
 ---
 
 # Claude Code 속도 저하 진단 · 설정 튜닝
@@ -30,7 +31,8 @@ related:
 
 **무엇을 확정했는가** (사용자 결정, 2026-07-29):
 
-- 전역 model → `claude-opus-4-8` · `effortLevel` 제거(→ 기본 high)
+- 전역 model → ~~`claude-opus-4-8`~~ **`claude-opus-5`** (실행 중 사용자 정정: Opus 5 출시 확인 —
+  WebFetch 재검증: $5/$25·1M ctx·agentic 코딩 기본 추천, 4.8은 legacy 강등) · `effortLevel` 제거(→ 기본 high)
 - architect-agent·tech-lead·debugging-expert `max` → `xhigh`, **rust-expert만 max 유지**
   (CRDT 수렴 정확성 — SKILL.md 티어링 판단 기록 근거)
 - SKILL.md의 Outlier note "Claude Code는 frontmatter `effort:`를 읽지 않는다"는 **stale** —
@@ -42,13 +44,13 @@ related:
 
 ## 실행 체크리스트
 
-- [ ] **C1** `docs(plan):` 본 plan 커밋 (작업 시작 전 — plan-logging.md)
-- [ ] **C2** 전역 `~/.claude/settings.json`: `effortLevel` 제거 + `model: "claude-opus-4-8"` (커밋 대상 아님 — 레포 밖)
-- [ ] **C3** `claude(agents):` architect-agent·tech-lead·debugging-expert `effort: max` → `xhigh`
-- [ ] **C4** `claude(skills):` context-and-effort SKILL.md — stale Outlier note 정정 + agents 매핑 표 effort 갱신 + 검증일 갱신
-- [ ] **C5** `claude(hooks):` PreToolUse Bash 훅에 shell `case` 프리필터 — 위험 접두사만 python3 위임
-- [ ] **C6** 전역 플러그인: swift-lsp 제거, rust-analyzer-lsp 전역 해제 → crdt-engine `.claude/settings.json`으로 (레포 밖 + crdt-engine 레포 1파일)
-- [ ] **C7** `docs(plan):` status: done + dev-log 링크
+- [x] **C1** `docs(plan):` 본 plan 커밋 (작업 시작 전 — plan-logging.md) — `37e29bc`
+- [x] **C2** 전역 `~/.claude/settings.json`: `effortLevel` 제거 + `model: "claude-opus-5"` (커밋 대상 아님 — 레포 밖)
+- [x] **C3** `claude(agents):` architect-agent·tech-lead·debugging-expert `effort: max` → `xhigh` — `38e9e15`
+- [x] **C4** `claude(skills):` context-and-effort SKILL.md — Opus 5 반영 + stale Outlier note 폐기 + 매핑 표·검증일 갱신 — `bd69253`
+- [x] **C5** `claude(hooks):` PreToolUse Bash 훅에 shell `case` 프리필터(대조군 8케이스 통과) — `0f69f67`
+- [x] **C6** 전역 플러그인: 둘 다 전역 해제, rust-analyzer-lsp → crdt-engine `.claude/settings.local.json` (레포 밖 — 로컬 파일이라 서비스 레포 승인 불요)
+- [x] **C7** `docs(plan):` status: done + dev-log = [2026-07-29-context-speed-tuning](../dev-logs/2026-07-29-context-speed-tuning.md)
 
 ## 검증
 
@@ -67,11 +69,10 @@ echo '{"tool_input":{"command":"kubectl delete pod x"}}' | <프리필터 명령>
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = plan 작성
-다음        = C1 (plan 커밋)
-주의        = C2·C6은 레포 밖(전역 설정) — 커밋 없음, 체크박스로만 추적.
-              C5는 guard_destructive.py의 차단 목록과 프리필터 접두사가 어긋나면
-              가드가 뚫린다 — 대조군 시뮬레이션 필수.
+마지막 완료 = 전 단계 (C1~C7) — 2026-07-29 완결
+다음        = 없음. 새 세션에서 /model·/status로 opus-5 + effort 기본 반영만 확인
+주의        = guard RULES에 명령어 추가 시 settings.json 프리필터 패턴도 동기화
+              (스크립트 docstring에 경고 있음)
 ```
 
 ## 범위 밖
