@@ -60,6 +60,10 @@ ADR-0013이 **엔진 push**를 결정해뒀다 — 엔진이 dirty 시점을 알
       동작 무변경(기존 40 테스트 통과, 벤치 166µs 동일)
 - [ ] **C4** engine PR1b `feat(persistence): doc-service 복원 배선 + fail-closed` — ~380줄
 - [ ] **C5** engine PR2a `feat(engine): 스냅샷 dirty 회계 + 저장 대상 수집` — ~280줄, `bench-compare` 첨부
+      ⚠️ **C4 게이트 이월 1건 동승**: `StoredSnapshot::Present`의 필드가 enum variant라 **어디서든
+      `from_wire` 없이 직접 조립 가능**하다 — C4는 지켰지만 컴파일러가 막지 못한다. C6가 저장
+      경로에서 두 번째 조립 지점을 만들기 **전에** `Present(PresentSnapshot)` newtype + private
+      필드로 닫는다. 소비자는 `doc.rs`의 match 한 곳뿐이라 비용이 작다(게이트 M5(b))
 - [ ] **C6** engine PR2b `feat(sweeper): 전역 스냅샷 스위퍼 + graceful flush` — ~400줄
 - [ ] **C7** backend PR3 `fix(doc-service): 스냅샷 경계 검증 + 조회 상한` — C4 머지 후, C5와 병렬 가능
 - [ ] **C8** `docs:` dev-log + 이 plan `done` + `current.md` 갱신 + **역방향 점검**
@@ -300,13 +304,14 @@ make bench-compare        # main baseline 대비. baseline은 C3에서 main에 �
 
 ```
 마지막 완료 = C3.5 머지(engine 28e1b9c). C3 = 2ab925e. dev-log 2건 기록됨
-현재        = **C4 코드 완료, 로컬 브랜치에만 있다**(engine `feature/m2-phase4-doc-service-restore`,
-              커밋 cda705e·5a66154·0e2e3a4, +936/-6, 10파일).
-              검증 통과: 63 테스트(신규 통합 8 + 어댑터 단위 5 + config 5) ·
-              clippy -D warnings · fmt · make proto-sync 후 빌드
-              남은 것 = ① 크래프트 게이트(rust-expert 에이전트 — 가드레일 7) ②
-              push+PR+머지(각각 승인) ③ 게이트 findings 반영
-다음        = C4 마무리 후 C5(PR2a: dirty 회계)
+현재        = **C4 코드 + 게이트 반영 완료, 로컬 브랜치에만 있다**
+              (engine `feature/m2-phase4-doc-service-restore`, 커밋 4개:
+               cda705e codegen · 5a66154 config · 0e2e3a4 어댑터 · 62cb8a2 게이트 반영)
+              검증 통과: 64 테스트 · clippy -D warnings · fmt · make proto-sync 후 빌드
+              크래프트 게이트(rust-expert) = Blocker 0 · Major 6 · Minor 9 →
+              [B] 위반 1건(observability P5 중복 로깅) 포함 15건 반영, 1건만 C5로 이월
+              남은 것 = **push + PR 생성 + 머지(각각 건별 승인)** — 아직 아무것도 push 안 됨
+다음        = C4 머지 후 C5(PR2a: dirty 회계). C5는 이월 M5(b)를 동승한다
               ⚠️ C4는 ADR-0022 구조를 따른다 — 어댑터는 `snapshot/doc_service.rs`(형제),
               env는 `config.rs`에 필드 추가, wire 문구는 `sync/status.rs`에만.
               ⚠️ C4 절의 지시 3건은 착수 실측에서 정정됐다(§C4 m1~m3) — 생성 모듈은
