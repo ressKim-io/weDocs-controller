@@ -160,9 +160,18 @@ related:
 > **REST 401은 본문이 없다**(실코드: `SecurityConfig`의 `oauth2ResourceServer` = Spring Security 필터 경로).
 > JSON이 아니므로 `ApiError.code`는 **null**이고, 토큰 만료 분기는 **`status === 401`로만** 한다.
 
-- [ ] **C3-1** `src/page/api.ts` + `src/workspace/api.ts` — 워크스페이스 목록/생성 · 페이지 목록/생성 · 단건 조회(`myRole`·`canEdit`).
-      ⚠️ **`src/api/pages.ts`가 아니다** — C2 게이트에서 `src/api/`가 layering P7 위반으로 반려됐다(위 §C2).
-      전송은 기존 `src/common/http/client.ts`의 `apiRequest`를 재사용한다(새로 만들지 않는다)
+- [x] **C3-1** `src/page/api.ts` + `src/workspace/api.ts` + `src/common/http/contract.ts`(응답 경계 검증 규칙).
+      전송은 기존 `apiRequest` 재사용. **[frontend PR #6](https://github.com/ressKim-io/weDocs-frontend/pull/6) 머지 완료**
+      (2026-07-29, squash `9161fbc`) — CI 3종 green · 55 tests(+24) · 게이트 [B] 0건(서버 갭 1건은 아래)
+
+> **C3-1에서 고정한 것**(PR② 이후가 의존):
+> - **빈 문자열은 `title`의 정상값**이다(서버 허용) → 표시용 문자열은 느슨하게, **식별자만 엄격하게**.
+>   반대로 하면 서버가 만들 수 있는 페이지를 클라가 열 수 없게 된다.
+> - **`myRole`↔`canEdit` 불변식을 클라 타입으로 강제하지 않는다** — 강제 = 서버 정책의 클라 재구현.
+>   어긋난 응답도 서버 값 그대로 전달하는 것을 테스트로 고정했다.
+> - **모르는 역할은 거부**(fail-closed) — 낙관 해석은 조용한 권한 상승.
+> - 발견: 서버 `WorkspaceService.listMine`에 **조회 상한 없음**(형제 `PageTreeService.list`는 1,000 상한).
+>   클라 절단은 서버 갭을 감추므로 미채택 → `current.md` §이월된 findings 등록, 다음 backend PR 동승.
 - [ ] **C3-2** `WorkspaceBootstrap.tsx`(없으면 생성 유도) + `PageList.tsx`(평면 목록 + "새 페이지") — 선택한 `page.id`(UUID)가 곧 room
 - [ ] **C3-3** `connection.ts`: **`DEFAULT_ROOM = 'demo'` 제거**. `sanitizeRoom` → `parseRoom(raw): string | null`.
       **왜**: `demo` 폴백은 2a-2 D1에 의해 **무조건 403**이라, 폴백을 남기는 것은 "조용히 실패하는 경로"를 유지하는 것과 같다.
@@ -218,9 +227,12 @@ cd ../weDocs-frontend   && npm run test:e2e
 마지막 완료 = C2 전부 종료 — frontend PR #5 squash 머지(de002f5, 2026-07-29).
               로그인 셸 완성 · CI 3종 green · 31 tests · 게이트 [B] 3건 소거 · 실서버 검증 6/6
               부수: main에서 red였던 npm-audit 게이트를 postcss 8.5.24로 복구
-다음        = C3(페이지 선택 + 에디터 배선 + E2E) — 마지막 조각. Phase 2c 완료 = Phase 2 완료
-              **3 PR로 분할**(D4): ① C3-1 REST 소비 계층 → ② C3-2·3·4 화면 배선
-              → ③ C3-5·6 E2E+문서. 각 PR마다 게이트(C3-7)
+              C3 ①(REST 소비 계층) 종료 — frontend PR #6 squash 머지(9161fbc, 2026-07-29).
+              CI 3종 green · 55 tests · UI 무변경(호출자는 PR②가 만든다)
+다음        = C3 **②화면 배선**(C3-2·3·4) → ③E2E+문서(C3-5·6). 각 PR마다 게이트(C3-7)
+              ② = 워크스페이스/페이지 목록 UI · DEFAULT_ROOM 제거(parseRoom이 UUID 요구, D5)
+                  · protocols:[SENTINEL, token] · canEdit=false면 Tiptap editable:false.
+                  **②가 머지되면 에디터 403이 실제로 풀린다**(그 전까지는 의도된 중간 상태)
 주의        = ① 서비스 레포는 branch+PR+건별 승인 (push·PR 생성·머지 각각)
               ② 프론트는 myRole이 아니라 **canEdit으로 분기**한다(정책 재구현 금지)
               ③ **파일 배치는 feature 평면이다** — `src/page/api.ts`, `src/workspace/api.ts`.
