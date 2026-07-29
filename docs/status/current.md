@@ -85,6 +85,10 @@ Phase 3 엔진 저장 → 4 복원 → 5 outbox → 6 E2E. 본류 plan = [`plans
 
 - **2b 크래프트 게이트 Minor 4건** — `extract_role` 거절 로그에 `doc_id`·`trace_id` 없음 / `Cargo.toml` dev-dep 주석의 feature 주장이 사실과 다름 / `let _ = send` 근거 주석 / plan이 명시한 `INVALID_ROLE_MSG` 상수 미도입. 상세 = phase2 plan §2b.
 - **1c PR② 게이트 findings** — 상세 = [`plans/2026-07-12-m2-phase1c-rest-jwt.md`](../plans/2026-07-12-m2-phase1c-rest-jwt.md) §PR② (HIGH 2건은 PR #10 `a40bae5`에서 해소됨).
+- **`WorkspaceService.listMine`에 조회 상한 없음** (backend, secure-coding P2) — 2026-07-29 C3-1 게이트에서 발견.
+  같은 서비스의 `PageTreeService.list`는 `MAX_PAGE_LIST`(1,000)로 자르는데 워크스페이스 목록만 무상한이다.
+  **클라에서 자르지 않는다** — 자르면 "내 워크스페이스가 안 보인다"는 무증상 버그가 되고 서버의 무상한
+  조회는 그대로 남는다. 상한은 조회가 있는 곳에 둔다 → 다음 backend PR에 동승.
 
 ---
 
