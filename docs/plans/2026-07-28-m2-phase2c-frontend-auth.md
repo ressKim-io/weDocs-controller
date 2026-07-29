@@ -89,7 +89,7 @@ related:
 - [x] **C1-3** 노출 enum(`PageDetailResponse.Role`)에서 `NONE` 제외 + 도달 시 fail-closed. 단위 테스트로 고정
 - [x] **C1-4** 테스트 154 green(+6): 해석 네 갈래(ws owner / ws member baseline / 명시 공유 / **조상 상속**) 종단 검증 + 매핑 단위
 - [x] **C1-5** 크래프트 게이트(☕ 6종, **인라인 실행**) → **[B] 1건 발견·수정** → PR
-- [x] 커밋 `099f90b` · **[backend PR #19](https://github.com/ressKim-io/weDocs-backend/pull/19)** (머지 대기)
+- [x] **[backend PR #19](https://github.com/ressKim-io/weDocs-backend/pull/19) 머지 완료**(2026-07-29, squash `4c1678e`) — CI 4종 green
 
 > **게이트 [B] 소거(2026-07-28)**: `toRole`의 raw `IllegalStateException` = error-handling **P7 위반**
 > (`InvariantViolationException` doc 주석이 이 금지를 명시, `DocMetaService`에 같은 위반이 retrofit으로 제거된 선례).
@@ -101,14 +101,33 @@ related:
 
 - [ ] **C2-1** `src/api/client.ts` — fetch 래퍼. base = `VITE_API_URL`(기본 `http://localhost:8081`),
       `Authorization: Bearer`, **RFC 9457 ProblemDetail 파싱**(doc-service `problemdetails.enabled: true`)
-- [ ] **C2-2** `src/api/auth.ts` — `signup`/`login` → `TokenResponse {accessToken, tokenType, expiresInSeconds}`
-- [ ] **C2-3** `src/auth/token.ts` — 토큰 + **만료 시각** 보관, `isExpired()`.
+- [ ] **C2-2** `src/api/auth.ts` — `signup`/`login`.
+      ⚠️ **`POST /api/auth/signup`은 토큰을 주지 않는다** — 201 + `UserResponse{id,email,displayName}`
+      (`AuthController` 실측 2026-07-29) → 가입 성공 후 **login을 이어 호출**해야 토큰을 얻는다
+- [ ] **C2-3** `src/auth/token.ts` — 토큰 + **만료 시각** 보관, `isExpired()`(스큐 마진 포함).
       **왜 만료를 클라가 아나**: 만료 토큰으로 재접속하면 게이트웨이가 401을 주는데 브라우저는 그걸 볼 수 없어
       무한 재시도에 빠진다(§사전검증) → 만료를 알면 재접속 대신 재로그인으로 보낸다.
-      ⚠️ 저장은 **메모리 기본** — localStorage는 XSS 시 토큰 탈취(secure-coding P1/P5)라 기본값으로 두지 않는다
-- [ ] **C2-4** `src/LoginForm.tsx` + `App.tsx` 토큰 게이팅(회원가입 전환 포함)
-- [ ] **C2-5** 테스트(vitest, **CI 게이트 대상**): 만료 판정 경계 · ProblemDetail 에러 매핑 · 로그인 실패 표시
-- [ ] **C2-6** 크래프트 게이트 → PR → 승인 → 머지
+      **D3(2026-07-29)**: 저장은 **메모리 전용**으로 확정 — localStorage/sessionStorage 미사용.
+      XSS 시 토큰 탈취(secure-coding P1/P5). 대가 = 새로고침 시 재로그인(의도된 동작)
+- [ ] **C2-4** `src/LoginForm.tsx` + `App.tsx` 토큰 게이팅(회원가입 전환 + 로그아웃 포함)
+- [ ] **C2-5** 테스트(vitest, **CI 게이트 대상**): 만료 판정 경계 · ProblemDetail 에러 매핑 · 로그인 실패 표시.
+      **D2(2026-07-29)**: 컴포넌트 렌더까지 검증하기로 결정 → `jsdom`·`@testing-library/react`
+      (+peer `@testing-library/dom`)·`jest-dom` devDep 도입. 배선 주의 3가지는 §C2 배선 함정 참조
+- [ ] **C2-6** 크래프트 게이트(**인라인 실행**) → PR → 승인 → 머지
+
+> **C2 배선 함정** (설치본 직접 확인, 2026-07-29 — 추측 아님)
+> 1. **`environmentMatchGlobs`는 vitest 4에서 제거됐다**(설치본 grep 0건). 전역은 `environment: 'node'`를
+>    유지(E2E가 의존)하고 컴포넌트 테스트만 `// @vitest-environment jsdom` docblock으로 분기한다
+>    (설치본에 `(?:vitest|jest)-environment\s+([\w-]+)` 정규식 존재).
+> 2. **`vitest.config.ts`는 `vite.config.ts`와 별도 파일**이라 react 플러그인이 로드되지 않는다 →
+>    `.tsx` 테스트의 JSX 변환을 esbuild tsconfig 추론에 맡기지 말고 `plugins: [react()]`로 명시 배선.
+> 3. RTL 자동 cleanup은 `globals: false`(기본)에서 **등록되지 않는다** → 명시적 `afterEach(cleanup)`.
+>    `jest-dom`은 `@testing-library/jest-dom/vitest`를 테스트 파일에서 직접 import(setupFiles 불요 → E2E 오염 0).
+>
+> **에러 계약 주의**: 도메인 예외만 RFC 9457 확장 멤버 `code`를 갖는다(`GlobalExceptionHandler`가 부여).
+> Bean validation 400은 프레임워크 경로(`problemdetails.enabled`)라 **`code`가 없다** → 클라는 폴백 사슬 필요.
+> `detail` 문자열을 파싱해 분기하지 않는다(서버 주석이 금지) — 분기는 `code`/`status`로만.
+> 주요 코드: `invalid-credentials`(401) · `email-already-used`(409) · 5xx는 detail 고정 `"unexpected error"`.
 
 ### C3. frontend — 페이지 선택 + 에디터 배선 + E2E (frontend PR)
 
@@ -166,16 +185,20 @@ cd ../weDocs-frontend   && npm run test:e2e
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = C1 코드·게이트 완료 → backend PR #19 (커밋 099f90b, 머지 대기)
-              브랜치 feature/m2-phase2c-page-role · 154 green · 게이트 [B] 1건 소거
-다음        = ① PR #19 CI green 확인 → 머지 승인 요청 → 머지
-              ② C2(frontend 인증 셸)
+마지막 완료 = C1 전부 종료 — backend PR #19 squash 머지(4c1678e, 2026-07-29).
+              main에 PageDetailResponse{myRole, canEdit} 반영 · 154 green · 게이트 [B] 1건 소거
+다음        = C2(frontend 인증 셸) — 브랜치 feature/m2-phase2c-auth-shell
+              C2-1 api/client → C2-2 api/auth → C2-3 auth/token → C2-4 LoginForm+App
+              → C2-5 jsdom/RTL 배선+테스트 → C2-6 게이트+PR
 주의        = ① 서비스 레포는 branch+PR+건별 승인 (push·PR 생성·머지 각각)
-              ② C1이 C3-4(viewer 잠금)의 선행 — 순서 역전 불가
+              ② C2는 C1에 의존하지 않는다(myRole 소비는 C3-4) — 병렬 진행 가능했던 이유
               ③ 프론트는 myRole이 아니라 **canEdit으로 분기**한다(정책 재구현 금지)
               ④ proto 무변경 → proto-v0.2.0 태그 bump 불요
               ⑤ backend 테스트는 colima env 2개 없으면 initializationError
               ⑥ E2E는 CI에 없다 — 로컬 4프로세스로 직접 확인해야 완료
+              ⑦ **C2 머지 후에도 앱은 여전히 demo room으로 403이다** — 의도된 중간 상태.
+                 C3-3(DEFAULT_ROOM 제거 + 페이지 선택)에서 해소된다. 회귀로 오판하지 말 것
+              ⑧ C2 수동 확인 사전조건은 **2프로세스**(postgres + doc-service). 4프로세스는 C3-5 E2E부터
 ```
 
 **응답 계약(C2·C3가 소비)** — `GET /api/pages/{pageId}`:
