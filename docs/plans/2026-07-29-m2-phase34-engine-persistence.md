@@ -55,7 +55,7 @@ ADR-0013이 **엔진 push**를 결정해뒀다 — 엔진이 dirty 시점을 알
       커밋 `b943959`(포트+슬롯) · `37c9b77`(벤치) · `4d93c91`·`61a8399`(게이트 반영).
       실제 736줄(프로덕션 ~405 / 테스트 ~330) — 추정 355줄을 넘겼다. 초과분은 대부분 테스트 10건과 근거 주석
 - [x] **C3.5** engine `refactor: 모듈 구조 + 에러 wire 매핑 + 설정 일원화` ([ADR-0022](../adr/0022-module-structure-rust.md))
-      — [PR #14](https://github.com/ressKim-io/weDocs-crdt-engine/pull/14) (CI 3/3 green, **머지 대기**).
+      — [PR #14](https://github.com/ressKim-io/weDocs-crdt-engine/pull/14) **머지** `28e1b9c`.
       `engine.rs`→`doc.rs`+`snapshot/`, `service.rs`→`sync/{mod,session,metadata,status}`, `config.rs` 신설.
       동작 무변경(기존 40 테스트 통과, 벤치 166µs 동일)
 - [ ] **C4** engine PR1b `feat(persistence): doc-service 복원 배선 + fail-closed` — ~380줄
@@ -270,8 +270,8 @@ make bench-compare        # main baseline 대비. baseline은 C3에서 main에 �
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = C3.5 (engine PR #14, CI 3/3 green, 머지 대기). C3 = PR #13 머지됨(2ab925e)
-다음        = PR #14 머지 승인 → C4(PR1b: build.rs에 doc.proto 추가 · snapshot/doc_service.rs ·
+마지막 완료 = C3.5 머지(engine 28e1b9c). C3 = 2ab925e. dev-log 2건 기록됨
+다음        = C4(PR1b: build.rs에 doc.proto 추가 · snapshot/doc_service.rs ·
               MetadataInjector · DOC_SERVICE_ADDR · 페이크 DocService 통합 테스트)
               ⚠️ C4는 ADR-0022 구조를 따른다 — 어댑터는 `snapshot/doc_service.rs`(형제),
               env는 `config.rs`에 필드 추가, wire 문구는 `sync/status.rs`에만.

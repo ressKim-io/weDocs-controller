@@ -10,7 +10,7 @@
 
 ## 지금
 
-**M2 Phase 2 완료. Phase 3+4(엔진 스냅샷) 진행 중 — 복원(C3) 머지, 구조 정리(C3.5) 머지 대기.**
+**M2 Phase 2 완료. Phase 3+4(엔진 스냅샷) 진행 중 — 복원·구조 정리 머지, 다음은 C4(어댑터 배선).**
 
 > 2026-07-29 Phase 2c 종료 — 로그인 → 워크스페이스 → 페이지 → **두 클라 수렴**이 실기동으로 확인된다.
 > 회고 = [dev-logs/2026-07-29-m2-phase2c-frontend-auth.md](../dev-logs/2026-07-29-m2-phase2c-frontend-auth.md)
@@ -26,12 +26,12 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 | 2c-C1 doc-service effective role 노출 | ✅ 머지 | backend `4c1678e` (PR #19) |
 | 2c-C2 frontend 인증 셸 | ✅ 머지 | frontend `de002f5` (PR #5) |
 | 2c-C3 페이지 선택 + 에디터 + E2E | ✅ 머지 | frontend `9161fbc`·`336964f`·`b12e026` (PR #6·#7·#8) |
-| **3+4 엔진 스냅샷** | **← 진행 중** | C3 머지 `2ab925e` · C3.5 [PR #14](https://github.com/ressKim-io/weDocs-crdt-engine/pull/14) 머지 대기 |
+| **3+4 엔진 스냅샷** | **← 진행 중** | C3 `2ab925e` · C3.5 `28e1b9c` 머지 — 다음 C4 |
 
 ## 다음 액션 — Phase 3+4 (엔진 스냅샷 복원·저장)
 
 **상세 SSOT = [`plans/2026-07-29-m2-phase34-engine-persistence.md`](../plans/2026-07-29-m2-phase34-engine-persistence.md) §재개 지점.**
-다음 = **PR #14 머지 → C4**(doc-service 어댑터 배선).
+다음 = **C4**(doc-service 어댑터 배선 — `snapshot/doc_service.rs`).
 
 ⚠️ **실행 순서가 plan 번호와 반대다** — **복원(Phase 4) 먼저, 저장(Phase 3) 나중**.
 저장을 먼저 넣으면 엔진 재시작 후 빈 Doc에 stale 클라가 붙어 **정상 DB 스냅샷을 열화된 상태로
@@ -122,6 +122,8 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 
 | 주제 | dev-log |
 |---|---|
+| 엔진 스냅샷 복원·fork 방지·순서 역전 | [2026-07-29-m2-phase34-engine-restore](../dev-logs/2026-07-29-m2-phase34-engine-restore.md) |
+| **표준이 Rust에서 덜 발화한 지점**(ADR 분석 대기) | [2026-07-29-rust-module-structure-and-standards-gap](../dev-logs/2026-07-29-rust-module-structure-and-standards-gap.md) |
 | 프론트 인증 배선·폴백이 감춘 403 | [2026-07-29-m2-phase2c-frontend-auth](../dev-logs/2026-07-29-m2-phase2c-frontend-auth.md) |
 | CI 갭·게이트 실효성 증명 | [2026-07-28-build-test-ci-gap](../dev-logs/2026-07-28-build-test-ci-gap.md) |
 | 상시 컨텍스트 예산(−85%)·게이트 배선 | [2026-07-28-claude-context-budget](../dev-logs/2026-07-28-claude-context-budget.md) |
