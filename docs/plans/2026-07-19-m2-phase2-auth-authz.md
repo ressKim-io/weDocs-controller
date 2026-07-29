@@ -1,7 +1,7 @@
 ---
 date: 2026-07-19
 slug: m2-phase2-auth-authz
-status: in-progress
+status: done
 related:
   - plans/2026-06-30-m2-persistence-session.md
   - adr/0014-auth-authz-boundary.md
@@ -122,7 +122,8 @@ related:
 > **상세 SSOT = [`2026-07-28-m2-phase2c-frontend-auth.md`](2026-07-28-m2-phase2c-frontend-auth.md).**
 > 체크리스트·재개 지점은 그쪽에만 둔다(사본 금지 — `plan-logging.md` §재개 정보의 SSOT).
 
-- [ ] **2c 완료** ← 위 plan의 C0~C3 전 단계 완료 시 체크
+- [x] **2c 완료**(2026-07-29) — C0~C3 전 단계 종료. frontend PR #5·#6·#7·#8 + backend #19 머지.
+      **이로써 Phase 2 전체 완료.** 상세 = 분리 plan §재개 지점 · 결과 = [dev-log](../dev-logs/2026-07-29-m2-phase2c-frontend-auth.md)
 
 **왜 분리했나(2026-07-28)**: 원래 2c는 "`protocols` 옵션으로 JWT 전달" 한 줄이었으나, 착수 탐색에서
 프론트엔드에 **로그인이 전혀 없고**(토큰 출처 없음) **페이지 UUID를 얻을 방법도 없음**(1c REST 미소비)이
@@ -154,9 +155,10 @@ SENTINEL만 echo) viewer의 로컬 `Y.Doc`이 조용히 divergent해지는 **정
 - **마지막 완료**: **2a-2 gateway 인가 + viewer 다층 1차 ✅ 머지** — [backend PR #17](https://github.com/ressKim-io/weDocs-backend/pull/17) squash `4cb750d`, main 100 테스트 green·CI green(gitleaks/dependency-review pass, **squash 후 main 스캔도 success** 확인). 크래프트 게이트 2-렌즈 BLOCKING 0, advisory 전량 반영. **VT pinning 이월 검증점 종결** — JFR 0건 + `isVirtual()` 프로브로 공허한 green 배제, ⚠️ 안전 근거는 JEP 491이 아니라 grpc-java `LockSupport.park`라 **재측정 트리거 = grpc-java 메이저 업그레이드**([dev-log](../dev-logs/2026-07-20-vt-pinning-grpc-blocking-stub.md)).
 
 - **2b crdt-engine role 강제 ✅ 머지** — [crdt-engine PR #11](https://github.com/ressKim-io/weDocs-crdt-engine/pull/11) squash `4d9c39e`, 크래프트 게이트 BLOCKING 0, 30 green, CI green.
-- **마지막 완료 = 2c-C2 ✅ 머지**(2026-07-29) — 2c는 아래 분리 plan이 소유하며 **C1·C2 완료, C3만 남았다.**
-  진척 상세·재개점은 그 plan에만 둔다(여기 사본 금지). **→ C3가 Phase 2 전체의 마지막 조각이다.**
-- **다음 = 2c-C3** → **[`2026-07-28-m2-phase2c-frontend-auth.md`](2026-07-28-m2-phase2c-frontend-auth.md)** §재개 지점이 이 트랙의 유일한 재개점이다. 요지: 착수 탐색 결과 2c는 "토큰 전달 한 줄"이 아니라 **로그인 부재 + 페이지 UUID 획득 경로 부재 + 클라이언트가 자기 역할을 모르는 정합성 버그**까지 묶인 2레포 3~4 PR 트랙이다(§2c 참조). ✅ `protocols` 옵션 지원은 **설치된 소스로 사전검증 완료**(y-websocket 3.0.0 `src/y-websocket.js:176·274·294`).
+- ✅ **Phase 2 전체 완료 (2026-07-29)** — 2a-1 · 2a-2 · 2b · 2c 전부 머지. 마지막 조각인 2c는
+  분리 plan([2026-07-28-m2-phase2c-frontend-auth.md](2026-07-28-m2-phase2c-frontend-auth.md), **done**)이
+  소유한다(진척 사본 금지). 결과 = [dev-log](../dev-logs/2026-07-29-m2-phase2c-frontend-auth.md).
+  **다음은 Phase 2가 아니라 Phase 3(엔진 저장)** — 본류 [m2-persistence-session](2026-06-30-m2-persistence-session.md).
 - ✅ **CI 갭 사이드트랙 완료(2026-07-28)** — 2c 착수 전 권고였던 항목 해소. 서비스 3레포에 빌드·테스트 CI가 없어 `cargo test`·Gradle·vitest가 CI에서 한 번도 안 돌던 상태를 3 PR로 정합(engine `fab982d`·backend `181b8de`·frontend `ff2e077`, 전부 main 트리거까지 green). 이제 **2c PR의 초록은 실제 검증을 뜻한다**. ⚠️ 단 프론트 **E2E는 여전히 CI 밖**(engine+gateway 실기동 필요) — 2c의 E2E 스모크는 로컬 실행으로 확인해야 한다. 상세 = [plan](2026-07-28-build-test-ci-gap.md)(done) · [dev-log](../dev-logs/2026-07-28-build-test-ci-gap.md).
 - **Minor findings 이월(게이트 2026-07-28, PR에 미반영)**: CR-003 `extract_role` 거절 로그에 `doc_id`·`trace_id` 없음(span 생성 이전에 발화 + 함수가 `MetadataMap`만 수신) — 2b가 만드는 유일한 보안 신호인데 대상 문서 추적 불가, observability [A] P3/P6 · CR-004 `Cargo.toml` dev-dep 주석의 "테스트 빌드에서만 net/time" 주장이 사실과 다름(`cargo tree -e features,no-dev` 확인 = 프로덕션 빌드에도 tonic/hyper-util 전이로 이미 활성. dev-dep 선언 자체는 옳은 관행이니 **근거 문구만** 교체) · CR-005 `let _ = out_tx.send(...)`(:322) 무시 근거 주석 없음(기존 :309 동일 패턴 → 함께) · CR-006 plan이 명시한 `INVALID_ROLE_MSG` 상수 미도입(발화점 1곳이라 **plan 문구를 코드에 맞추는 쪽** 권장).
 - 2b 설계 요지(Rust, `rust-expert` 🦀 + code-reviewer 2-렌즈). **2a-2가 이미 `role` 메타데이터를 보내고 있다** — 엔진은 지금 그것을 무시하므로, 2b는 수신·강제만 하면 된다(게이트웨이 무변경).

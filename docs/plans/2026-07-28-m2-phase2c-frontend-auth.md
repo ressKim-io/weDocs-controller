@@ -1,7 +1,7 @@
 ---
 date: 2026-07-28
 slug: m2-phase2c-frontend-auth
-status: in-progress
+status: done
 related:
   - plans/2026-07-19-m2-phase2-auth-authz.md
   - plans/2026-06-30-m2-persistence-session.md
@@ -76,7 +76,7 @@ related:
 > 서비스 레포(backend·frontend)는 전부 **branch + PR + 건별 승인**. controller만 main 직접.
 
 ### C0. controller — plan 기록 (main 직접)
-- [ ] **C0** `docs(plan):` 이 plan + phase2 §2c 링크 교체 + `current.md` 갱신 → **커밋**(코드 작업의 전제)
+- [x] **C0** `docs(plan):` 이 plan + phase2 §2c 링크 교체 + `current.md` 갱신 → **커밋**(코드 작업의 전제)
 
 ### C1. doc-service — 호출자의 effective role 노출 (backend PR)
 
@@ -172,18 +172,34 @@ related:
 > - **모르는 역할은 거부**(fail-closed) — 낙관 해석은 조용한 권한 상승.
 > - 발견: 서버 `WorkspaceService.listMine`에 **조회 상한 없음**(형제 `PageTreeService.list`는 1,000 상한).
 >   클라 절단은 서버 갭을 감추므로 미채택 → `current.md` §이월된 findings 등록, 다음 backend PR 동승.
-- [ ] **C3-2** `WorkspaceBootstrap.tsx`(없으면 생성 유도) + `PageList.tsx`(평면 목록 + "새 페이지") — 선택한 `page.id`(UUID)가 곧 room
-- [ ] **C3-3** `connection.ts`: **`DEFAULT_ROOM = 'demo'` 제거**. `sanitizeRoom` → `parseRoom(raw): string | null`.
-      **왜**: `demo` 폴백은 2a-2 D1에 의해 **무조건 403**이라, 폴백을 남기는 것은 "조용히 실패하는 경로"를 유지하는 것과 같다.
-      무효/미지정이면 **연결하지 않고** 페이지 선택 화면을 보여준다
-- [ ] **C3-4** `Editor.tsx`: `protocols: [SENTINEL, token]`(SENTINEL 리터럴은 상수 1곳) ·
-      `myRole === VIEWER` → Tiptap **`editable: false`** + 읽기 전용 배지 ·
-      토큰 부재/만료면 provider를 **아예 생성하지 않는다**(무한 401 재시도 차단)
-- [ ] **C3-5** E2E 재작성 — REST 부트스트랩 헬퍼(고유 email signup → login → workspace → page 생성 → 그 UUID로 접속):
-      ① editor 2클라 양방향 수렴(기존 테스트 이관) ② **viewer read-only**(공유 PUT으로 viewer 부여 → 쓰기 미반영 + 읽기 정상 수신)
-      ③ 무토큰 연결 실패
-- [ ] **C3-6** README §E2E + `.env.example` 갱신(사전조건 **2 → 4 프로세스**)
-- [ ] **C3-7** 크래프트 게이트 → PR → 승인 → 머지 (**PR마다** 실행 — PR 직전이 아니라 구현 중에)
+- [x] **C3-2** `WorkspaceBootstrap.tsx` + `PageList.tsx`(평면 목록 + "새 페이지") — 선택한 `page.id`(UUID)가 곧 room
+- [x] **C3-3** `DEFAULT_ROOM = 'demo'` 제거 · `sanitizeRoom` → `parseRoom(raw): string | null`(UUID 강제, D5)
+- [x] **C3-4** `Editor.tsx`: `protocols: [SENTINEL, token]`(리터럴 1곳) · `canEdit=false` → Tiptap `editable: false`
+      + 읽기 전용 배지 · **토큰 부재/만료면 provider를 아예 만들지 않는다**
+- [x] **C3-2·3·4 = [frontend PR #7](https://github.com/ressKim-io/weDocs-frontend/pull/7) 머지 완료**
+      (2026-07-29, squash `336964f`) — CI 3종 green · 74 tests(+19) · **실서버 4프로세스 검증**(아래)
+- [x] **C3-5** E2E 재작성 — REST 부트스트랩(고유 email signup → login → workspace → page 생성 → 그 UUID로 접속):
+      ① editor 2클라 수렴 ② viewer 읽기 O·쓰기 미반영 ③ 무토큰 401 / SENTINEL 누락 401 / 비UUID 403
+- [x] **C3-6** README §E2E + `.env.example` 갱신(사전조건 **2 → 4 프로세스**)
+- [x] **C3-5·6 = [frontend PR #8](https://github.com/ressKim-io/weDocs-frontend/pull/8) 머지 완료**
+      (2026-07-29, squash `b12e026`) — CI 3종 green · **E2E 3 passed(3.8s, 4프로세스 실기동)**
+- [x] **C3-7** 크래프트 게이트 — PR마다 인라인 실행. PR① [B] 0건(서버 갭 1건 이월) · PR② **자체 발견 3건 수정**
+      (언마운트 후 상태 갱신 순서 · `return` 뒤 함수 선언 · README가 거짓이 됨) · PR③ 프로덕션 표면 무변화
+
+> **C3 실서버 검증(2026-07-29, 4프로세스 실기동)** — 추측이 아니라 실측이다.
+>
+> | 시나리오 | 결과 |
+> |---|---|
+> | 토큰 + 페이지 UUID | **OPEN**, negotiated=`wedocs.sync.v1`(토큰 미반향 — ADR-0014 계약대로) |
+> | 무토큰 / SENTINEL 없이 토큰만 | **401** / **401**(fail-closed) |
+> | 비UUID room(`demo`) / 권한 없는 UUID | **403** / **403** |
+> | editor 2클라 | 수렴 OK · viewer 읽기 OK·쓰기 미반영 OK |
+>
+> 게이트웨이 메트릭이 시나리오와 정확히 일치: `ok=4 · authn_fail=2 · authz_denied=2 · ws_write_dropped{viewer}=2`.
+> **`demo`가 무조건 403이었다는 D5의 전제가 실측으로 확인됐다.**
+>
+> ⚠️ **브라우저 클릭 검증은 미수행** — Chrome 확장 미연결 환경이라 UI 조작 자동화가 불가했다.
+> 화면 로직은 jsdom 컴포넌트 테스트로, 연결·권한 경로는 위 실측으로 덮었다.
 
 ## 검증
 
@@ -224,27 +240,15 @@ cd ../weDocs-frontend   && npm run test:e2e
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = C2 전부 종료 — frontend PR #5 squash 머지(de002f5, 2026-07-29).
-              로그인 셸 완성 · CI 3종 green · 31 tests · 게이트 [B] 3건 소거 · 실서버 검증 6/6
-              부수: main에서 red였던 npm-audit 게이트를 postcss 8.5.24로 복구
-              C3 ①(REST 소비 계층) 종료 — frontend PR #6 squash 머지(9161fbc, 2026-07-29).
-              CI 3종 green · 55 tests · UI 무변경(호출자는 PR②가 만든다)
-다음        = C3 **②화면 배선**(C3-2·3·4) → ③E2E+문서(C3-5·6). 각 PR마다 게이트(C3-7)
-              ② = 워크스페이스/페이지 목록 UI · DEFAULT_ROOM 제거(parseRoom이 UUID 요구, D5)
-                  · protocols:[SENTINEL, token] · canEdit=false면 Tiptap editable:false.
-                  **②가 머지되면 에디터 403이 실제로 풀린다**(그 전까지는 의도된 중간 상태)
-주의        = ① 서비스 레포는 branch+PR+건별 승인 (push·PR 생성·머지 각각)
-              ② 프론트는 myRole이 아니라 **canEdit으로 분기**한다(정책 재구현 금지)
-              ③ **파일 배치는 feature 평면이다** — `src/page/api.ts`, `src/workspace/api.ts`.
-                 `src/api/*`는 C2 게이트에서 layering P7 위반으로 반려됐다. 전송은
-                 기존 `src/common/http/client.ts`의 `apiRequest`를 재사용(중복 생성 금지)
-              ④ **토큰은 이미 있다** — `src/auth/token.ts`의 `getToken()`이 만료까지 판정한다.
-                 C3-4는 그 값을 `protocols: [SENTINEL, token]`에 넣고, null이면 provider를 만들지 않는다
-              ⑤ proto 무변경 → proto-v0.2.0 태그 bump 불요
-              ⑥ E2E는 CI에 없다 — 로컬 **4프로세스**(+gateway +engine)로 직접 확인해야 완료
-              ⑦ 400줄 상한: C2가 966줄로 초과해 근거 명시로 통과했다 → C3는 D4로 **3 PR 분할 확정**
-              ⑧ 크래프트 공통 [B]는 프론트엔드에도 그대로 발화한다 — C2에서 3건 나왔다.
-                 게이트는 PR 직전이 아니라 **구현 중에** 의식할 것
+상태        = ✅ **완료 (2026-07-29)**. Phase 2c 종료 = **M2 Phase 2(인증/인가) 전체 종료**.
+              C0 plan → C1 backend #19(4c1678e) → C2 frontend #5(de002f5)
+              → C3 frontend #6(9161fbc)·#7(336964f)·#8(b12e026). 전 PR CI green.
+              main 최종 = unit 74 green · E2E 3 green(4프로세스 실기동) · build green
+결과 dev-log = ../dev-logs/2026-07-29-m2-phase2c-frontend-auth.md
+다음        = **Phase 3(엔진 저장)** — 본류 plan 2026-06-30-m2-persistence-session.md
+              ⚠️ `build_client` flip부터가 아니다(2b가 이미 true로 선반영) — `SaveSnapshot` 호출 배선부터
+이월        = 서버 `WorkspaceService.listMine` 조회 상한 없음(secure-coding P2, C3-1 게이트 발견)
+              → `current.md` §이월된 findings. 다음 backend PR에 동승
 ```
 
 **응답 계약(C2·C3가 소비)** — `GET /api/pages/{pageId}`:
