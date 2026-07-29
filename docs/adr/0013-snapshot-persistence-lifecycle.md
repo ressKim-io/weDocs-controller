@@ -1,8 +1,8 @@
 # ADR-0013 — 스냅샷 영속화 라이프사이클 (엔진 push + 복원)
 
 - 상태: **Accepted**
-- 날짜: 2026-06-30
-- 관련: [ADR-0011](0011-engine-sync-fanout-bridge.md) (트레이드오프 "Doc 미evict") · SDD §3.2·§6.3 · [plan-audit M2F-02](../plans/2026-06-30-plan-audit-improvements.md) (T3-1 blocker) · [M2 plan](../plans/2026-06-30-m2-persistence-session.md) · 가드레일 5
+- 날짜: 2026-06-30 (**개정 2026-07-29** — §개정 3건)
+- 관련: [ADR-0011](0011-engine-sync-fanout-bridge.md) (트레이드오프 "Doc 미evict") · SDD §3.2·§6.3 · [plan-audit M2F-02](../plans/2026-06-30-plan-audit-improvements.md) (T3-1 blocker) · [M2 plan](../plans/2026-06-30-m2-persistence-session.md) · [Phase 3+4 실행 계획](../plans/2026-07-29-m2-phase34-engine-persistence.md) · 가드레일 5
 - 범위: M2 스냅샷 저장/복원. 멀티인스턴스 중복저장 방지(consistent-hash)·Redis 버퍼 복원 = M3/M5(범위 밖).
 
 ## 맥락
@@ -56,6 +56,50 @@ ADR-0011 트레이드오프: 엔진은 Doc를 evict하지 않으나 **프로세�
 
 ## 트레이드오프 (인정)
 
-- **build_client(true) = 엔진에 outbound 의존 추가** — 엔진이 doc-service에 의존하게 됨(단방향). gRPC라 가드레일 3(JNI) 무관. doc-service 다운 시 저장 실패 → **최소 계약: 3회 지수 백오프 재시도, 소진 시 경고 로그 + 드롭**(다음 트리거에서 재저장 가능, 유실 윈도는 N=100 상한이 bound). 엔진 PR에서 구현.
+- **build_client(true) = 엔진에 outbound 의존 추가** — 엔진이 doc-service에 의존하게 됨(단방향). gRPC라 가드레일 3(JNI) 무관. doc-service 다운 시 저장 실패 → 재시도 정책은 **아래 §개정 2026-07-29 (1)** 참조(원안 "3회 후 드롭"에서 변경).
 - **멀티인스턴스 중복저장** — 단일인스턴스 가정. M3 consistent-hash(doc당 1엔진) 전까지 같은 doc을 두 엔진이 들면 중복 저장 가능. M3에서 해소.
 - **in-flight 유실 허용** — 스냅샷 사이 update는 재시작 시 유실. MLP 수용(무손실=Redis 버퍼 M5).
+
+## 개정 2026-07-29 — 구현 착수 시 확정한 3건
+
+> 상태 **Accepted 유지**. 결정(§결정 1~5)은 그대로이고, 구현이 닿아서야 드러난 공백 3건을 채운다.
+> 실행 계획 = [plans/2026-07-29-m2-phase34-engine-persistence](../plans/2026-07-29-m2-phase34-engine-persistence.md).
+
+### (1) 재시도 정책 — "3회 후 드롭" → 분류별 처리
+
+**원안**: 3회 지수 백오프 재시도, 소진 시 경고 로그 + 드롭.
+**개정**: 실패를 3분류하고 분류별로 다르게 처리한다.
+
+| 분류 | gRPC code | 처리 |
+|---|---|---|
+| Transient | `Unavailable`·`DeadlineExceeded`·`Cancelled`·`ResourceExhausted`·`Aborted`·`Internal`·`Unknown`·`DataLoss` | **상한 백오프(최대 ~1분)로 무기한 재시도** |
+| NotPersistable | `NotFound`(page 행 부재) · `InvalidArgument`(doc_id 비UUID) | 그 문서의 영속화 **즉시 영구 비활성** + WARN |
+| Permanent | `Unimplemented`·`PermissionDenied`·`Unauthenticated`·`FailedPrecondition` | 영구 비활성 + **ERROR**(설정 오류·proto 스큐 신호) |
+
+**왜 바꿨나**: 원안은 "재시도 단위 = 보관 중인 페이로드"를 암묵 전제했다. 실제 설계에서 스위퍼는
+**매 시도마다 살아있는 Doc에서 블롭을 재인코딩**하므로 드롭할 페이로드가 존재하지 않는다.
+그래서 재시도 비용이 "백오프 창당 RPC 1회"로 고정되고, 3회에서 멈출 이유가 사라진다 — 멈추면
+doc-service 재시작이 백오프 창보다 오래 걸렸을 때 유실만 커진다. 반대로 원안은 영구 실패
+(비UUID doc_id 등)를 3회씩 두드리는데, 이건 결과가 바뀌지 않는 낭비다. **재시도할 가치가
+있는 것은 무기한, 없는 것은 0회**가 정확한 배분이다.
+
+### (2) 복원 실패 시 동작 = fail-closed (§결정 3의 공백)
+
+§결정 3은 `LoadSnapshot` **성공** 시 분기만 규정했고 실패 시를 정하지 않았다.
+→ **복원 실패 시 sync 스트림을 열지 않는다**(`Status::unavailable`). 손상된 블롭의 디코드 실패도 동일.
+
+**왜**: 빈 Doc로 열면 클라가 자기 로컬 상태를 권위로 착각해 되밀고, 그 상태를 다음 저장이 DB에
+확정시킨다 = **영구 유실**. 관측 가능한 거부(재연결 루프)가 관측 불가능한 조용한 덮어쓰기보다 낫다.
+**대가**: doc-service 다운 = 편집 전면 불가(엔진이 doc-service에 하드 의존). 가용성보다 문서
+무결성을 택한다 — 협업 문서에서 fork는 사후 복구가 사실상 불가능하기 때문이다.
+
+### (3) 저장 트리거 T의 표현 = 시각 델타가 아니라 유휴 tick 수
+
+§결정 2의 "마지막 update 후 T초 유휴"를 **`SWEEP_INTERVAL(1초) × SAVE_IDLE_TICKS(10)`**로 구현한다
+(T=10초는 불변). 전역 스위퍼가 1초마다 문서별 `try_lock`으로 훑고, 머지 카운터가 직전 tick과
+같으면 유휴 tick을 올린다.
+
+**왜**: ① 머지 핫패스에서 `Instant::now()`가 사라져 정수 증가 1회만 남고 ② `try_lock`이라
+스위퍼가 머지를 **한 번도 막지 않으며**(가드레일 5) ③ 디바운스 테스트가 `sweep_once()`를 10번
+호출하는 것으로 끝나 시계 주입·`tokio::time::pause`·sleep이 전부 불필요해진다.
+**대가**: 저장 시점에 최대 1 tick(1초)의 지연이 더해진다 — T=10초 대비 무시 가능.
