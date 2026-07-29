@@ -300,8 +300,13 @@ make bench-compare        # main baseline 대비. baseline은 C3에서 main에 �
 
 ```
 마지막 완료 = C3.5 머지(engine 28e1b9c). C3 = 2ab925e. dev-log 2건 기록됨
-다음        = C4 **실행 중**(PR1b: build.rs에 doc.proto 추가 · snapshot/doc_service.rs ·
-              MetadataInjector · DOC_SERVICE_ADDR · 페이크 DocService 통합 테스트)
+현재        = **C4 코드 완료, 로컬 브랜치에만 있다**(engine `feature/m2-phase4-doc-service-restore`,
+              커밋 cda705e·5a66154·0e2e3a4, +936/-6, 10파일).
+              검증 통과: 63 테스트(신규 통합 8 + 어댑터 단위 5 + config 5) ·
+              clippy -D warnings · fmt · make proto-sync 후 빌드
+              남은 것 = ① 크래프트 게이트(rust-expert 에이전트 — 가드레일 7) ②
+              push+PR+머지(각각 승인) ③ 게이트 findings 반영
+다음        = C4 마무리 후 C5(PR2a: dirty 회계)
               ⚠️ C4는 ADR-0022 구조를 따른다 — 어댑터는 `snapshot/doc_service.rs`(형제),
               env는 `config.rs`에 필드 추가, wire 문구는 `sync/status.rs`에만.
               ⚠️ C4 절의 지시 3건은 착수 실측에서 정정됐다(§C4 m1~m3) — 생성 모듈은
