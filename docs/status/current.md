@@ -62,6 +62,11 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
   **클라에서 자르지 않는다** — 자르면 "내 워크스페이스가 안 보인다"는 무증상 버그가 되고 서버의 무상한
   조회는 그대로 남는다. 상한은 조회가 있는 곳에 둔다.
   → **소거 예정 = Phase 3+4의 C7**(backend PR3)에 동승 확정.
+- **crdt-engine 운영 기능 미도입 3건 → M5(클러스터 배포) 트랙** (2026-07-29 [ADR-0022](../adr/0022-module-structure-rust.md) §범위 밖에서 등록).
+  Spring Boot Actuator 대응물이 Rust엔 프레임워크가 아니라 **개별 크레이트**로 존재하는데 아직 조립을 안 했다:
+  ① **`tonic-health`**(0.14.6, tonic과 동일 버전 — K8s liveness/readiness probe에 필요)
+  ② **metrics 노출**(`metrics` + exporter 또는 OTel metrics — 현재 trace만 있고 metric은 0)
+  ③ `tonic-reflection`(grpcurl 개발 편의). 지금 넣으면 쓸 곳이 없어 YAGNI이고 M2 DoD에도 없다.
 - **doc-service `SaveSnapshot`의 경계 검증 갭 2건**(2026-07-29 Phase 3+4 착수 조사에서 발견) —
   ① blob 크기 무검증(4MiB gRPC 한도가 유일한 방어) ② `DataIntegrityViolationException`을 전부
   `PAGE_NOT_FOUND`로 접어 **FK 위반과 PK 경합을 구분 못 한다**. 엔진은 `NotFound`를 영구 실패로

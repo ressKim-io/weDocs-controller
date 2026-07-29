@@ -54,6 +54,8 @@ ADR-0013이 **엔진 push**를 결정해뒀다 — 엔진이 dirty 시점을 알
 - [x] **C3** engine PR1a `feat(engine): 스냅샷 복원-우선 open + SnapshotStore 포트` — [PR #13](https://github.com/ressKim-io/weDocs-crdt-engine/pull/13) (CI 3/3 green, **머지 대기**).
       커밋 `b943959`(포트+슬롯) · `37c9b77`(벤치) · `4d93c91`·`61a8399`(게이트 반영).
       실제 736줄(프로덕션 ~405 / 테스트 ~330) — 추정 355줄을 넘겼다. 초과분은 대부분 테스트 10건과 근거 주석
+- [ ] **C3.5** engine `refactor: 모듈 구조 + 에러 wire 매핑 + 설정 일원화` ([ADR-0022](../adr/0022-module-structure-rust.md))
+      — C4 **전에** 한다. C4가 어댑터·`DOC_SERVICE_ADDR`를 더하면 이동량이 2배가 되므로 지금이 가장 싸다
 - [ ] **C4** engine PR1b `feat(persistence): doc-service 복원 배선 + fail-closed` — ~380줄
 - [ ] **C5** engine PR2a `feat(engine): 스냅샷 dirty 회계 + 저장 대상 수집` — ~280줄, `bench-compare` 첨부
 - [ ] **C6** engine PR2b `feat(sweeper): 전역 스냅샷 스위퍼 + graceful flush` — ~400줄
