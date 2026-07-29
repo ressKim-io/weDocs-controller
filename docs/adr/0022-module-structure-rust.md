@@ -61,18 +61,20 @@ Rust는 단위 테스트를 같은 파일 `#[cfg(test)] mod tests`에 두는 것
 
 ```
 src/
-  main.rs         부트스트랩(서버 빌더·env·graceful shutdown)
+  main.rs         부트스트랩(서버 빌더·graceful shutdown) — env는 읽지 않는다
   lib.rs          proto 재수출 + 모듈 선언
-  telemetry.rs    OTel/tracing 초기화
+  config.rs       기동 설정 — 코드가 env를 읽는 유일한 지점 (아래 §설정 일원화, 규칙 7)
+  telemetry.rs    OTel/tracing 초기화 (`TelemetryConfig`를 받는다)
   doc.rs          CRDT 문서 도메인 — DocId·EngineError·DocRegistry·DocEntry·DocSlot·Subscription
   snapshot/       스냅샷 영속화 관심사 (파일 3개가 확정적이라 처음부터 디렉토리)
     mod.rs          SnapshotStore 포트 · StoredSnapshot · SnapshotStoreError · Noop
     doc_service.rs  doc-service tonic 어댑터            (C4)
     sweeper.rs      저장 스위퍼 · 재시도 분류           (C6)
   sync/           gRPC 전송 경계 (P7이 명시 허용한 "크로스-feature 전송 어댑터")
-    mod.rs          CrdtEngineService(tonic impl) · open_rejection
+    mod.rs          CrdtEngineService(tonic impl) · open_rejection(로그 레벨만)
     session.rs      run_session · handle_inbound · handle_broadcast · SessionCtx
     metadata.rs     MetadataExtractor/Injector · extract_* · SessionRole
+    status.rs       WireFault — wire 실패 전체 집합·문구 (아래 §에러 일원화, 규칙 6)
 ```
 
 ### 함께 고정하는 규칙
@@ -131,6 +133,15 @@ enum만 있고 **wire 매핑 SSOT가 없다.**
 → **`config.rs`의 `Config::from_env()` 한 곳**에서 전부 읽고 파싱·검증한다. 기동 시 파싱 실패는
 fail-fast. 크레이트 도입은 하지 않는다(의존성 추가 대비 이득 없음) — 필요해지면 그때.
 `RUST_LOG`은 예외로 남긴다(`EnvFilter::try_from_default_env`가 읽는 라이브러리 관례).
+
+⚠️ **"전체"라고 쓰면 거짓이 된다 — 라이브러리 위임분이 있다**(구현 중 발견, 2026-07-29).
+`opentelemetry-otlp` 0.32.0은 빌더가 값을 안 받으면 **스스로 env를 읽는다**(✅ verified,
+벤더 소스 `exporter/tonic/mod.rs:351-367`): `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` >
+`OTEL_EXPORTER_OTLP_ENDPOINT` > 기본 4317. `_PROTOCOL`·`_HEADERS`·`_TIMEOUT`·`_COMPRESSION`도 같다.
+그 위임을 **끊지 않는다** — `.with_endpoint()`로 덮으면 signal-specific override가 무력화된다
+(M1R-09). 따라서 `config.rs`가 소유하는 것은 **코드가 분기에 쓰는 값**뿐이고, 표시 전용 필드
+(`otlp_endpoint`)는 로그 문구와 실제 전송처가 갈릴 수 있다는 경고를 필드 주석에 단다.
+**규칙**: 이 파일의 SSOT 주장은 "코드가 읽는 env"로 한정해 쓰고, 위임 목록을 모듈 문서에 남긴다.
 
 ## 범위 밖 — M5 운영 기능 트랙
 
