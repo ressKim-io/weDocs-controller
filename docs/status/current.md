@@ -26,12 +26,12 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 | 2c-C1 doc-service effective role 노출 | ✅ 머지 | backend `4c1678e` (PR #19) |
 | 2c-C2 frontend 인증 셸 | ✅ 머지 | frontend `de002f5` (PR #5) |
 | 2c-C3 페이지 선택 + 에디터 + E2E | ✅ 머지 | frontend `9161fbc`·`336964f`·`b12e026` (PR #6·#7·#8) |
-| **3+4 엔진 스냅샷** | **← 진행 중** | 계획 `3d9aef6` · ADR 개정 `2bf8542` |
+| **3+4 엔진 스냅샷** | **← 진행 중** | C3 머지 `2ab925e` · C3.5 [PR #14](https://github.com/ressKim-io/weDocs-crdt-engine/pull/14) 머지 대기 |
 
 ## 다음 액션 — Phase 3+4 (엔진 스냅샷 복원·저장)
 
 **상세 SSOT = [`plans/2026-07-29-m2-phase34-engine-persistence.md`](../plans/2026-07-29-m2-phase34-engine-persistence.md) §재개 지점.**
-다음 = **C3 = crdt-engine PR1a**(SnapshotStore 포트 + 복원-우선 open).
+다음 = **PR #14 머지 → C4**(doc-service 어댑터 배선).
 
 ⚠️ **실행 순서가 plan 번호와 반대다** — **복원(Phase 4) 먼저, 저장(Phase 3) 나중**.
 저장을 먼저 넣으면 엔진 재시작 후 빈 Doc에 stale 클라가 붙어 **정상 DB 스냅샷을 열화된 상태로
@@ -62,6 +62,11 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
   **클라에서 자르지 않는다** — 자르면 "내 워크스페이스가 안 보인다"는 무증상 버그가 되고 서버의 무상한
   조회는 그대로 남는다. 상한은 조회가 있는 곳에 둔다.
   → **소거 예정 = Phase 3+4의 C7**(backend PR3)에 동승 확정.
+- **crdt-engine 모듈 구조 = 관심사 모듈**([ADR-0022](../adr/0022-module-structure-rust.md), 2026-07-29).
+  `doc.rs`(도메인) · `snapshot/`(포트+어댑터 평면) · `sync/`(전송 경계) · `config.rs`(env 유일 지점) ·
+  `sync/status.rs`(wire 실패 문구 유일 지점). **계층 폴더(`domain/`·`service/`) 금지** —
+  프로덕션 Rust 서비스(linkerd2-proxy·vector) 실측과 hexagonal 가이드 자신의 제외 조건이 근거.
+  **분할 트리거는 응집도이지 줄 수가 아니다**(yrs 중앙값 502줄 — Rust는 테스트 동거로 줄 수가 부푼다).
 - **crdt-engine 운영 기능 미도입 3건 → M5(클러스터 배포) 트랙** (2026-07-29 [ADR-0022](../adr/0022-module-structure-rust.md) §범위 밖에서 등록).
   Spring Boot Actuator 대응물이 Rust엔 프레임워크가 아니라 **개별 크레이트**로 존재하는데 아직 조립을 안 했다:
   ① **`tonic-health`**(0.14.6, tonic과 동일 버전 — K8s liveness/readiness probe에 필요)

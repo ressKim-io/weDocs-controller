@@ -54,8 +54,10 @@ ADR-0013이 **엔진 push**를 결정해뒀다 — 엔진이 dirty 시점을 알
 - [x] **C3** engine PR1a `feat(engine): 스냅샷 복원-우선 open + SnapshotStore 포트` — [PR #13](https://github.com/ressKim-io/weDocs-crdt-engine/pull/13) (CI 3/3 green, **머지 대기**).
       커밋 `b943959`(포트+슬롯) · `37c9b77`(벤치) · `4d93c91`·`61a8399`(게이트 반영).
       실제 736줄(프로덕션 ~405 / 테스트 ~330) — 추정 355줄을 넘겼다. 초과분은 대부분 테스트 10건과 근거 주석
-- [ ] **C3.5** engine `refactor: 모듈 구조 + 에러 wire 매핑 + 설정 일원화` ([ADR-0022](../adr/0022-module-structure-rust.md))
-      — C4 **전에** 한다. C4가 어댑터·`DOC_SERVICE_ADDR`를 더하면 이동량이 2배가 되므로 지금이 가장 싸다
+- [x] **C3.5** engine `refactor: 모듈 구조 + 에러 wire 매핑 + 설정 일원화` ([ADR-0022](../adr/0022-module-structure-rust.md))
+      — [PR #14](https://github.com/ressKim-io/weDocs-crdt-engine/pull/14) (CI 3/3 green, **머지 대기**).
+      `engine.rs`→`doc.rs`+`snapshot/`, `service.rs`→`sync/{mod,session,metadata,status}`, `config.rs` 신설.
+      동작 무변경(기존 40 테스트 통과, 벤치 166µs 동일)
 - [ ] **C4** engine PR1b `feat(persistence): doc-service 복원 배선 + fail-closed` — ~380줄
 - [ ] **C5** engine PR2a `feat(engine): 스냅샷 dirty 회계 + 저장 대상 수집` — ~280줄, `bench-compare` 첨부
 - [ ] **C6** engine PR2b `feat(sweeper): 전역 스냅샷 스위퍼 + graceful flush` — ~400줄
@@ -268,9 +270,11 @@ make bench-compare        # main baseline 대비. baseline은 C3에서 main에 �
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = C3 (engine PR #13, CI 3/3 green). 브랜치 feature/m2-phase34-snapshot-restore
-다음        = PR #13 머지 승인 → C4(PR1b: build.rs에 doc.proto 추가 · persistence 모듈 ·
+마지막 완료 = C3.5 (engine PR #14, CI 3/3 green, 머지 대기). C3 = PR #13 머지됨(2ab925e)
+다음        = PR #14 머지 승인 → C4(PR1b: build.rs에 doc.proto 추가 · snapshot/doc_service.rs ·
               MetadataInjector · DOC_SERVICE_ADDR · 페이크 DocService 통합 테스트)
+              ⚠️ C4는 ADR-0022 구조를 따른다 — 어댑터는 `snapshot/doc_service.rs`(형제),
+              env는 `config.rs`에 필드 추가, wire 문구는 `sync/status.rs`에만.
 주의        = ① 실행 순서가 plan 번호와 반대다(복원 C3·C4 먼저, 저장 C5·C6 나중, D1)
               ② proto 태그 bump·PROTO_REF 변경 **불요** — proto-v0.2.0에 이미 다 있다
               ③ 벤치 baseline(registry_apply)은 C3에서 심었다 → C5에서 bench-compare 성립.
