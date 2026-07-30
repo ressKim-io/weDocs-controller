@@ -17,7 +17,8 @@
 > 회고 = [dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md](../dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md)
 >
 > 2026-07-30 C5 코드 완료 — **로컬 브랜치만 있다**. engine `feat/m2-phase3-save-accounting`
-> 커밋 4건, lib 테스트 43 → 60, 크래프트 게이트 반려 → 반영 완료. **push·PR 미착수**(건별 승인).
+> 커밋 5건, lib 테스트 43 → 61, 크래프트 게이트 **2라운드**(1차 Critical 1·Major 4 → 2차 Major 2)
+> 반영 완료. **push·PR 미착수**(건별 승인).
 > 실제 저장 RPC는 아직 없다 — 이번 것은 "무엇을 언제 저장할지"의 회계까지다.
 
 M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가(Phase 2) **여기까지 완료** →
@@ -80,11 +81,15 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
   newtype + private 필드 + **형제 모듈**(`snapshot/stored.rs`) 배치. 형제 배치가 핵심이다 —
   private 필드는 정의 모듈 *과 그 하위*에서 보이므로 부모(`snapshot/mod.rs`)에 두면 자식인
   어댑터가 여전히 우회 조립할 수 있다(에이전트가 `E0451`로 실증).
-- **C5 게이트 이월 2건 → C6에 동승** (2026-07-30, 상세 = plan §C6):
-  ① **경합 벤치** — `due_save`가 문서별 락을 쥔 채 전체 상태를 인코딩해 그 doc의 머지가 멈춘다
-  (4MiB면 ms 단위). `bench-compare`는 스위퍼를 안 돌려 이 비용을 못 본다. C5에서 못 한 이유 =
-  스위퍼가 없으면 main baseline이 성립하지 않는다. ② **`SweepStats`** — in-flight·disabled·
-  contended skip이 반환값에 안 남는다(절단만 WARN). 소비자가 C6에 생긴다.
+- **C5 게이트 이월 3건 → C6에 동승** (2026-07-30, 상세 = plan §C6 "C5가 넘긴 전제"):
+  ① **워치독 오탐 차단** — 인플라이트 지속시간 = 세마포어 대기 + RPC라, `max_batch`를 키우면
+  `MAX_IN_FLIGHT_TICKS`(30)를 넘겨 **살아 있는 RPC가 유실로 오판**된다 → 같은 version 저장 2개
+  → doc-service UPSERT가 최신을 옛 블롭으로 덮고 dirty도 빠져 흔적이 안 남는다. C6가 부등식을
+  컴파일 타임 assert로 고정 + 디스패치를 워치독보다 짧은 timeout으로 감쌀 것.
+  ② **경합 벤치** — `due_save`가 문서별 락을 쥔 채 인코딩해 그 doc의 머지가 멈춘다(4MiB면 ms).
+  C5에 안 넣은 이유 = 스위퍼가 없으면 잴 수 있는 게 타이트 루프 **합성 간섭**뿐이고 그 baseline은
+  1초 tick 스위퍼와 비교 불가다. C6에서 실제 tick 주기와 함께 신설.
+  ③ **`SweepStats`** — in-flight·disabled·contended skip이 반환값에 안 남는다(미방문 수만 WARN).
 - **doc-service `SaveSnapshot`의 경계 검증 갭 2건**(2026-07-29 Phase 3+4 착수 조사에서 발견) —
   ① blob 크기 무검증(4MiB gRPC 한도가 유일한 방어) ② `DataIntegrityViolationException`을 전부
   `PAGE_NOT_FOUND`로 접어 **FK 위반과 PK 경합을 구분 못 한다**. 엔진은 `NotFound`를 영구 실패로

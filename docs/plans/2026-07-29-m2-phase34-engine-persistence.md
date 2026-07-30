@@ -64,9 +64,16 @@ ADR-0013이 **엔진 push**를 결정해뒀다 — 엔진이 dirty 시점을 알
       추정 380줄을 크게 넘겼다 — 초과분은 대부분 통합 테스트 2파일(페이크 DocService + 실경로
       trace 검증)과 근거 주석. 회고 = [dev-log](../dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md)
 - [ ] **C5** engine PR2a `feat(engine): 스냅샷 dirty 회계 + 저장 대상 수집` — **코드·게이트 완료,
-      PR 미착수**(2026-07-30). 브랜치 `feat/m2-phase3-save-accounting`, 커밋 4건:
-      `a20beae`(bench Makefile 수정) · `b861673`(newtype) · `30bcdcc`(회계) · `c4885a2`(게이트 반영).
-      lib 테스트 43 → 60. 추정 ~280줄을 넘겼다(게이트 반영분 + 근거 주석).
+      PR 미착수**(2026-07-30). 브랜치 `feat/m2-phase3-save-accounting`, 커밋 5건:
+      `a20beae`(bench Makefile 수정) · `b861673`(newtype) · `30bcdcc`(회계) ·
+      `c4885a2`(게이트 1차) · `9e5c0f5`(게이트 2차).
+      lib 테스트 43 → 61. 추정 ~280줄을 크게 넘겼다(게이트 반영분 + 근거 주석).
+      - ⚠️ **게이트를 2라운드 돌렸고 2라운드가 실제 버그를 잡았다** — 1차에서 무상한 배치를
+        고치며 넣은 `max_batch` 절단이 **특정 doc를 영구히 굶겼다**(슬롯 순회 순서가 안정적 +
+        `break`가 백오프 감소·워치독 tick까지 막음). 8 doc·상한 2로 20 tick → 같은 2개만 저장.
+        회전 커서(`sweep_cursor`)로 해소. **수정이 새 결함을 낳은 사례라, 게이트는 반영 후
+        반드시 재실행한다.** 공허한 테스트 1건(`stale_settle_is_ignored`)도 2라운드가 뮤테이션
+        으로 잡았다 — 신원 가드를 통째로 무력화해도 통과하고 있었다
       - ✅ **C4 게이트 이월 M5(b) 소거** — `StoredSnapshot::Present(PresentSnapshot)` newtype +
         private 필드. 핵심은 **형제 모듈**(`snapshot/stored.rs`) 배치다: private 필드는 정의
         모듈 *과 그 하위*에서 보이므로 `snapshot/mod.rs`에 두면 자식인 어댑터가 여전히 우회
@@ -257,27 +264,48 @@ const SHUTDOWN_FLUSH_BUDGET: Duration = Duration::from_secs(10);
 // MAX_BACKOFF_TICKS·MAX_SNAPSHOT_BYTES·MAX_IN_FLIGHT_TICKS는 C5가 snapshot/save.rs에 이미 넣었다
 ```
 
-**C5가 넘긴 전제 4가지**(C6가 지켜야 한다):
+**C5가 넘긴 전제 5가지**(C6가 지켜야 한다):
 1. `SavePolicy { trigger: SaveTrigger::Debounced { max_merges: SAVE_MAX_MERGES,
    idle_ticks: SAVE_IDLE_TICKS }, max_batch: MAX_INFLIGHT_SAVES }` — **`max_batch`를
-   반드시 채운다**. 종료 flush는 `SaveTrigger::Flush` + 같은 `max_batch`로,
+   반드시 채운다**(`NonZeroUsize`). 종료 flush는 `SaveTrigger::Flush` + 같은 `max_batch`로,
    `SHUTDOWN_FLUSH_BUDGET` 안에서 **여러 tick 루프**를 돌아 남은 dirty를 비운다
    (한 번 호출로 전부 나오지 않는다 — 상한에서 잘린다).
+   ⚠️ **`max_batch`를 키우려면 제약 둘을 함께 본다**: ① 메모리 `max_batch × 4MiB`
+   (8 → 32MiB, 64 → 256MiB) ② 워치독 부등식(아래 5번). ②가 대개 먼저 깨진다.
 2. `interval`은 **`MissedTickBehavior::Delay`** — 기본 `Burst`는 스톨 후 따라잡기
    버스트로 모든 doc를 거짓 "유휴"로 판정시킨다(C5의 tick 기반 유휴 표현의 대가).
 3. 후보 1건당 `settle_save`를 **정확히 한 번** 부른다. 빠뜨려도 워치독이 30 tick 뒤
    자가 치유하지만 그 사이 저장이 멎고 WARN이 남는다 — 정상 경로로 취급하지 않는다.
 4. `SaveSnapshotResponse.version` ≠ 보낸 값이면 WARN(계약 드리프트 탐지, ADR-0013 §5).
    C5는 응답을 볼 수 없어 **C6가 디스패치 지점에서** 비교한다.
+5. **워치독 오탐을 구조적으로 막는다**(C5 게이트 2차 M1). 인플라이트 지속시간 =
+   *세마포어 대기 + RPC*라, 배치가 크면 꼬리 후보가 `MAX_IN_FLIGHT_TICKS`(30)를 넘겨
+   **살아 있는 RPC가 유실로 오판**된다. 그러면 같은 version을 실은 저장 2개가 떠
+   doc-service UPSERT가 최신 블롭을 옛 것으로 덮고, 그 뒤 dirty도 빠져 유실이 흔적조차
+   남기지 않는다. C6가 할 일 둘:
+   - `const _: () = assert!(max_batch.div_ceil(MAX_INFLIGHT_SAVES) * RPC_TIMEOUT_TICKS
+     < MAX_IN_FLIGHT_TICKS);`
+   - 디스패치 **전체(세마포어 획득 포함)**를 워치독보다 짧은 `tokio::time::timeout`으로 감싸
+     초과 시 반드시 `Retry`로 settle → "settle이 아예 안 온다"가 태스크 소멸에만 남는다
+6. `PendingSave::blob()`은 `&[u8]`뿐이다. `SaveSnapshotRequest`를 만들며 `.to_vec()`하면
+   **저장마다 최대 4MiB 복사**다 — 필요하면 `take_blob(&mut self) -> Vec<u8>`(`mem::take`,
+   회계 필드는 보존)을 C6에서 추가한다. C5에 미리 넣지 않은 이유는 호출자가 없어 어떤
+   테스트도 그 경로를 검증하지 못하기 때문.
 
 **C5에서 이월된 게이트 항목 2건**:
 - **경합 벤치**(게이트 M5) — `due_save`가 문서별 락을 쥔 채 전체 상태를 인코딩하므로 그 doc의
   머지가 그동안 멈춘다(4MiB면 ms 단위). `bench-compare`는 스위퍼를 안 돌려 이 비용을
-  **측정하지 못한다**. C5에서 못 한 이유 = 스위퍼가 없으면 main baseline을 만들 수 없어
-  회귀 게이트가 성립하지 않는다. → C6에서 `registry_apply` + 백그라운드 `collect_due_saves`
-  그룹을 신설하고 그때 baseline을 심는다.
+  **측정하지 못한다**.
+  > 게이트 2차 m9는 "지금 넣어야 C6가 baseline을 갖는다"며 이월에 반대했다(C3가 C5를 위해
+  > `registry_apply`를 심은 것과 같은 논리). **이월을 유지한 이유**: C5에는 스위퍼가 없어
+  > 벤치가 잴 수 있는 것은 `collect_due_saves`를 타이트 루프로 도는 **합성 간섭**뿐이고,
+  > 그 baseline은 1초 tick으로 도는 실제 스위퍼와 비교 가능하지 않다. 그리고 C6에서 이
+  > 벤치가 답해야 할 질문은 회귀 비교가 아니라 **"스위퍼가 도는 동안 머지 지연이 허용
+  > 범위인가"**라는 절대값 판정이라, 선행 baseline이 없어도 성립한다. C6에서 실제 tick
+  > 주기로 도는 스위퍼와 함께 신설할 것.
 - **`SweepStats`**(게이트 m13) — in-flight·disabled·contended로 건너뛴 doc가 반환값에 안 남는다.
-  절단만 WARN으로 관측된다. 소비자(스위퍼 로그·메트릭)가 생기는 C6에서 반환 타입을 넓힌다.
+  절단만 WARN으로 관측된다(미방문 수까지). 소비자(스위퍼 로그·메트릭)가 생기는 C6에서
+  반환 타입을 넓힌다.
 
 **실패 분류** (`persistence::classify(&Status)` → 포트 3분류 → `SaveOutcome`):
 
