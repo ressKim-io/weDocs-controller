@@ -17,8 +17,8 @@
 > 회고 = [dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md](../dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md)
 >
 > 2026-07-30 C5 코드 완료 — **로컬 브랜치만 있다**. engine `feat/m2-phase3-save-accounting`
-> 커밋 5건, lib 테스트 43 → 61, 크래프트 게이트 **2라운드**(1차 Critical 1·Major 4 → 2차 Major 2)
-> 반영 완료. **push·PR 미착수**(건별 승인).
+> 커밋 6건, lib 테스트 43 → 62, 크래프트 게이트 **3라운드**(1차 Critical 1·Major 4 → 2차 Major 2
+> → 3차 **통과**). **push·PR 미착수**(건별 승인).
 > 실제 저장 RPC는 아직 없다 — 이번 것은 "무엇을 언제 저장할지"의 회계까지다.
 
 M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가(Phase 2) **여기까지 완료** →
