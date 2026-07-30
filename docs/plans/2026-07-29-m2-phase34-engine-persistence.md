@@ -214,7 +214,7 @@ entry.merges_since_save = entry.merges_since_save.saturating_add(1);
 ```rust
 // snapshot/save.rs — 값 타입은 포트의 형제 모듈(어댑터가 조립 못 하게)
 pub enum SaveTrigger { Debounced { max_merges: u64, idle_ticks: u32 }, Flush }
-pub struct SavePolicy { pub trigger: SaveTrigger, pub max_batch: usize }
+pub struct SavePolicy { pub trigger: SaveTrigger, pub max_batch: NonZeroUsize }
 pub struct PendingSave { /* 전 필드 private */ }   // doc_id()·blob()·version() 접근자
 pub enum SaveOutcome { Committed, Retry, Disable(SnapshotStoreError) }
 pub const MAX_SNAPSHOT_BYTES / MAX_BACKOFF_TICKS / MAX_IN_FLIGHT_TICKS;
@@ -270,8 +270,12 @@ const SHUTDOWN_FLUSH_BUDGET: Duration = Duration::from_secs(10);
    반드시 채운다**(`NonZeroUsize`). 종료 flush는 `SaveTrigger::Flush` + 같은 `max_batch`로,
    `SHUTDOWN_FLUSH_BUDGET` 안에서 **여러 tick 루프**를 돌아 남은 dirty를 비운다
    (한 번 호출로 전부 나오지 않는다 — 상한에서 잘린다).
-   ⚠️ **`max_batch`를 키우려면 제약 둘을 함께 본다**: ① 메모리 `max_batch × 4MiB`
-   (8 → 32MiB, 64 → 256MiB) ② 워치독 부등식(아래 5번). ②가 대개 먼저 깨진다.
+   ⚠️ **`max_batch`에는 제약이 셋**이다: ① 메모리 `max_batch × 4MiB`(8 → 32MiB, 64 → 256MiB)
+   ② 워치독 부등식(아래 5번) — ②가 대개 먼저 깨진다 ③ **하한(처리량)**: `max_batch = 8` +
+   1초 tick = **저장 8건/초 천장**이다. T=10초 디바운스에서 동시 활성 doc가 80을 넘으면
+   상한이 상시 포화돼 doc별 실제 저장 간격이 `활성doc수/8`초로 늘어난다(N·T 정책이 사실상
+   무력화되고 WARN이 매 tick 발화). 해법은 `max_batch`를 그냥 키우는 게 아니라 **전제 5의
+   디스패치 timeout을 먼저 넣어 워치독 부등식에서 풀려나는 것** — 그 뒤엔 메모리만 보면 된다.
 2. `interval`은 **`MissedTickBehavior::Delay`** — 기본 `Burst`는 스톨 후 따라잡기
    버스트로 모든 doc를 거짓 "유휴"로 판정시킨다(C5의 tick 기반 유휴 표현의 대가).
 3. 후보 1건당 `settle_save`를 **정확히 한 번** 부른다. 빠뜨려도 워치독이 30 tick 뒤
@@ -301,8 +305,12 @@ const SHUTDOWN_FLUSH_BUDGET: Duration = Duration::from_secs(10);
   > 벤치가 잴 수 있는 것은 `collect_due_saves`를 타이트 루프로 도는 **합성 간섭**뿐이고,
   > 그 baseline은 1초 tick으로 도는 실제 스위퍼와 비교 가능하지 않다. 그리고 C6에서 이
   > 벤치가 답해야 할 질문은 회귀 비교가 아니라 **"스위퍼가 도는 동안 머지 지연이 허용
-  > 범위인가"**라는 절대값 판정이라, 선행 baseline이 없어도 성립한다. C6에서 실제 tick
-  > 주기로 도는 스위퍼와 함께 신설할 것.
+  > 범위인가"**라는 절대값 판정이라, 대조군이 main baseline이 아니라 **같은 PR 안의
+  > '스위퍼 off'**다 — C6 안에서 self-contained하게 얻어진다. (게이트 3차에서 이 논거를
+  > 받아들여 지적을 철회했다.)
+  >
+  > ⚠️ **단, C6는 수용 기준을 수치로 먼저 박아야 한다** — 예: "스위퍼 on의 `registry_apply`
+  > p99가 off 대비 +X% 이내". 지금처럼 "허용 범위"로 두면 측정은 하되 판정이 없는 상태가 된다.
 - **`SweepStats`**(게이트 m13) — in-flight·disabled·contended로 건너뛴 doc가 반환값에 안 남는다.
   절단만 WARN으로 관측된다(미방문 수까지). 소비자(스위퍼 로그·메트릭)가 생기는 C6에서
   반환 타입을 넓힌다.
