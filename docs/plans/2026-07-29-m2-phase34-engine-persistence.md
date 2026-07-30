@@ -63,11 +63,19 @@ ADR-0013이 **엔진 push**를 결정해뒀다 — 엔진이 dirty 시점을 알
       커밋 `cda705e`(codegen) · `5a66154`(config) · `0e2e3a4`(어댑터) · `62cb8a2`(게이트 반영).
       추정 380줄을 크게 넘겼다 — 초과분은 대부분 통합 테스트 2파일(페이크 DocService + 실경로
       trace 검증)과 근거 주석. 회고 = [dev-log](../dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md)
-- [ ] **C5** engine PR2a `feat(engine): 스냅샷 dirty 회계 + 저장 대상 수집` — ~280줄, `bench-compare` 첨부
-      ⚠️ **C4 게이트 이월 1건 동승**: `StoredSnapshot::Present`의 필드가 enum variant라 **어디서든
-      `from_wire` 없이 직접 조립 가능**하다 — C4는 지켰지만 컴파일러가 막지 못한다. C6가 저장
-      경로에서 두 번째 조립 지점을 만들기 **전에** `Present(PresentSnapshot)` newtype + private
-      필드로 닫는다. 소비자는 `doc.rs`의 match 한 곳뿐이라 비용이 작다(게이트 M5(b))
+- [ ] **C5** engine PR2a `feat(engine): 스냅샷 dirty 회계 + 저장 대상 수집` — **코드·게이트 완료,
+      PR 미착수**(2026-07-30). 브랜치 `feat/m2-phase3-save-accounting`, 커밋 4건:
+      `a20beae`(bench Makefile 수정) · `b861673`(newtype) · `30bcdcc`(회계) · `c4885a2`(게이트 반영).
+      lib 테스트 43 → 60. 추정 ~280줄을 넘겼다(게이트 반영분 + 근거 주석).
+      - ✅ **C4 게이트 이월 M5(b) 소거** — `StoredSnapshot::Present(PresentSnapshot)` newtype +
+        private 필드. 핵심은 **형제 모듈**(`snapshot/stored.rs`) 배치다: private 필드는 정의
+        모듈 *과 그 하위*에서 보이므로 `snapshot/mod.rs`에 두면 자식인 어댑터가 여전히 우회
+        조립할 수 있다. 형제로 내려야 컴파일러가 막는다(에이전트가 `E0451`로 실증)
+      - ✅ **가드레일 5** — `registry_apply` 벤치 no-change(§검증). 단 `make bench-compare`가
+        **한 번도 동작한 적 없었다**는 것을 이 단계에서 발견(§C5 벤치 도구)
+      - ⚠️ **`make bench-baseline`/`bench-compare`는 `--bench convergence`가 없으면 죽는다** —
+        `cargo bench`가 libtest 하네스까지 벤치 타깃으로 돌리기 때문. 재발 방지로
+        `make bench-smoke`(`--test`, ~10초)를 CI 스텝에 넣었다
 - [ ] **C6** engine PR2b `feat(sweeper): 전역 스냅샷 스위퍼 + graceful flush` — ~400줄
 - [ ] **C7** backend PR3 `fix(doc-service): 스냅샷 경계 검증 + 조회 상한` — C4 머지 후, C5와 병렬 가능
 - [ ] **C8** `docs:` dev-log + 이 plan `done` + `current.md` 갱신 + **역방향 점검**
@@ -194,17 +202,39 @@ entry.merges_since_save = entry.merges_since_save.saturating_add(1);
 > 대가: `interval`을 **`MissedTickBehavior::Delay`**로 설정해야 한다 — 기본 `Burst`는 스톨 후
 > 따라잡기 버스트로 모든 doc를 거짓 "유휴" 판정시킨다.
 
-```rust
-pub struct SavePolicy { pub max_merges: u64, pub idle_ticks: u32, pub force: bool }
-pub struct PendingSave { pub doc_id: DocId, pub blob: Vec<u8>, pub version: i64, merges: u64 }
-pub enum SaveOutcome { Committed, Retry, Disable(&'static str) }
+#### 실제 착지한 API ✅ 2026-07-30 (C6는 **이 형태**를 쓴다 — 아래 원문 스케치와 다르다)
 
+```rust
+// snapshot/save.rs — 값 타입은 포트의 형제 모듈(어댑터가 조립 못 하게)
+pub enum SaveTrigger { Debounced { max_merges: u64, idle_ticks: u32 }, Flush }
+pub struct SavePolicy { pub trigger: SaveTrigger, pub max_batch: usize }
+pub struct PendingSave { /* 전 필드 private */ }   // doc_id()·blob()·version() 접근자
+pub enum SaveOutcome { Committed, Retry, Disable(SnapshotStoreError) }
+pub const MAX_SNAPSHOT_BYTES / MAX_BACKOFF_TICKS / MAX_IN_FLIGHT_TICKS;
+
+// doc.rs
 pub fn collect_due_saves(&self, policy: SavePolicy) -> Vec<PendingSave>;  // `.await` 없음
-pub fn settle_save(&self, doc_id: &DocId, saved: &PendingSave, outcome: SaveOutcome);
+pub fn settle_save(&self, saved: &PendingSave, outcome: SaveOutcome);     // doc_id 파라미터 없음
 ```
 
-`DocEntry` 추가: `merges_since_save`·`seen_by_sweeper`·`idle_ticks`·`save_in_flight`·
-`backoff_ticks`·`consecutive_failures`·`persistence: Active|Disabled`.
+원문 스케치와 달라진 4곳과 이유(전부 게이트 반영):
+1. **`force: bool` → `SaveTrigger` enum** — flush 정책이 `max_merges: u64::MAX`로 임계값을
+   중화해야 했다 = 의미 없는 조합이 표현 가능했다(P4).
+2. **`max_batch` 신설(필수)** — 후보는 인코딩된 블롭을 소유하므로 상한이 없으면 최악
+   10,000 × 4MiB가 한 `Vec`에 산다. ⚠️ **스위퍼가 `.take(N)`으로 자르면 안 된다** — 잘린
+   후보는 이미 `save_in_flight`가 찍힌 채 버려져 settle을 못 받는다. 자르기는 수집 안쪽.
+3. **`Disable(SnapshotStoreError)`** — `&'static str`이면 `classify`가 만든 rpc·code·메시지가
+   소멸해, 유일한 로깅 지점(`settle_save`)에 사유가 남지 않는다(P4).
+4. **`settle_save`에서 `doc_id` 제거** — `saved.doc_id()`가 이미 있어 불일치 쌍이 가능했다.
+
+`DocEntry` 추가: `merges_since_save`·`idle_ticks`·`save_in_flight`·`in_flight_ticks`·
+`attempt`·`backoff_ticks`·`consecutive_failures`·`persistence: Active|Disabled`.
+(`seen_by_sweeper`는 **불필요**했다 — 유휴 리셋을 핫패스에서 하니 파생값이 아니게 됐다.)
+
+**settle 계약은 코드가 강제한다**(주석 아님):
+- `attempt` 일련번호 대조 → 중복·지각 settle 무시(dirty 이중 차감·버전 역행 차단)
+- `MAX_IN_FLIGHT_TICKS`(30) 워치독 → settle이 **영영 안 와도** 자가 치유.
+  C6의 저장 태스크가 패닉·취소·drop되면 그 doc의 저장이 프로세스 수명 내내 멎던 경로
 
 - **`try_lock`만** — 실패 = 그 doc가 지금 머지 중 → 이번 tick 건너뜀(유휴 판정도 진행되지 않아
   "편집 중인데 유휴"로 오판하지 않는다). 락 역전이 블로킹 자체가 불가능해진다
@@ -223,9 +253,31 @@ const SWEEP_INTERVAL: Duration = Duration::from_secs(1);
 const SAVE_IDLE_TICKS: u32 = 10;      // T=10초 (ADR-0013)
 const SAVE_MAX_MERGES: u64 = 100;     // N=100 (ADR-0013)
 const MAX_INFLIGHT_SAVES: usize = 8;  // doc-service Hikari 기본 10 아래로 여유
-const MAX_BACKOFF_TICKS: u32 = 60;
 const SHUTDOWN_FLUSH_BUDGET: Duration = Duration::from_secs(10);
+// MAX_BACKOFF_TICKS·MAX_SNAPSHOT_BYTES·MAX_IN_FLIGHT_TICKS는 C5가 snapshot/save.rs에 이미 넣었다
 ```
+
+**C5가 넘긴 전제 4가지**(C6가 지켜야 한다):
+1. `SavePolicy { trigger: SaveTrigger::Debounced { max_merges: SAVE_MAX_MERGES,
+   idle_ticks: SAVE_IDLE_TICKS }, max_batch: MAX_INFLIGHT_SAVES }` — **`max_batch`를
+   반드시 채운다**. 종료 flush는 `SaveTrigger::Flush` + 같은 `max_batch`로,
+   `SHUTDOWN_FLUSH_BUDGET` 안에서 **여러 tick 루프**를 돌아 남은 dirty를 비운다
+   (한 번 호출로 전부 나오지 않는다 — 상한에서 잘린다).
+2. `interval`은 **`MissedTickBehavior::Delay`** — 기본 `Burst`는 스톨 후 따라잡기
+   버스트로 모든 doc를 거짓 "유휴"로 판정시킨다(C5의 tick 기반 유휴 표현의 대가).
+3. 후보 1건당 `settle_save`를 **정확히 한 번** 부른다. 빠뜨려도 워치독이 30 tick 뒤
+   자가 치유하지만 그 사이 저장이 멎고 WARN이 남는다 — 정상 경로로 취급하지 않는다.
+4. `SaveSnapshotResponse.version` ≠ 보낸 값이면 WARN(계약 드리프트 탐지, ADR-0013 §5).
+   C5는 응답을 볼 수 없어 **C6가 디스패치 지점에서** 비교한다.
+
+**C5에서 이월된 게이트 항목 2건**:
+- **경합 벤치**(게이트 M5) — `due_save`가 문서별 락을 쥔 채 전체 상태를 인코딩하므로 그 doc의
+  머지가 그동안 멈춘다(4MiB면 ms 단위). `bench-compare`는 스위퍼를 안 돌려 이 비용을
+  **측정하지 못한다**. C5에서 못 한 이유 = 스위퍼가 없으면 main baseline을 만들 수 없어
+  회귀 게이트가 성립하지 않는다. → C6에서 `registry_apply` + 백그라운드 `collect_due_saves`
+  그룹을 신설하고 그때 baseline을 심는다.
+- **`SweepStats`**(게이트 m13) — in-flight·disabled·contended로 건너뛴 doc가 반환값에 안 남는다.
+  절단만 WARN으로 관측된다. 소비자(스위퍼 로그·메트릭)가 생기는 C6에서 반환 타입을 넓힌다.
 
 **실패 분류** (`persistence::classify(&Status)` → 포트 3분류 → `SaveOutcome`):
 
@@ -272,6 +324,26 @@ future 안에서 보내면 flush와 잔여 머지가 레이스한다.
 traceparent 주입은 **단위 테스트로** — OTel 레이어가 없으면 `Span::current().context()`가 비어
 아무것도 주입되지 않아 통합 단언이 **공허하게 통과**한다. `with_default` + 로컬 `SdkTracerProvider`로.
 
+**C5 벤치 도구 — `make bench-compare`가 그동안 공회전이었다** ✅ 발견·수정 2026-07-30
+
+`cargo bench -- --save-baseline main`은 lib·bin·tests의 **libtest 하네스까지** 벤치 타깃으로
+돌리는데 그 하네스들은 criterion 플래그를 모른다 → `error: Unrecognized option: 'save-baseline'`.
+인자 없는 `make bench`만 우연히 통과해 왔던 탓에, 가드레일 5의 **회귀 비교 수단이 한 번도
+동작한 적이 없었다**. 처방 = 세 타깃 전부 `--bench convergence` 지정 + `make bench-smoke`
+(`-- --test`, ~10초)를 CI에. "게이트를 붙여뒀다"와 "게이트가 돈다"는 다르다 —
+[2026-07-29 frontend `npm-audit`](../dev-logs/2026-07-29-m2-phase2c-frontend-auth.md)와 같은 계열.
+
+**C5 실측 결과**(criterion, 200 samples · 10s window, 조용한 상태의 A/B 쌍):
+
+| registry_apply | main | C5 | 변화 | 판정 |
+|---|---|---|---|---|
+| `sequential_typing_256` | 289.79 µs | 291.82 µs | +0.59% (p=0.17) | No change detected |
+| `large_paste_10k` | 10.321 µs | 10.538 µs | +1.36% (p=0.27) | No change detected |
+
+두 구간 모두 신뢰구간이 0을 포함한다. ⚠️ **측정 위생**: 로드가 걸린 상태에서는 같은 코드의
+A/B가 −4%~+7%로 흔들렸고(손대지 않은 raw yrs 그룹도 +33%), 한 쌍 안에서 C5가 main보다
+*빨라* 보이기도 했다. 신뢰구간 폭(±0.15%)이 좁은 쌍만 유효한 측정으로 채택했다.
+
 **C5 — 순수 동기 단위(페이크·async 불요)**
 `n_threshold_triggers_at_100_merges` · `idle_threshold_triggers_on_the_10th_quiet_tick`(9회 empty,
 10회째 1건) · `a_merge_between_ticks_resets_idle` · `in_flight_doc_is_not_dispatched_twice` ·
@@ -307,24 +379,26 @@ make bench-compare        # main baseline 대비. baseline은 C3에서 main에 �
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = C3.5 머지(engine 28e1b9c). C3 = 2ab925e. dev-log 2건 기록됨
-마지막 완료 = **C4 머지**(engine `1a14f13`, PR #15). CI 3종 초록. dev-log 기록됨
-다음        = **C5**(PR2a: dirty 회계 + 저장 대상 수집) — `bench-compare` 첨부 필수(핫패스)
-              C5는 게이트 이월 M5(b)를 **동승**한다 — `StoredSnapshot::Present`를 newtype으로
-              닫는다(C6가 두 번째 조립 지점을 만들기 **전**이어야 한다)
-              ⚠️ C4는 ADR-0022 구조를 따른다 — 어댑터는 `snapshot/doc_service.rs`(형제),
-              env는 `config.rs`에 필드 추가, wire 문구는 `sync/status.rs`에만.
-              ⚠️ C4 절의 지시 3건은 착수 실측에서 정정됐다(§C4 m1~m3) — 생성 모듈은
-              `doc_proto`(도메인 `doc`와 충돌), 어댑터는 `pub mod`(main은 별도 크레이트),
-              주소는 `Option<Endpoint>`(SocketAddr 아님). **원문 스니펫을 따르면 컴파일 실패한다**
+마지막 완료 = **C5 코드 + 크래프트 게이트 반영**(2026-07-30). engine 브랜치
+              `feat/m2-phase3-save-accounting`, 커밋 4건(a20beae·b861673·30bcdcc·c4885a2).
+              **로컬만 — push·PR 둘 다 미착수**(건별 승인 필요)
+다음        = ① C5 push + PR 생성·머지(승인 후) → ② **C6**(PR2b: 스위퍼 + graceful flush)
+              C7(backend 하드닝)은 C5와 무관하게 지금도 병렬 가능
+
+C6 착수 시 반드시 = §C5 "실제 착지한 API"와 §C6 "C5가 넘긴 전제 4가지"를 먼저 읽어라.
+              C5의 API가 plan 원문 스케치와 **다르다**(SaveTrigger enum · max_batch 필수 ·
+              settle_save에 doc_id 없음 · Disable이 에러를 싣는다). 원문대로 쓰면 컴파일 실패한다.
+              이건 C4에서 이미 한 번 겪은 함정이다(구조 변경이 뒤 단계 지시문을 stale하게 만든다).
+
 주의        = ① 실행 순서가 plan 번호와 반대다(복원 C3·C4 먼저, 저장 C5·C6 나중, D1)
               ② proto 태그 bump·PROTO_REF 변경 **불요** — proto-v0.2.0에 이미 다 있다
-              ③ 벤치 baseline(registry_apply)은 C3에서 심었다 → C5에서 bench-compare 성립.
-                 단 **main에 머지된 뒤에야** `--baseline main`이 의미를 갖는다
+              ③ 벤치: `make bench-baseline`/`bench-compare`는 C5 전까지 **동작하지 않았다**
+                 (`--bench convergence` 누락). 지금은 고쳐졌고 CI가 `bench-smoke`로 경로를 지킨다.
+                 `--baseline main`은 **main에 머지된 뒤에야** 의미를 갖는다
               ④ DOC_SERVICE_ADDR 기본 미설정 유지 — Phase 6에서 켠다
               ⑤ 서비스 레포는 push·PR 생성·머지 **각각** 승인
-              ⑥ C4 어댑터는 반드시 `StoredSnapshot::from_wire`를 통과시킬 것 —
-                 (version>0, blob=[]) 모순 쌍을 거르는 유일한 관문이다(C3 게이트 M1)
+              ⑥ 저장 경로도 `PendingSave`/`PresentSnapshot`을 **직접 조립할 수 없다**(필드 private).
+                 관문은 `from_wire`와 `due_save` 하나씩 — 컴파일러가 강제한다
 ```
 
 ## 범위 밖
