@@ -10,10 +10,15 @@
 
 ## 지금
 
-**M2 Phase 2 완료. Phase 3+4(엔진 스냅샷) 진행 중 — 복원이 와이어 끝까지 붙었다. 다음은 C5(저장 회계).**
+**M2 Phase 2 완료. Phase 3+4(엔진 스냅샷) 진행 중 — 복원은 와이어 끝까지 붙었고, 저장 회계(C5)는
+코드·게이트까지 끝났다. 다음 = C5 push·PR(승인 필요) → C6 스위퍼.**
 
-> 2026-07-30 C4 종료 — 엔진이 doc-service에서 스냅샷을 **복원**한다(fail-closed). 저장은 아직 없다.
+> 2026-07-30 C4 종료 — 엔진이 doc-service에서 스냅샷을 **복원**한다(fail-closed).
 > 회고 = [dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md](../dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md)
+>
+> 2026-07-30 C5 코드 완료 — **로컬 브랜치만 있다**. engine `feat/m2-phase3-save-accounting`
+> 커밋 4건, lib 테스트 43 → 60, 크래프트 게이트 반려 → 반영 완료. **push·PR 미착수**(건별 승인).
+> 실제 저장 RPC는 아직 없다 — 이번 것은 "무엇을 언제 저장할지"의 회계까지다.
 
 M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가(Phase 2) **여기까지 완료** →
 엔진 저장·복원·outbox·E2E(Phase 3~6)가 남았다.
@@ -26,12 +31,16 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 | 2c-C1 doc-service effective role 노출 | ✅ 머지 | backend `4c1678e` (PR #19) |
 | 2c-C2 frontend 인증 셸 | ✅ 머지 | frontend `de002f5` (PR #5) |
 | 2c-C3 페이지 선택 + 에디터 + E2E | ✅ 머지 | frontend `9161fbc`·`336964f`·`b12e026` (PR #6·#7·#8) |
-| **3+4 엔진 스냅샷** | **← 진행 중** | C3 `2ab925e` · C3.5 `28e1b9c` · C4 `1a14f13` 머지 — 다음 C5 |
+| **3+4 엔진 스냅샷** | **← 진행 중** | C3 `2ab925e` · C3.5 `28e1b9c` · C4 `1a14f13` 머지 · **C5 로컬 브랜치**(미머지) |
 
 ## 다음 액션 — Phase 3+4 (엔진 스냅샷 복원·저장)
 
 **상세 SSOT = [`plans/2026-07-29-m2-phase34-engine-persistence.md`](../plans/2026-07-29-m2-phase34-engine-persistence.md) §재개 지점.**
-다음 = **C5**(스냅샷 dirty 회계 + 저장 대상 수집). **핫패스 변경이라 `make bench-compare` 필수**(가드레일 5).
+다음 = **C5 push + PR**(승인 후) → **C6**(스위퍼 + graceful flush). C7(backend 하드닝)은 병렬 가능.
+
+⚠️ **C6 착수 전에 plan §C5 "실제 착지한 API"를 반드시 읽어라** — C5가 게이트 반영으로 원문
+스케치와 다르게 착지했다(`SaveTrigger` enum · `max_batch` 필수 · `settle_save`에 `doc_id` 없음).
+원문대로 쓰면 컴파일 실패한다. C4에서 이미 한 번 겪은 함정이다.
 
 ⚠️ **실행 순서가 plan 번호와 반대다** — **복원(Phase 4) 먼저, 저장(Phase 3) 나중**.
 저장을 먼저 넣으면 엔진 재시작 후 빈 Doc에 stale 클라가 붙어 **정상 DB 스냅샷을 열화된 상태로
@@ -67,10 +76,15 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
   ① **`tonic-health`**(0.14.6, tonic과 동일 버전 — K8s liveness/readiness probe에 필요)
   ② **metrics 노출**(`metrics` + exporter 또는 OTel metrics — 현재 trace만 있고 metric은 0)
   ③ `tonic-reflection`(grpcurl 개발 편의). 지금 넣으면 쓸 곳이 없어 YAGNI이고 M2 DoD에도 없다.
-- **`StoredSnapshot::Present`가 `from_wire` 없이 직접 조립 가능**(2026-07-30 C4 게이트 M5(b)) —
-  enum variant 필드는 enum과 같은 가시성이라 관문을 우회하는 조립을 **컴파일러가 막지 못한다**.
-  C4는 지켰지만 C6가 저장 경로에서 **두 번째 조립 지점**을 만든다. → **소거 = C5**(newtype + private 필드).
-  소비자가 `doc.rs` match 한 곳뿐이라 지금이 가장 싸다.
+- ~~**`StoredSnapshot::Present`가 `from_wire` 없이 직접 조립 가능**~~ → **C5에서 소거**(2026-07-30).
+  newtype + private 필드 + **형제 모듈**(`snapshot/stored.rs`) 배치. 형제 배치가 핵심이다 —
+  private 필드는 정의 모듈 *과 그 하위*에서 보이므로 부모(`snapshot/mod.rs`)에 두면 자식인
+  어댑터가 여전히 우회 조립할 수 있다(에이전트가 `E0451`로 실증).
+- **C5 게이트 이월 2건 → C6에 동승** (2026-07-30, 상세 = plan §C6):
+  ① **경합 벤치** — `due_save`가 문서별 락을 쥔 채 전체 상태를 인코딩해 그 doc의 머지가 멈춘다
+  (4MiB면 ms 단위). `bench-compare`는 스위퍼를 안 돌려 이 비용을 못 본다. C5에서 못 한 이유 =
+  스위퍼가 없으면 main baseline이 성립하지 않는다. ② **`SweepStats`** — in-flight·disabled·
+  contended skip이 반환값에 안 남는다(절단만 WARN). 소비자가 C6에 생긴다.
 - **doc-service `SaveSnapshot`의 경계 검증 갭 2건**(2026-07-29 Phase 3+4 착수 조사에서 발견) —
   ① blob 크기 무검증(4MiB gRPC 한도가 유일한 방어) ② `DataIntegrityViolationException`을 전부
   `PAGE_NOT_FOUND`로 접어 **FK 위반과 PK 경합을 구분 못 한다**. 엔진은 `NotFound`를 영구 실패로
@@ -93,6 +107,12 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 - **`registry.open()`은 `crdt.sync` span 밖에서 호출된다** — span은 `tokio::spawn(...).instrument()`에만
   붙는다. 그래서 open 경로에서 나가는 RPC는 `.instrument(span.clone())`을 붙이지 않으면
   traceparent가 실리지 않는다(가드레일 4 구멍).
+- **엔진 벤치 명령엔 `--bench convergence`가 필수다**(실측 2026-07-30) — `cargo bench`는 lib·bin·tests의
+  libtest 하네스까지 벤치 타깃으로 돌리고 그것들은 criterion 플래그를 모른다. 그래서
+  `make bench-baseline`/`bench-compare`가 **한 번도 동작한 적이 없었다**(인자 없는 `make bench`만
+  우연히 통과) = 가드레일 5의 회귀 비교가 공회전. C5에서 수정 + `make bench-smoke`를 CI에 추가.
+  ⚠️ **벤치 측정 위생**: 로드가 걸린 맥에서는 같은 코드의 A/B가 ±7% 흔들리고 손대지 않은 그룹도
+  +33%가 나온다. 신뢰구간 폭이 좁은(±0.2% 수준) 쌍만 유효 측정으로 채택할 것.
 - **CI** = 4레포 전부 빌드·테스트 게이트 보유(2026-07-28). PR 초록이 이제 실제 검증을 뜻한다. 단 **프론트 E2E는 제외**.
   ⚠️ **"게이트 보유"와 "게이트 초록"은 다르다** — frontend `security-scan/npm-audit`은 `ci.yml` 신설 시점부터
   main에서 계속 red였는데(vite 8.1.0 전이 의존 postcss) `ci.yml`이 초록이라 가려져 있었다(2026-07-29 발견·해소).
