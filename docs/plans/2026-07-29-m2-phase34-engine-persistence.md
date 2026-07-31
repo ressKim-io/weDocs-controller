@@ -1,7 +1,7 @@
 ---
 date: 2026-07-29
 slug: m2-phase34-engine-persistence
-status: in-progress
+status: done
 related:
   - plans/2026-06-30-m2-persistence-session.md
   - adr/0013-snapshot-persistence-lifecycle.md
@@ -84,9 +84,9 @@ ADR-0013이 **엔진 push**를 결정해뒀다 — 엔진이 dirty 시점을 알
       - ⚠️ **`make bench-baseline`/`bench-compare`는 `--bench convergence`가 없으면 죽는다** —
         `cargo bench`가 libtest 하네스까지 벤치 타깃으로 돌리기 때문. 재발 방지로
         `make bench-smoke`(`--test`, ~10초)를 CI 스텝에 넣었다
-- [ ] **C6** engine PR2b `feat(sweeper): 전역 스냅샷 스위퍼 + graceful flush` — ~400줄
-- [ ] **C7** backend PR3 `fix(doc-service): 스냅샷 경계 검증 + 조회 상한` — C4 머지 후, C5와 병렬 가능
-- [ ] **C8** `docs:` dev-log + 이 plan `done` + `current.md` 갱신 + **역방향 점검**
+- [x] **C6** engine PR2b `feat(sweeper): 전역 스냅샷 스위퍼 + graceful flush` — engine PR #17 머지
+- [x] **C7** backend PR3 `fix(doc-service): 스냅샷 경계 검증 + 조회 상한` — backend PR #20 (`abf7dc8`) 머지
+- [x] **C8** `docs:` dev-log + 이 plan `done` + `current.md` 갱신 + **역방향 점검**
 
 ### C2 — ADR 개정 사유
 
@@ -416,18 +416,19 @@ make bench-compare        # main baseline 대비. baseline은 C3에서 main에 �
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = **C5 코드 + 크래프트 게이트 반영**(2026-07-30). engine 브랜치
-              `feat/m2-phase3-save-accounting`, 커밋 4건(a20beae·b861673·30bcdcc·c4885a2).
-              **로컬만 — push·PR 둘 다 미착수**(건별 승인 필요)
-다음        = ① C5 push + PR 생성·머지(승인 후) → ② **C6**(PR2b: 스위퍼 + graceful flush)
-              C7(backend 하드닝)은 C5와 무관하게 지금도 병렬 가능
+완료 = 2026-07-31. C3~C8 전부 머지·완료. M2 DoD 실기동 검증 통과.
+       engine: C3(#13) C4(#15) C5(#16) C6(#17) — main c01e062
+       backend: C7(PR #20, abf7dc8) — main abf7dc8
+       실기동: postgres + doc-service + gateway + engine(DOC_SERVICE_ADDR)
+               편집→유휴→DB 저장(v7, 430B)→엔진 재시작→version=7 복원 확인.
+       dev-log: 2026-07-31-m2-phase34-complete.md
 
-C6 착수 시 반드시 = §C5 "실제 착지한 API"와 §C6 "C5가 넘긴 전제 4가지"를 먼저 읽어라.
-              C5의 API가 plan 원문 스케치와 **다르다**(SaveTrigger enum · max_batch 필수 ·
-              settle_save에 doc_id 없음 · Disable이 에러를 싣는다). 원문대로 쓰면 컴파일 실패한다.
-              이건 C4에서 이미 한 번 겪은 함정이다(구조 변경이 뒤 단계 지시문을 stale하게 만든다).
-
-주의        = ① 실행 순서가 plan 번호와 반대다(복원 C3·C4 먼저, 저장 C5·C6 나중, D1)
+열린 후속:
+  - engine issue #18: ALREADY_EXISTS 재시도 분류 (C6 sweeper 에러 분류에 동승)
+  - M5: 컨테이너화 + docker-compose + E2E 자동화
+  - 관측: 에러 전용 구조화 로그
+  - API 문서: SpringDoc OpenAPI + proto-doc
+```
               ② proto 태그 bump·PROTO_REF 변경 **불요** — proto-v0.2.0에 이미 다 있다
               ③ 벤치: `make bench-baseline`/`bench-compare`는 C5 전까지 **동작하지 않았다**
                  (`--bench convergence` 누락). 지금은 고쳐졌고 CI가 `bench-smoke`로 경로를 지킨다.

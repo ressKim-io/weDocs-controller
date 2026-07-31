@@ -1,0 +1,11 @@
+# proto → Markdown 문서 생성. `make proto-doc` 으로 실행.
+# 출력: docs/proto/ 아래에 서비스별 API 레퍼런스.
+version: v2
+clean: true
+inputs:
+  - directory: proto
+plugins:
+  - remote: buf.build/community/pseudomuto-doc
+    out: docs/proto
+    opt:
+      - markdown,docs/proto/api-reference.md

@@ -42,3 +42,14 @@ buf export 'https://github.com/ressKim-io/weDocs-controller.git#subdir=proto,ref
 - 다운스트림은 `ref`를 **태그로 핀**해 재현성 확보(예: `proto-v0.1.0`). 계약 변경 = controller에서 태그 → 다운스트림 `ref` 갱신.
 - SSOT는 controller에 유지. (검증: buf.build/docs/reference/inputs, 2026-06-25)
 - Rust(crdt-engine)는 plugin/tonic 버전 skew 회피를 위해 `buf export` 후 `tonic-prost-build`로 생성, Java(backend)는 `buf generate`(java+grpc 플러그인) 사용.
+
+## 문서 생성
+
+proto API 레퍼런스를 Markdown으로 생성한다 (pseudomuto/protoc-gen-doc, buf 원격 플러그인):
+
+```sh
+buf generate --template buf.gen.doc.yaml   # → docs/proto/api-reference.md
+```
+
+출력: `docs/proto/api-reference.md` — 전체 서비스·메시지·필드 레퍼런스.
+proto 계약이 변경될 때 재생성하고 커밋한다.

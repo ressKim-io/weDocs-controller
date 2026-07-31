@@ -4,25 +4,21 @@
 > CLAUDE.md는 이 파일을 가리키는 포인터만 갖는다(진척 이력을 CLAUDE.md에 두지 않는 이유 = 공식 가이드의 "자주 바뀌는 정보 제외" + 그 편집 지점이 곧 드리프트 지점이었다는 실증).
 > 완료 이력 = [`history.md`](history.md) · 상세 실행 계획 = `docs/plans/`
 
-**최종 갱신**: 2026-07-30
+**최종 갱신**: 2026-07-31
 
 ---
 
 ## 지금
 
-**M2 Phase 2 완료. Phase 3+4(엔진 스냅샷) 진행 중 — 복원은 와이어 끝까지 붙었고, 저장 회계(C5)는
-코드·게이트까지 끝났다. 다음 = C5 push·PR(승인 필요) → C6 스위퍼.**
+**M2 Phase 3+4 완료(2026-07-31). M2 DoD 실기동 검증 통과.** 편집→유휴→DB 저장→엔진 재시작→복원 전 경로 동작 확인.
+다음 = API 문서(SpringDoc) + 에러 구조화 로깅 + M2 Phase 5~6(outbox·배포).
 
-> 2026-07-30 C4 종료 — 엔진이 doc-service에서 스냅샷을 **복원**한다(fail-closed).
-> 회고 = [dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md](../dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md)
->
-> 2026-07-30 C5 코드 완료 — **로컬 브랜치만 있다**. engine `feat/m2-phase3-save-accounting`
-> 커밋 6건, lib 테스트 43 → 62, 크래프트 게이트 **3라운드**(1차 Critical 1·Major 4 → 2차 Major 2
-> → 3차 **통과**). **push·PR 미착수**(건별 승인).
-> 실제 저장 RPC는 아직 없다 — 이번 것은 "무엇을 언제 저장할지"의 회계까지다.
+> 2026-07-31 Phase 3+4 전체 완료 — engine C5(PR #16)·C6(PR #17) 머지, backend C7(PR #20) 머지,
+> 4프로세스 실기동 검증(page_snapshots v7/430B 확인, 재시작 후 복원 확인).
+> 회고 = [dev-logs/2026-07-31-m2-phase34-complete.md](../dev-logs/2026-07-31-m2-phase34-complete.md)
 
-M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가(Phase 2) **여기까지 완료** →
-엔진 저장·복원·outbox·E2E(Phase 3~6)가 남았다.
+M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가(Phase 2) → **스냅샷 영속화(Phase 3+4)** 여기까지 완료.
+남은 것 = Phase 5~6(outbox 패턴·클러스터 배포).
 
 | Phase | 상태 | 산출 |
 |---|---|---|
@@ -32,20 +28,13 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 | 2c-C1 doc-service effective role 노출 | ✅ 머지 | backend `4c1678e` (PR #19) |
 | 2c-C2 frontend 인증 셸 | ✅ 머지 | frontend `de002f5` (PR #5) |
 | 2c-C3 페이지 선택 + 에디터 + E2E | ✅ 머지 | frontend `9161fbc`·`336964f`·`b12e026` (PR #6·#7·#8) |
-| **3+4 엔진 스냅샷** | **← 진행 중** | C3 `2ab925e` · C3.5 `28e1b9c` · C4 `1a14f13` 머지 · **C5 로컬 브랜치**(미머지) |
+| 3+4 엔진 스냅샷 | ✅ 완료 | engine C3~C6 (PR #13·#14·#15·#16·#17), backend C7 (PR #20) |
 
-## 다음 액션 — Phase 3+4 (엔진 스냅샷 복원·저장)
+## 다음 액션
 
-**상세 SSOT = [`plans/2026-07-29-m2-phase34-engine-persistence.md`](../plans/2026-07-29-m2-phase34-engine-persistence.md) §재개 지점.**
-다음 = **C5 push + PR**(승인 후) → **C6**(스위퍼 + graceful flush). C7(backend 하드닝)은 병렬 가능.
-
-⚠️ **C6 착수 전에 plan §C5 "실제 착지한 API"를 반드시 읽어라** — C5가 게이트 반영으로 원문
-스케치와 다르게 착지했다(`SaveTrigger` enum · `max_batch` 필수 · `settle_save`에 `doc_id` 없음).
-원문대로 쓰면 컴파일 실패한다. C4에서 이미 한 번 겪은 함정이다.
-
-⚠️ **실행 순서가 plan 번호와 반대다** — **복원(Phase 4) 먼저, 저장(Phase 3) 나중**.
-저장을 먼저 넣으면 엔진 재시작 후 빈 Doc에 stale 클라가 붙어 **정상 DB 스냅샷을 열화된 상태로
-덮어쓰는** 구간이 생기고 version 카운터도 0으로 리셋된다. 복원이 먼저면 그 구간이 없다.
+1. **API 문서** — SpringDoc OpenAPI v3.0.3 + proto-doc (buf/protoc-gen-doc)
+2. **에러 구조화 로깅** — logback 에러 전용 JSON appender + engine tracing ERROR 레이어
+3. **M2 Phase 5~6** — outbox 패턴, 클러스터 배포 준비 (상세 = `m2-persistence-session` plan)
 
 ## 열린 트랙 (완료 시 여기부터 확인)
 
@@ -53,47 +42,33 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 
 | plan | status | 실제 남은 것 |
 |---|---|---|
-| [m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md) | in-progress | **M2 Phase 5~6** (Phase 1·2 완료, 3+4는 아래 하위 트랙이 소유) |
-| [m2-phase34-engine-persistence](../plans/2026-07-29-m2-phase34-engine-persistence.md) | in-progress | **C3~C8** — engine PR1a/1b/2a/2b + backend PR3 + 완료 처리 |
+| [m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md) | in-progress | **M2 Phase 5~6** (Phase 1·2·3+4 완료) |
 | [plan-audit-improvements](../plans/2026-06-30-plan-audit-improvements.md) | in-progress | T4 잔여 4건(T4-1 NFR/DoD 트래커 · T4-2 관측 콜사이트 · T4-4 ADR 0002~0009 승격 · T4-5 ①②③⑤). **T4-3 서비스 CI는 2026-07-28 완료** |
 
 
-> **2026-07-29 역방향 점검**(Phase 2c 완료 후): `m2-phase2-auth-authz`·`m2-phase2c-frontend-auth` 둘 다
-> `done`으로 클로징하고 이 표에서 제거했다. 본류 `m2-persistence-session`의 §재개 지점도 Phase 3으로 옮겼다
-> — 하위 트랙 완료로 부모 재개 조건이 바뀌었는데 부모를 안 고치면, 부모만 여는 세션이 끝난 트랙을 재실행한다.
-> `plan-audit-improvements`는 M2와 무관한 별개 트랙. 그 외 plan은 전부 `done`.
+> **2026-07-31 역방향 점검**(Phase 3+4 완료 후): `m2-phase34-engine-persistence`를 `done`으로 클로징하고
+> 이 표에서 제거했다. 본류 `m2-persistence-session`의 잔여를 Phase 5~6으로 갱신.
+> 이월 findings 중 C7에서 소거된 항목(`listMine` 무상한 조회, `SaveSnapshot` 경계 검증 갭 2건) 표기 갱신.
+> C5 게이트 이월 3건은 C6에서 소거 확인(engine PR #17).
 
 ## 이월된 findings (구현 시 소거)
 
 - **2b 크래프트 게이트 Minor 4건** — `extract_role` 거절 로그에 `doc_id`·`trace_id` 없음 / `Cargo.toml` dev-dep 주석의 feature 주장이 사실과 다름 / `let _ = send` 근거 주석 / plan이 명시한 `INVALID_ROLE_MSG` 상수 미도입. 상세 = phase2 plan §2b.
 - **1c PR② 게이트 findings** — 상세 = [`plans/2026-07-12-m2-phase1c-rest-jwt.md`](../plans/2026-07-12-m2-phase1c-rest-jwt.md) §PR② (HIGH 2건은 PR #10 `a40bae5`에서 해소됨).
-- **`WorkspaceService.listMine`에 조회 상한 없음** (backend, secure-coding P2) — 2026-07-29 C3-1 게이트에서 발견.
-  같은 서비스의 `PageTreeService.list`는 `MAX_PAGE_LIST`(1,000)로 자르는데 워크스페이스 목록만 무상한이다.
-  **클라에서 자르지 않는다** — 자르면 "내 워크스페이스가 안 보인다"는 무증상 버그가 되고 서버의 무상한
-  조회는 그대로 남는다. 상한은 조회가 있는 곳에 둔다.
-  → **소거 예정 = Phase 3+4의 C7**(backend PR3)에 동승 확정.
+- ~~**`WorkspaceService.listMine`에 조회 상한 없음**~~ → **C7에서 소거**(2026-07-31, backend PR #20). `MAX_WORKSPACE_LIST=100` + `Limit` 파라미터 + 상한 도달 WARN 로그.
 - **crdt-engine 운영 기능 미도입 3건 → M5(클러스터 배포) 트랙** (2026-07-29 [ADR-0022](../adr/0022-module-structure-rust.md) §범위 밖에서 등록).
   Spring Boot Actuator 대응물이 Rust엔 프레임워크가 아니라 **개별 크레이트**로 존재하는데 아직 조립을 안 했다:
   ① **`tonic-health`**(0.14.6, tonic과 동일 버전 — K8s liveness/readiness probe에 필요)
   ② **metrics 노출**(`metrics` + exporter 또는 OTel metrics — 현재 trace만 있고 metric은 0)
   ③ `tonic-reflection`(grpcurl 개발 편의). 지금 넣으면 쓸 곳이 없어 YAGNI이고 M2 DoD에도 없다.
 - ~~**`StoredSnapshot::Present`가 `from_wire` 없이 직접 조립 가능**~~ → **C5에서 소거**(2026-07-30).
-  newtype + private 필드 + **형제 모듈**(`snapshot/stored.rs`) 배치. 형제 배치가 핵심이다 —
-  private 필드는 정의 모듈 *과 그 하위*에서 보이므로 부모(`snapshot/mod.rs`)에 두면 자식인
-  어댑터가 여전히 우회 조립할 수 있다(에이전트가 `E0451`로 실증).
-- **C5 게이트 이월 3건 → C6에 동승** (2026-07-30, 상세 = plan §C6 "C5가 넘긴 전제"):
-  ① **워치독 오탐 차단** — 인플라이트 지속시간 = 세마포어 대기 + RPC라, `max_batch`를 키우면
-  `MAX_IN_FLIGHT_TICKS`(30)를 넘겨 **살아 있는 RPC가 유실로 오판**된다 → 같은 version 저장 2개
-  → doc-service UPSERT가 최신을 옛 블롭으로 덮고 dirty도 빠져 흔적이 안 남는다. C6가 부등식을
-  컴파일 타임 assert로 고정 + 디스패치를 워치독보다 짧은 timeout으로 감쌀 것.
-  ② **경합 벤치** — `due_save`가 문서별 락을 쥔 채 인코딩해 그 doc의 머지가 멈춘다(4MiB면 ms).
-  C5에 안 넣은 이유 = 스위퍼가 없으면 잴 수 있는 게 타이트 루프 **합성 간섭**뿐이고 그 baseline은
-  1초 tick 스위퍼와 비교 불가다. C6에서 실제 tick 주기와 함께 신설.
-  ③ **`SweepStats`** — in-flight·disabled·contended skip이 반환값에 안 남는다(미방문 수만 WARN).
-- **doc-service `SaveSnapshot`의 경계 검증 갭 2건**(2026-07-29 Phase 3+4 착수 조사에서 발견) —
-  ① blob 크기 무검증(4MiB gRPC 한도가 유일한 방어) ② `DataIntegrityViolationException`을 전부
-  `PAGE_NOT_FOUND`로 접어 **FK 위반과 PK 경합을 구분 못 한다**. 엔진은 `NotFound`를 영구 실패로
-  보고 그 문서의 영속화를 끄므로, PK 경합이 조용한 데이터 유실이 된다. → 같은 C7에서 소거.
+- ~~**C5 게이트 이월 3건**~~ → **C6에서 소거**(2026-07-31, engine PR #17).
+  워치독 오탐 차단(컴파일 타임 assert) · 경합 벤치 · `SweepStats` 반환값 — 전부 스위퍼 구현에 동승 완료.
+- ~~**doc-service `SaveSnapshot`의 경계 검증 갭 2건**~~ → **C7에서 소거**(2026-07-31, backend PR #20).
+  blob 크기 검증(`MAX_SNAPSHOT_BYTES=2MiB`) + FK/PK 구분(SQL state code `23505`/`23503`).
+- **engine `ALREADY_EXISTS` 재시도 미구현** (2026-07-31, engine issue #18) — C7에서 PK conflict를
+  `ALREADY_EXISTS`로 올바르게 반환하게 됐지만, 엔진 sweeper가 이 코드를 재시도로 분류하는 로직은 미구현.
+  C6 sweeper의 에러 분류 체계에 동승 예정.
 
 ---
 
@@ -107,8 +82,7 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 - ~~**엔진에 아웃바운드 gRPC 클라이언트가 없다**~~ → **C4에서 생겼다**(2026-07-30, `1a14f13`).
   어댑터 = `snapshot/doc_service.rs`가 **tonic이 사는 유일한 곳**(포트 파일은 tonic을 모른다).
   채널은 `connect_lazy` · `concurrency_limit(8)` · `Request::set_timeout`(3s) · traceparent 주입.
-  `DOC_SERVICE_ADDR` **미설정이 기본**이라 현재 기동은 여전히 `NoopSnapshotStore`다 → Phase 6에서 켠다.
-  ⚠️ 저장(`SaveSnapshot`)은 **아직 없다** — 포트에 `load`만 있다(C5·C6에서 추가).
+  `DOC_SERVICE_ADDR` 설정 시 실제 어댑터가 활성화되고 저장·복원 모두 동작한다(C6 완료, 2026-07-31 실기동 확인).
 - **`registry.open()`은 `crdt.sync` span 밖에서 호출된다** — span은 `tokio::spawn(...).instrument()`에만
   붙는다. 그래서 open 경로에서 나가는 RPC는 `.instrument(span.clone())`을 붙이지 않으면
   traceparent가 실리지 않는다(가드레일 4 구멍).
@@ -144,7 +118,7 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
   프로덕션 Rust 서비스(linkerd2-proxy·vector) 실측과 hexagonal 가이드 자신의 제외 조건이 근거.
   **분할 트리거는 응집도이지 줄 수가 아니다**(yrs 중앙값 502줄 — Rust는 테스트 동거로 줄 수가 부푼다).
 - **doc-service 구조** = package-by-feature(ADR-0019). 신규 코드는 feature 패키지(auth/workspace/page/snapshot) 평면에, 공용은 `common/`. 도메인 에러는 카탈로그(`DocErrorCode` enum + 카테고리 예외, ADR-0018)로만.
-- **테스트 환경** — backend doc-service 테스트는 colima 필요(`DOCKER_HOST`/`TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE`), ws-gateway는 불요(in-process fake).
+- **테스트 환경** — backend doc-service 테스트는 Docker 필요(OrbStack 또는 colima, `DOCKER_HOST`/`TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE`), ws-gateway는 불요(in-process fake).
 - **승인 경계** — 서비스 레포(backend/crdt-engine/frontend)는 branch+PR+**건별 승인**(push·PR 생성·머지 각각). controller만 main 직접.
 - **세션 기본 = Opus 5 + effort 기본(high)** (2026-07-29 저속 진단 후 교정 — 전역 `xhigh` 상시 고정과
   `fable-5[1m]`이 주범이었다). xhigh/max는 세션·작업 단위로만 명시 상향. opus 에이전트 effort는
@@ -156,6 +130,7 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 
 | 주제 | dev-log |
 |---|---|
+| **Phase 3+4 완료·M2 DoD 실기동·교훈 5건** | [2026-07-31-m2-phase34-complete](../dev-logs/2026-07-31-m2-phase34-complete.md) |
 | 엔진 스냅샷 복원·fork 방지·순서 역전 | [2026-07-29-m2-phase34-engine-restore](../dev-logs/2026-07-29-m2-phase34-engine-restore.md) |
 | **keepalive가 꺼져 있었다 · 공허한 관측 테스트 · 지시문 stale** | [2026-07-30-m2-phase4-doc-service-adapter](../dev-logs/2026-07-30-m2-phase4-doc-service-adapter.md) |
 | **표준이 Rust에서 덜 발화한 지점**(ADR 분석 대기) | [2026-07-29-rust-module-structure-and-standards-gap](../dev-logs/2026-07-29-rust-module-structure-and-standards-gap.md) |
