@@ -4,14 +4,14 @@
 > CLAUDE.md는 이 파일을 가리키는 포인터만 갖는다(진척 이력을 CLAUDE.md에 두지 않는 이유 = 공식 가이드의 "자주 바뀌는 정보 제외" + 그 편집 지점이 곧 드리프트 지점이었다는 실증).
 > 완료 이력 = [`history.md`](history.md) · 상세 실행 계획 = `docs/plans/`
 
-**최종 갱신**: 2026-07-31
+**최종 갱신**: 2026-08-01
 
 ---
 
 ## 지금
 
-**M2 Phase 3+4 완료(2026-07-31). M2 DoD 실기동 검증 통과.** 편집→유휴→DB 저장→엔진 재시작→복원 전 경로 동작 확인.
-다음 = API 문서(SpringDoc) + 에러 구조화 로깅 + M2 Phase 5~6(outbox·배포).
+**M2 Phase 3+4 완료(2026-07-31). API 문서·에러 구조화 로깅 완료(2026-08-01).** M2 DoD 실기동 검증 통과.
+다음 = proto-doc(gRPC API 문서 자동 생성) + M2 Phase 5~6(outbox·배포).
 
 > 2026-07-31 Phase 3+4 전체 완료 — engine C5(PR #16)·C6(PR #17) 머지, backend C7(PR #20) 머지,
 > 4프로세스 실기동 검증(page_snapshots v7/430B 확인, 재시작 후 복원 확인).
@@ -32,9 +32,10 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 
 ## 다음 액션
 
-1. **API 문서** — SpringDoc OpenAPI v3.0.3 + proto-doc (buf/protoc-gen-doc)
-2. **에러 구조화 로깅** — logback 에러 전용 JSON appender + engine tracing ERROR 레이어
-3. **M2 Phase 5~6** — outbox 패턴, 클러스터 배포 준비 (상세 = `m2-persistence-session` plan)
+1. ~~**API 문서** — SpringDoc OpenAPI v3.0.3~~ ✅ 완료(2026-08-01, doc-service `springdoc-openapi-starter-webmvc-ui:3.0.3` + swagger-ui/api-docs 경로 설정)
+2. ~~**에러 구조화 로깅** — logback 에러 전용 JSON appender~~ ✅ 완료(2026-08-01, doc-service `logback-spring.xml` ERROR JSON file + ws-gateway 동일 적용)
+3. **proto-doc** — buf/protoc-gen-doc으로 gRPC API 문서 자동 생성 (buf.gen.yaml 플러그인 추가)
+4. **M2 Phase 5~6** — outbox 패턴, 클러스터 배포 준비 (상세 = `m2-persistence-session` plan)
 
 ## 열린 트랙 (완료 시 여기부터 확인)
 
@@ -68,7 +69,7 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
   blob 크기 검증(`MAX_SNAPSHOT_BYTES=2MiB`) + FK/PK 구분(SQL state code `23505`/`23503`).
 - **engine `ALREADY_EXISTS` 재시도 미구현** (2026-07-31, engine issue #18) — C7에서 PK conflict를
   `ALREADY_EXISTS`로 올바르게 반환하게 됐지만, 엔진 sweeper가 이 코드를 재시도로 분류하는 로직은 미구현.
-  C6 sweeper의 에러 분류 체계에 동승 예정.
+  → **M2 Phase 5(outbox) 진입 시 sweeper 에러 분류 확장에 동승 예정**. 단독 소거 시점 = engine issue #18 클로즈.
 
 ---
 
