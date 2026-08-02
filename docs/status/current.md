@@ -10,15 +10,15 @@
 
 ## 지금
 
-**M2 Phase 3+4 완료(2026-07-31). API 문서·에러 구조화 로깅 완료(2026-08-01).** M2 DoD 실기동 검증 통과.
-다음 = proto-doc(gRPC API 문서 자동 생성) + M2 Phase 5~6(outbox·배포).
+**M2 Phase 5(outbox 하드닝) 완료(2026-08-01).** backend PR #24 머지(`5df4b3f`). 164 테스트 전체 통과.
+다음 = proto-doc(gRPC API 문서 자동 생성) + M2 Phase 6(E2E 복원·권한 검증).
 
-> 2026-07-31 Phase 3+4 전체 완료 — engine C5(PR #16)·C6(PR #17) 머지, backend C7(PR #20) 머지,
-> 4프로세스 실기동 검증(page_snapshots v7/430B 확인, 재시작 후 복원 확인).
-> 회고 = [dev-logs/2026-07-31-m2-phase34-complete.md](../dev-logs/2026-07-31-m2-phase34-complete.md)
+> 2026-08-01 Phase 5 완료 — outbox 실무 하드닝: Jackson 직렬화, OutboxEventType enum,
+> aggregate_type/actor_id 스키마 추가, cleanup job.
+> Plan = [plans/2026-08-01-m2-phase5-outbox-hardening.md](../plans/2026-08-01-m2-phase5-outbox-hardening.md)(**done**)
 
-M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가(Phase 2) → **스냅샷 영속화(Phase 3+4)** 여기까지 완료.
-남은 것 = Phase 5~6(outbox 패턴·클러스터 배포).
+M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가(Phase 2) → 스냅샷 영속화(Phase 3+4) → **outbox 하드닝(Phase 5)** 여기까지 완료.
+남은 것 = Phase 6(E2E 복원·권한 검증).
 
 | Phase | 상태 | 산출 |
 |---|---|---|
@@ -29,13 +29,15 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 | 2c-C2 frontend 인증 셸 | ✅ 머지 | frontend `de002f5` (PR #5) |
 | 2c-C3 페이지 선택 + 에디터 + E2E | ✅ 머지 | frontend `9161fbc`·`336964f`·`b12e026` (PR #6·#7·#8) |
 | 3+4 엔진 스냅샷 | ✅ 완료 | engine C3~C6 (PR #13·#14·#15·#16·#17), backend C7 (PR #20) |
+| 5 outbox 하드닝 | ✅ 완료 | backend PR #24 (`5df4b3f`) |
 
 ## 다음 액션
 
-1. ~~**API 문서** — SpringDoc OpenAPI v3.0.3~~ ✅ 완료(2026-08-01, doc-service `springdoc-openapi-starter-webmvc-ui:3.0.3` + swagger-ui/api-docs 경로 설정)
-2. ~~**에러 구조화 로깅** — logback 에러 전용 JSON appender~~ ✅ 완료(2026-08-01, doc-service `logback-spring.xml` ERROR JSON file + ws-gateway 동일 적용)
-3. **proto-doc** — buf/protoc-gen-doc으로 gRPC API 문서 자동 생성 (buf.gen.yaml 플러그인 추가)
-4. **M2 Phase 5~6** — outbox 패턴, 클러스터 배포 준비 (상세 = `m2-persistence-session` plan)
+1. ~~**API 문서** — SpringDoc OpenAPI v3.0.3~~ ✅ 완료(2026-08-01)
+2. ~~**에러 구조화 로깅** — logback 에러 전용 JSON appender~~ ✅ 완료(2026-08-01)
+3. ~~**M2 Phase 5** — outbox 하드닝~~ ✅ 완료(2026-08-01, backend PR #24)
+4. **proto-doc** — buf/protoc-gen-doc으로 gRPC API 문서 자동 생성 (buf.gen.yaml 플러그인 추가)
+5. **M2 Phase 6** — E2E 복원·권한 검증 (상세 = `m2-persistence-session` plan)
 
 ## 열린 트랙 (완료 시 여기부터 확인)
 
@@ -43,7 +45,7 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 
 | plan | status | 실제 남은 것 |
 |---|---|---|
-| [m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md) | in-progress | **M2 Phase 5~6** (Phase 1·2·3+4 완료) |
+| [m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md) | in-progress | **M2 Phase 6** (Phase 1·2·3+4·5 완료) |
 | [plan-audit-improvements](../plans/2026-06-30-plan-audit-improvements.md) | in-progress | T4 잔여 4건(T4-1 NFR/DoD 트래커 · T4-2 관측 콜사이트 · T4-4 ADR 0002~0009 승격 · T4-5 ①②③⑤). **T4-3 서비스 CI는 2026-07-28 완료** |
 
 
