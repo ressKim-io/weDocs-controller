@@ -1,7 +1,7 @@
 ---
 date: 2026-06-30
 slug: m2-persistence-session
-status: in-progress
+status: done
 related:
   - plans/2026-06-30-plan-audit-improvements.md
   - prd/4-data-and-permission-model.md

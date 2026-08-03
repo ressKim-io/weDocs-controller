@@ -4,21 +4,20 @@
 > CLAUDE.md는 이 파일을 가리키는 포인터만 갖는다(진척 이력을 CLAUDE.md에 두지 않는 이유 = 공식 가이드의 "자주 바뀌는 정보 제외" + 그 편집 지점이 곧 드리프트 지점이었다는 실증).
 > 완료 이력 = [`history.md`](history.md) · 상세 실행 계획 = `docs/plans/`
 
-**최종 갱신**: 2026-08-01
+**최종 갱신**: 2026-08-03
 
 ---
 
 ## 지금
 
-**M2 Phase 5(outbox 하드닝) 완료(2026-08-01).** backend PR #24 머지(`5df4b3f`). 164 테스트 전체 통과.
-다음 = proto-doc(gRPC API 문서 자동 생성) + M2 Phase 6(E2E 복원·권한 검증).
+**M2 Phase 6(E2E 복원·권한 검증) 완료(2026-08-03).** backend PR #25 머지(`ba0406c`). 181 테스트 전체 통과.
+**M2 마일스톤 전체 완료.** proto-doc 파이프라인도 동시 완성(controller `7999aa6`).
 
-> 2026-08-01 Phase 5 완료 — outbox 실무 하드닝: Jackson 직렬화, OutboxEventType enum,
-> aggregate_type/actor_id 스키마 추가, cleanup job.
-> Plan = [plans/2026-08-01-m2-phase5-outbox-hardening.md](../plans/2026-08-01-m2-phase5-outbox-hardening.md)(**done**)
+> 2026-08-03 Phase 6 완료 — E2E 스냅샷 복원 + 권한 상속 gRPC 검증 테스트 17건 추가.
+> 2026-08-03 proto-doc 완료 — Makefile + CI doc-freshness job + buf.gen.doc.yaml 보강.
 
-M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가(Phase 2) → 스냅샷 영속화(Phase 3+4) → **outbox 하드닝(Phase 5)** 여기까지 완료.
-남은 것 = Phase 6(E2E 복원·권한 검증).
+M1(실시간 수렴) 완료. **M2 전 Phase 완료**:
+doc-service 신설(Phase 1) → 인증/인가(Phase 2) → 스냅샷 영속화(Phase 3+4) → outbox 하드닝(Phase 5) → **E2E 검증(Phase 6)**.
 
 | Phase | 상태 | 산출 |
 |---|---|---|
@@ -30,14 +29,17 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 | 2c-C3 페이지 선택 + 에디터 + E2E | ✅ 머지 | frontend `9161fbc`·`336964f`·`b12e026` (PR #6·#7·#8) |
 | 3+4 엔진 스냅샷 | ✅ 완료 | engine C3~C6 (PR #13·#14·#15·#16·#17), backend C7 (PR #20) |
 | 5 outbox 하드닝 | ✅ 완료 | backend PR #24 (`5df4b3f`) |
+| 6 E2E 복원·권한 검증 | ✅ 완료 | backend PR #25 (`ba0406c`) |
 
 ## 다음 액션
 
 1. ~~**API 문서** — SpringDoc OpenAPI v3.0.3~~ ✅ 완료(2026-08-01)
 2. ~~**에러 구조화 로깅** — logback 에러 전용 JSON appender~~ ✅ 완료(2026-08-01)
 3. ~~**M2 Phase 5** — outbox 하드닝~~ ✅ 완료(2026-08-01, backend PR #24)
-4. **proto-doc** — buf/protoc-gen-doc으로 gRPC API 문서 자동 생성 (buf.gen.yaml 플러그인 추가)
-5. **M2 Phase 6** — E2E 복원·권한 검증 (상세 = `m2-persistence-session` plan)
+4. ~~**proto-doc** — buf/protoc-gen-doc으로 gRPC API 문서 자동 생성~~ ✅ 완료(2026-08-03, controller `7999aa6`)
+5. ~~**M2 Phase 6** — E2E 복원·권한 검증~~ ✅ 완료(2026-08-03, backend PR #25)
+6. **M3 진입 준비** — consistent-hash 멀티인스턴스 라우팅 · Redis 버퍼 복원 설계
+7. **plan-audit T4 잔여** — NFR/DoD 트래커 · 관측 콜사이트 · ADR 승격 · 완전성 보강
 
 ## 열린 트랙 (완료 시 여기부터 확인)
 
@@ -45,7 +47,7 @@ M1(실시간 수렴) 완료. M2는 doc-service 신설(Phase 1) → 인증/인가
 
 | plan | status | 실제 남은 것 |
 |---|---|---|
-| [m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md) | in-progress | **M2 Phase 6** (Phase 1·2·3+4·5 완료) |
+| ~~[m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md)~~ | **done** | Phase 6 완료(2026-08-03, backend PR #25). M2 전체 클리어 |
 | [plan-audit-improvements](../plans/2026-06-30-plan-audit-improvements.md) | in-progress | T4 잔여 4건(T4-1 NFR/DoD 트래커 · T4-2 관측 콜사이트 · T4-4 ADR 0002~0009 승격 · T4-5 ①②③⑤). **T4-3 서비스 CI는 2026-07-28 완료** |
 
 
