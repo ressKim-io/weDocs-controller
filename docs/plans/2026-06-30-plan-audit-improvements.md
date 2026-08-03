@@ -1,7 +1,7 @@
 ---
 date: 2026-06-30
 slug: plan-audit-improvements
-status: in-progress
+status: done
 related:
   - dev-logs/2026-06-30-m1-plan-audit.md
   - plans/2026-06-25-m1-convergence-impl.md

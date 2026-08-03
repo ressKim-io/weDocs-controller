@@ -39,7 +39,7 @@ doc-service 신설(Phase 1) → 인증/인가(Phase 2) → 스냅샷 영속화(P
 4. ~~**proto-doc** — buf/protoc-gen-doc으로 gRPC API 문서 자동 생성~~ ✅ 완료(2026-08-03, controller `7999aa6`)
 5. ~~**M2 Phase 6** — E2E 복원·권한 검증~~ ✅ 완료(2026-08-03, backend PR #25)
 6. **M3 진입 준비** — consistent-hash 멀티인스턴스 라우팅 · Redis 버퍼 복원 설계
-7. **plan-audit T4 잔여** — NFR/DoD 트래커 · 관측 콜사이트 · ADR 승격 · 완전성 보강
+7. ~~**plan-audit T4 잔여**~~ ✅ 완료(2026-08-03)
 
 ## 열린 트랙 (완료 시 여기부터 확인)
 
@@ -48,7 +48,7 @@ doc-service 신설(Phase 1) → 인증/인가(Phase 2) → 스냅샷 영속화(P
 | plan | status | 실제 남은 것 |
 |---|---|---|
 | ~~[m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md)~~ | **done** | Phase 6 완료(2026-08-03, backend PR #25). M2 전체 클리어 |
-| [plan-audit-improvements](../plans/2026-06-30-plan-audit-improvements.md) | in-progress | T4 잔여 4건(T4-1 NFR/DoD 트래커 · T4-2 관측 콜사이트 · T4-4 ADR 0002~0009 승격 · T4-5 ①②③⑤). **T4-3 서비스 CI는 2026-07-28 완료** |
+| ~~[plan-audit-improvements](../plans/2026-06-30-plan-audit-improvements.md)~~ | **done** | T4 전체 완료(2026-08-03). DoD 트래커·콜사이트·ADR 승격·완전성 보강 |
 
 
 > **2026-07-31 역방향 점검**(Phase 3+4 완료 후): `m2-phase34-engine-persistence`를 `done`으로 클로징하고

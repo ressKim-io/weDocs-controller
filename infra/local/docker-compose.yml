@@ -1,0 +1,84 @@
+# 통합 로컬 개발 환경 — 4프로세스 + 관측 일괄 기동.
+# 사용: docker compose -f infra/local/docker-compose.yml up
+#
+# 주의:
+# - engine과 backend는 로컬 빌드 이미지를 전제. 이미지가 없으면 먼저 빌드:
+#   (engine) docker build -t wedocs-engine .
+#   (backend) ./gradlew :doc-service:bootBuildImage / :ws-gateway:bootBuildImage
+# - M5 전까지는 수동 프로세스 기동이 더 간단할 수 있음 (Makefile 타겟 참조)
+# - Istio mesh 없음 (로컬은 직접 연결)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: wedocs
+      POSTGRES_USER: wedocs
+      POSTGRES_PASSWORD: wedocs-local
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wedocs"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  jaeger:
+    image: jaegertracing/jaeger:2
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "16686:16686" # UI
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+  engine:
+    image: wedocs-engine:latest
+    ports:
+      - "50051:50051"
+    environment:
+      LISTEN_ADDR: "0.0.0.0:50051"
+      DOC_SERVICE_ADDR: "http://doc-service:50052"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
+      OTEL_SERVICE_NAME: "crdt-engine"
+    depends_on:
+      jaeger:
+        condition: service_started
+
+  doc-service:
+    image: wedocs-doc-service:latest
+    ports:
+      - "8080:8080"
+      - "50052:50052"
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/wedocs"
+      SPRING_DATASOURCE_USERNAME: wedocs
+      SPRING_DATASOURCE_PASSWORD: wedocs-local
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
+      OTEL_SERVICE_NAME: "doc-service"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+
+  ws-gateway:
+    image: wedocs-ws-gateway:latest
+    ports:
+      - "8081:8081"
+    environment:
+      WEDOCS_ENGINE_TARGET: "engine:50051"
+      WEDOCS_DOC_SERVICE_TARGET: "doc-service:50052"
+      WEDOCS_DOC_SERVICE_JWKS_URI: "http://doc-service:8080/.well-known/jwks.json"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
+      OTEL_SERVICE_NAME: "ws-gateway"
+    depends_on:
+      engine:
+        condition: service_started
+      doc-service:
+        condition: service_started
+
+volumes:
+  pgdata:
