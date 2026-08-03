@@ -1,11 +1,12 @@
 name: proto-ci
 
-# proto SSOT 게이트. proto 변경 PR은 lint + format + breaking을 통과해야 한다.
+# proto SSOT 게이트. proto 변경 PR은 lint + format + breaking + doc freshness를 통과해야 한다.
 on:
   pull_request:
     paths:
       - "proto/**"
       - "buf.gen.yaml"
+      - "buf.gen.doc.yaml"
       - ".github/workflows/proto-ci.yml"
   push:
     branches: [main]
@@ -25,5 +26,23 @@ jobs:
           input: proto
           # main 브랜치의 proto/ 와 비교해 wire 호환성 파괴 차단
           breaking_against: ".git#branch=main,subdir=proto"
+
+  doc-freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: bufbuild/buf-setup-action@v1
+
+      - name: Generate proto docs
+        run: buf generate --template buf.gen.doc.yaml
+
+      - name: Check docs are up to date
+        run: |
+          if ! git diff --quiet docs/proto/; then
+            echo "::error::docs/proto/ is out of date. Run 'make proto-doc' and commit the result."
+            git diff docs/proto/
+            exit 1
+          fi
 
   # TODO(M5): buf 통과 시 다운스트림(backend / ai-service / crdt-engine) repository_dispatch 트리거
