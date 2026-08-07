@@ -566,9 +566,9 @@ SDD §6.3은 **장애** 케이스만 정의한다(인스턴스 down → 재라�
 
 > 서비스 레포(backend/frontend/engine)는 **branch + PR + 건별 승인**. controller만 main 직접.
 
-- [ ] **C1** `docs(plan):` 이 파일 신설 — controller main 직접
-- [ ] **C2** `docs(sdd):` 문서 정정 5건 — ① SDD §6.3 Redis 범위를 awareness 한정으로 명시(무손실 버퍼=M5는 유지) ② SDD §6.2 시퀀스의 "+ Redis fan-out" 삭제 ③ `design/crdt-engine.md` §6 "Redis + consistent-hash" 모순 정정 ④ **SDD §15 미해결 3건(yrs GC·eviction·제로카피)의 소유 마일스톤 M2→M3 재배정** ⑤ ADR-0011 §범위의 awareness "M1.5/M5" → M3 정정
-- [ ] **C3** `docs(adr):` `adr/README.md` 표 갱신 — 0021·0022 파일이 존재하나 표가 0020에서 끝남 (드리프트)
+- [x] **C1** `docs(plan):` 이 파일 신설 — controller main 직접 (`0e758f9`)
+- [x] **C2** `docs(sdd):` 문서 정정 **7건**(착수 시 2건 추가 발견) — ① SDD §6.3 Redis 범위를 awareness 한정으로 명시(무손실 버퍼=M5는 유지) ② SDD §6.2 시퀀스의 "+ Redis fan-out" 삭제 ③ `design/crdt-engine.md` §6 "Redis + consistent-hash" 모순 정정 ④ **SDD §15 미해결 3건(yrs GC·eviction·제로카피)의 소유 마일스톤 M2→M3 재배정** ⑤ ADR-0011 §범위의 awareness "M1.5/M5" → M3 정정 ⑥ **SDD §5 Redis 키 설계** — `pub/sub doc:{docId}`가 "update·awareness fan-out"이라 적혀 있어 판단 2와 정면 충돌(→ awareness 전용 채널로 교체) ⑦ **SDD §5 `presence:{docId}`** — M3 미사용을 명시(§3.1 저장 키 0개 결정)
+- [x] **C3** `docs(adr):` `adr/README.md` 표 갱신 — 0021·0022 등재 누락 + **0004·0005·0007이 2026-08-03 정식 승격됐는데 표는 여전히 "분리 예정"**(착수 시 발견). 후자는 이 plan 판단 3이 ADR-0007을 권위로 인용하는 근거라 그냥 둘 수 없었다
 - [ ] **C4** backend PR — Phase 1. **커밋 순서 고정**: decorator → 룸 인덱스 → 코덱(awareness/queryAwareness) → 릴레이 + **join 시 queryAwareness 발신**(§1.3) → 계측
 - [ ] **C5** frontend PR — Phase 2, **DoD #3 증거 확보**. 선행 = 커서 플러그인 ⓐ/ⓑ 판정
 - [ ] **C6** backend PR — Phase 3 (Redis pub/sub 2채널). **저장 키를 만들지 않는다** — Hash를 도입하면 §1.2 무해석 불변식이 깨진다(§3.1)
@@ -634,8 +634,9 @@ Phase 1·3·4는 동시성·자원 상한·실패 정책이 핵심이라 `concur
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = 2026-08-07 설계 작성 + 착수 전 코드 검증(4레포 실측). status=planned — 아직 착수 전.
-다음        = C1 커밋 → C2·C3 문서 정정 → Phase 1(backend PR) 착수.
+마지막 완료 = 2026-08-07 C1~C3. 계획 커밋(`0e758f9`) + 문서 드리프트 정정 8건
+              (C2 7건: SDD §5·§6.2·§6.3·§15×3 · 설계서 §6·§9 · ADR-0011 / C3 1건: adr/README).
+다음        = Phase 1(backend PR) 착수 — 브랜치 + PR + 건별 승인.
 
 주의 (다음 세션이 밟을 지뢰):
 1. Phase 1의 **첫 커밋은 ConcurrentWebSocketSessionDecorator**여야 한다(§1.1). 나중에 붙이면
