@@ -3,7 +3,9 @@
 - 상태: **Accepted**
 - 날짜: 2026-06-30
 - 관련: SDD §3.1·§3.2·§6 · [m1-convergence-impl plan §C·§D](../plans/2026-06-25-m1-convergence-impl.md) · [Phase 1~3 dev-log](../dev-logs/2026-06-28-m1-convergence-phase1-3.md) · 가드레일 5
-- 범위: M1 수렴 본체. awareness/self-echo 필터/per-edit span = M1.5/M5(범위 밖).
+- 범위: M1 수렴 본체. self-echo 필터/per-edit span = M1.5/M5(범위 밖·미구현).
+  ⚠️ **awareness는 M3다**(정정 2026-08-07) — DoD #3 "타 사용자 커서·선택 실시간 표시"의 소유 마일스톤이 M3이고([dod-tracker](../status/dod-tracker.md)), 여기 적힌 "M1.5/M5"는 stale이었다. 설계 = [M3 plan](../plans/2026-08-07-m3-presence-multiinstance.md).
+  본 ADR §대안 표가 기각한 "게이트웨이 세션 그룹 fan-out"과 M3의 `RoomRegistry`가 모순이 아닌 이유는 그 plan §1.2에 기록됐다 — 기각 사유의 "상태"는 *문서 sync의 권위*이고, awareness는 권위가 아닌 휘발 릴레이이며 문서 sync fan-out은 M3에서도 엔진 broadcast가 유지한다.
 
 ## 맥락
 
