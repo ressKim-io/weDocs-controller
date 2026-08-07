@@ -97,13 +97,13 @@
 
 ### 미해결 — 보안·품질 하드닝 (2026-07-03 크래프트 표준 6종 도입 시 등록)
 - [ ] DoS 하드닝 retrofit: room/doc-id 경계 검증(게이트웨이+엔진) · 문서 수 상한 · 프레임/메시지 크기 상한 → **M2 (Phase 2 분기 전 사이드트랙)** — [retrofit plan](../plans/2026-07-03-secure-coding-retrofit.md), 엔진/게이트웨이 독립 PR
-- [ ] 엔진 문서 eviction/idle unload → **M2 Phase 3+** ([ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md) 영속화 선행 — durable 전 evict = 유실)
+- [ ] 엔진 문서 eviction/idle unload → **M3**(재배정 2026-08-07 — 선행 영속화가 M2 Phase 3+에서 완료돼 차단 해제, 그러나 M2 중 미수행). evict 조건 = 세션 0 · pending save 0 · **durable**의 논리곱 — [M3 plan](../plans/2026-08-07-m3-presence-multiinstance.md) §Phase 4
 - [ ] 전송 하드닝(gateway↔engine 평문 채널·GetSnapshot 신뢰 경계) → **M5** (ztunnel mTLS+NetworkPolicy로 해소, 앱 레벨 TLS 여부는 mesh 도입 시 재판정)
 - [ ] SAST 확장(semgrep/CodeQL) → **M5** — 기본 스캔(gitleaks·의존성)은 [표준 도입 plan](../plans/2026-07-03-security-quality-standards.md) 트랙 2에서 CI로 도입
 - [ ] 레이트리밋·세션/커넥션 캡 정량화(NFR "~수천" 근거) → **M3** (멀티인스턴스 부하 검증과 동시)
 
 ### 미해결 — 엔진 확장·성능 (2026-07-04 등록, 상세 = [엔진 설계서 §6](../design/crdt-engine.md)·[벤치 방법론 §5](../design/benchmark-methodology.md))
-- [ ] fan-out 제로카피(`Vec<u8>` 구독자별 clone → `Bytes` 참조카운트) — Tier2 실험 2로 측정 후 적용 → **M2/M3**
-- [ ] yrs 인메모리 히스토리 GC/컴팩션 정책(스냅샷 시점 컴팩션·yrs 옵션 spec 검증) → **M2 Phase 3** ([ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md) 구현과 동시)
+- [ ] fan-out 제로카피(`Vec<u8>` 구독자별 clone → `Bytes` 참조카운트) — Tier2 실험 2로 측정 후 적용 → **M3에서 우선순위 판정**(재배정 2026-08-07, M2 중 미수행). 구현은 판정 이후 — [M3 plan](../plans/2026-08-07-m3-presence-multiinstance.md) §Phase 6
+- [ ] yrs 인메모리 히스토리 GC/컴팩션 정책(스냅샷 시점 컴팩션·yrs 옵션 spec 검증) → **M3**(재배정 2026-08-07 — M2 Phase 3 배정이었으나 미도입 확정: `doc.rs`가 `Doc::new()` 기본 옵션이고 레포에 `Options`/`gc` 코드 0건). ⚠️ ADR-0013 참조를 제거한다 — **ADR-0013 본문에 gc/컴팩션 언급이 없다**(오귀속). 스냅샷 크기 절벽과 한 트랙 = [M3 plan](../plans/2026-08-07-m3-presence-multiinstance.md) §Phase 4E
 - [ ] 샤드 리밸런싱/핸드오프(증설 시 드레인→스냅샷 push→재라우팅) → **M3** (consistent hash 키 전달 상세와 함께)
 - [ ] 릴리스 프로파일(lto 등)·jemalloc → Tier2 벤치 근거 동반 시만(jemalloc 보류 기록 2026-07-01)
