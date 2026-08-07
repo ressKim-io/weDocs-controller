@@ -15,8 +15,9 @@ outbox(id, aggregate_id, event_type, payload, traceparent, created_at, published
 ```
 > 평면 `documents` 구조를 대체(M1 전제). 페이지 *내용* 동시성=CRDT(page_snapshots), 페이지 *트리* 동시성=관계형(pages, doc-service 트랜잭션·사이클 검사). 유효 권한 = 명시 page_permissions > 조상 상속 > workspace baseline(member 기본=editor) > 거부.
 ### Redis (게이트웨이/AI 공용)
-- `presence:{docId}` — 접속자·커서 (TTL)
-- pub/sub `doc:{docId}` — update·awareness fan-out
+- pub/sub `awareness:{docId}` — **awareness(커서·선택) fan-out 전용**. 문서 update는 여기를 지나지 않는다 — 같은 doc의 모든 세션이 consistent-hash로 같은 엔진에 모여 엔진 broadcast로 전파된다(§6.3)
+- pub/sub `awareness:query:{docId}` — join 시 원격 게이트웨이의 peer에게 상태 재질의([M3 plan](../plans/2026-08-07-m3-presence-multiinstance.md) §3.2)
+- ~~`presence:{docId}` — 접속자·커서 (TTL)~~ → **M3 미사용**. 서버가 awareness 상태를 보관하면 게이트웨이가 페이로드를 디코딩해야 하고, 유령 커서는 클라이언트가 30초 타임아웃으로 스스로 지운다(y-protocols). 서버측 "누가 접속 중" 조회 API가 필요해지는 시점에 재도입
 - AI 추론 큐(depth 모니터링)
 ### pgvector (AI 서비스)
 ```
@@ -42,12 +43,12 @@ gateway → doc: CheckPermission ⇒ role
 gateway ↔ crdt: Sync 스트림 open (docId 메타데이터 → consistent hash 라우팅)
 gateway → crdt: ClientFrame(state_vector) ; crdt → gateway: ServerFrame(diff update)
 client: 로컬 Yjs 적용(즉시 편집 가능)
-이후: update가 bidi 스트림으로 양방향 흐름 + Redis fan-out
+이후: update가 bidi 스트림으로 양방향 흐름 → 엔진이 같은 doc의 모든 세션에 broadcast (Redis 미경유)
 ```
 
 ### 6.3 수평 확장
 - CRDT Engine: docId consistent hashing(같은 문서 = 같은 인스턴스). Istio waypoint + DestinationRule.
-- WS Gateway: 무상태, 크로스-인스턴스 전파는 Redis pub/sub.
+- WS Gateway: 무상태. 크로스-인스턴스 Redis pub/sub은 **awareness 전용**이다 — 문서 update는 consistent-hash가 같은 doc의 모든 세션을 같은 엔진에 모아주므로 게이트웨이가 몇 대든 엔진 broadcast만으로 전파된다(게이트웨이 fan-out 코드 불요).
 - 장애: 엔진 인스턴스 down → 문서 재라우팅 → 복원. **M2 보장경계 = 최신 스냅샷**(엔진 ensure→`LoadSnapshot`→`apply_update_v1`(신규=빈 Doc)→SyncStep2, [ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md)). 무손실(Redis 버퍼) = M5.
 
 ---

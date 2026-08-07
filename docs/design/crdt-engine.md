@@ -232,7 +232,7 @@ per-session tokio task가 `select!`로 인바운드(클라 프레임)와 fan-out
 | **레지스트리 락** | **per-doc 샤딩 ✅**(2026-07-01 [PR #4](https://github.com/ressKim-io/weDocs-crdt-engine/pull/4): `DashMap` + doc별 `parking_lot::Mutex`) | "N배" 수치 미확보(Tier2 측정 전) | Tier2 before/after 측정([방법론 §5](benchmark-methodology.md)) → 이후 **액터 Level-2**(concurrency.md P6) 판단 | y-sweet의 doc별 격리 |
 | **fan-out 바이트** | `update.to_vec()` — `tokio::broadcast`가 **구독자마다 `Vec<u8>` clone**(편집자 50명=페이로드 50벌) | 제로카피 아님 | `Bytes` 공유로 clone=참조카운트 O(1) — [방법론 §5 실험 2](benchmark-methodology.md)로 측정 후 적용 | — |
 | **영속화** | 없음(인메모리, 프로세스 재시작=유실) | 복원 불가 | 스냅샷(update N개/T초) → Postgres bytea, 복원 적용 | Hocuspocus 바이너리 저장 |
-| **멀티인스턴스 fan-out** | 단일 인스턴스 가정 | 수평 확장 불가 | **Redis pub/sub** 크로스 인스턴스 + docId consistent-hash 라우팅(Istio waypoint) | y-redis |
+| **멀티인스턴스 fan-out** | 단일 인스턴스 가정 | 수평 확장 불가 | **docId consistent-hash 라우팅**(Istio waypoint) — 같은 doc이 같은 인스턴스에 모이므로 **엔진에 크로스 인스턴스 fan-out이 불필요**하다. ⚠️ 원래 이 칸에 병기됐던 "Redis pub/sub"은 **대안이지 보완이 아니다**(정정 2026-08-07) — consistent-hash를 택했으므로 **엔진은 Redis를 쓰지 않는다**. 게이트웨이의 awareness pub/sub은 별개 경로([M3 plan](../plans/2026-08-07-m3-presence-multiinstance.md) 판단 2) | y-redis(우리와 다른 선택) |
 | **yrs 히스토리** | `Doc::new()` 기본 옵션 — GC/컴팩션 정책 미정(2026-07-04 등록) | 장수 문서의 tombstone·delete-set 인메모리 누적 | 스냅샷 시점([ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md)) 컴팩션 + yrs GC 옵션 명시(구현 시 spec 검증) → **M2 Phase 3** | Yjs `gc` 옵션 |
 | **샤드 리밸런싱** | consistent hash가 "배치"만 결정(2026-07-04 등록) | 인스턴스 증설/축소 시 문서 이동·세션 드레이닝 미정의(SDD §6.3은 장애 케이스만) | 핸드오프 시퀀스(드레인→스냅샷 push→재라우팅→재접속) 설계 → **M3**(라우팅 상세와 함께) | — |
 | **벤치 방법론** | criterion + **M1.5 Tier1 위생/회귀 가드 ✅**(PR#3: merge/build_doc 분리·워크로드 4종·`--save-baseline`) | "N배" 헤드라인은 아직(Tier2 샤딩 before/after 필요) | Tier2 샤딩 baseline → M2/M3 | §7 |
@@ -282,7 +282,7 @@ NFR이 요구하는 것       = end-to-end 수렴 지연 p95 < 100ms       ← �
 
 - 영속화·스냅샷·복원 → **M2** ([M2F-02])
 - per-doc 샤딩 ✅(2026-07-01 PR #4) — Tier2 "N배" 측정 + 제로카피(`Bytes`) 실험 2 → **M2/M3** (§6, [방법론 §5](benchmark-methodology.md))
-- 멀티인스턴스 fan-out(Redis) + consistent-hash 라우팅 상세 → **M3**
+- 멀티인스턴스 라우팅 상세(consistent-hash 키 전달) → **M3**. **엔진에 Redis는 없다** — awareness pub/sub은 게이트웨이 몫(정정 2026-08-07, §6)
 - yrs 히스토리 GC/컴팩션 정책(스냅샷 시점 컴팩션, yrs 옵션 spec 검증) → **M2 Phase 3** (§6)
 - 샤드 리밸런싱/핸드오프(증설 시 드레인→스냅샷 push→재라우팅) → **M3** (§6)
 - 릴리스 프로파일(lto·codegen-units)·jemalloc → Tier2 벤치 근거 동반 시만(jemalloc 보류 기록 2026-07-01)
