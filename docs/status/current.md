@@ -4,14 +4,23 @@
 > CLAUDE.md는 이 파일을 가리키는 포인터만 갖는다(진척 이력을 CLAUDE.md에 두지 않는 이유 = 공식 가이드의 "자주 바뀌는 정보 제외" + 그 편집 지점이 곧 드리프트 지점이었다는 실증).
 > 완료 이력 = [`history.md`](history.md) · 상세 실행 계획 = `docs/plans/`
 
-**최종 갱신**: 2026-08-03
+**최종 갱신**: 2026-08-07
 
 ---
 
 ## 지금
 
+**M3 착수 대기 — 계획 확정 + 문서 정합까지 완료(2026-08-07).** 코드 작업은 아직 0.
+**다음 = Phase 1(backend PR)**: 게이트웨이 awareness 릴레이. 브랜치 + PR + 건별 승인.
+
+> ⚠️ **Phase 1의 첫 커밋은 `ConcurrentWebSocketSessionDecorator`여야 한다** — awareness fan-out이
+> WS 단일 writer 불변식(§D-6)을 깨므로, 나중에 붙이면 그 사이 모든 fan-out 코드가 미검증 동시성
+> 위에 쌓인다. 상세 = [M3 plan §1.1](../plans/2026-08-07-m3-presence-multiinstance.md).
+
+**M2 마일스톤 전체 완료(2026-08-03)** — 아래는 그 이력.
+
 **M2 Phase 6(E2E 복원·권한 검증) 완료(2026-08-03).** backend PR #25 머지(`ba0406c`). 181 테스트 전체 통과.
-**M2 마일스톤 전체 완료.** proto-doc 파이프라인도 동시 완성(controller `7999aa6`).
+proto-doc 파이프라인도 동시 완성(controller `7999aa6`).
 
 > 2026-08-03 Phase 6 완료 — E2E 스냅샷 복원 + 권한 상속 gRPC 검증 테스트 17건 추가.
 > 2026-08-03 proto-doc 완료 — Makefile + CI doc-freshness job + buf.gen.doc.yaml 보강.
@@ -38,8 +47,10 @@ doc-service 신설(Phase 1) → 인증/인가(Phase 2) → 스냅샷 영속화(P
 3. ~~**M2 Phase 5** — outbox 하드닝~~ ✅ 완료(2026-08-01, backend PR #24)
 4. ~~**proto-doc** — buf/protoc-gen-doc으로 gRPC API 문서 자동 생성~~ ✅ 완료(2026-08-03, controller `7999aa6`)
 5. ~~**M2 Phase 6** — E2E 복원·권한 검증~~ ✅ 완료(2026-08-03, backend PR #25)
-6. **M3 진입 준비** — consistent-hash 멀티인스턴스 라우팅 · Redis 버퍼 복원 설계
+6. ~~**M3 진입 준비**~~ ✅ 완료(2026-08-07) — [M3 plan](../plans/2026-08-07-m3-presence-multiinstance.md) 확정(`0e758f9`) + 문서 드리프트 정정 8건(`9a23c88`·`9c2ba83`·`4c4d1ee`·`776ccda`).
+   ⚠️ **"Redis 버퍼 복원 설계"는 이 항목에서 빼냈다** — SDD §6.3이 무손실 Redis 버퍼를 **M5**로 배정하고 있고(핸드오프 구현과 한 몸), M3의 Redis는 awareness 전용이다. 여기 M3로 적혀 있던 것이 SDD와 불일치였다(정정 2026-08-07, plan 판단 2)
 7. ~~**plan-audit T4 잔여**~~ ✅ 완료(2026-08-03)
+8. **M3 Phase 1** — 게이트웨이 룸 인덱스 + awareness 릴레이 + join 시 queryAwareness 발신 (backend PR) ← **지금 여기**
 
 ## 열린 트랙 (완료 시 여기부터 확인)
 
@@ -49,6 +60,7 @@ doc-service 신설(Phase 1) → 인증/인가(Phase 2) → 스냅샷 영속화(P
 |---|---|---|
 | ~~[m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md)~~ | **done** | Phase 6 완료(2026-08-03, backend PR #25). M2 전체 클리어 |
 | ~~[plan-audit-improvements](../plans/2026-06-30-plan-audit-improvements.md)~~ | **done** | T4 전체 완료(2026-08-03). DoD 트래커·콜사이트·ADR 승격·완전성 보강 |
+| [**m3-presence-multiinstance**](../plans/2026-08-07-m3-presence-multiinstance.md) | **planned** | C1~C3 완료(계획+문서정정). **C4~C11 미착수** = Phase 1 awareness 릴레이 · 2 프론트 커서(DoD #3) · 3 Redis 크로스 게이트웨이 · 4 자원 상한+문서 eviction · 4E 증분 저장·GC · 5 consistent-hash 검증(Envoy) · 6 부하·NFR · 7 핸드오프 설계 |
 
 
 > **2026-07-31 역방향 점검**(Phase 3+4 완료 후): `m2-phase34-engine-persistence`를 `done`으로 클로징하고
