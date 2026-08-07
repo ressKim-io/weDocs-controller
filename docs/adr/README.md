@@ -7,10 +7,10 @@ SDD §15 결정 로그를 개별 ADR로 분리한다. 형식: **1 결정 = 1 파
 | [0001](0001-language-strategy-b.md) | 언어 전략 B (I/O=Java VT · AI=Python · CPU=Rust, Go 제외) | Accepted |
 | 0002 | 게이트웨이 Java Virtual Thread (JEP 491 pinning 해소) | SDD §15.2 — 분리 예정 |
 | 0003 | AI = Python / LlamaIndex (생태계 깊이) | SDD §15.3 — 분리 예정 |
-| 0004 | Rust 독립 CRDT 엔진 + bidi streaming | SDD §15.4 — 분리 예정 |
-| 0005 | CRDT 라이브러리 = yrs (Yjs wire 호환) | SDD §15.5 — 분리 예정 |
+| [0004](0004-rust-bidi-engine.md) | Rust 독립 CRDT 엔진 + bidi streaming | **Accepted** |
+| [0005](0005-yrs-crdt-library.md) | CRDT 라이브러리 = yrs (Yjs wire 호환) | **Accepted** |
 | 0006 | 5-repo 폴리레포 + buf (proto 배포는 ADR-0010이 확정) | SDD §15.6 — 분리 예정 |
-| 0007 | Istio Ambient (ztunnel L4 / waypoint=엔진) | SDD §15.7 — 분리 예정 |
+| [0007](0007-istio-ambient.md) | Istio Ambient (ztunnel L4 / waypoint=엔진) | **Accepted** |
 | 0008 | vector store = pgvector | SDD §15.8 — 분리 예정 |
 | 0009 | 배포 = 홈랩 KinD + 로컬 GPU | SDD §15.9 — 분리 예정 |
 | [0010](0010-proto-distribution-buf-git-input.md) | proto 배포 = buf 원격 git input (submodule 불가 → `subdir` input) | **Accepted** |
@@ -24,13 +24,15 @@ SDD §15 결정 로그를 개별 ADR로 분리한다. 형식: **1 결정 = 1 파
 | [0018](0018-error-catalog.md) | 에러 카탈로그 (서비스별 ErrorCode enum + 카테고리 예외·ProblemDetail `code`·gRPC 매핑 일원화) | **Accepted** |
 | [0019](0019-package-by-feature-java.md) | Java 서비스 패키지 = package-by-feature (feature 평면·common 최소·gRPC 어댑터 예외) | **Accepted** |
 | [0020](0020-data-access-conventions.md) | 데이터 접근 (ID-only 연관·DB FK 유지+제거 트리거·QueryDSL 채택 기준) | **Accepted** |
+| [0021](0021-ws-handshake-auth-failure-observability.md) | WS 인증/인가 실패 = 핸드셰이크 HTTP 거절 + 관측 계약 | **Accepted** |
+| [0022](0022-module-structure-rust.md) | crdt-engine 모듈 구조 (관심사 모듈·계층 폴더 금지) | **Accepted** |
 
-> **번호 공백(0002~0009)**: 0010(proto 배포 블로커)을 먼저 확정해 점프. 0002~0009 정식 분리는 **M6 일괄**(또는 해당 마일스톤 착수 시) — 그 전까지 **권위 = SDD §15 본문**. 0011 = M1 마감 산출물. 0012~0015 = M2 readiness 게이트 산출물. 0017 = M2 1c 산출물. 0018~0020 = 표준 확장 사이드트랙(2026-07-17) 산출물.
+> **번호 공백(0002~0009)**: 0010(proto 배포 블로커)을 먼저 확정해 점프. **0004·0005·0007은 2026-08-03에 정식 승격됐다**(표 갱신 누락을 2026-08-07 정정) — 이 셋의 권위는 이제 ADR 본문이다. 나머지(0002·0003·0006·0008·0009) 정식 분리는 **M6 일괄**(또는 해당 마일스톤 착수 시)이고 **그 전까지 권위 = SDD §15 본문**. 0011 = M1 마감 산출물. 0012~0015 = M2 readiness 게이트 산출물. 0017 = M2 1c 산출물. 0018~0020 = 표준 확장 사이드트랙(2026-07-17) 산출물. 0021 = M2 Phase 2 산출물. 0022 = M2 Phase 3+ 산출물.
 
 ## 미해결 (소유 마일스톤 — 권위=SDD §15, 여기는 링크만)
 > SDD §15와 중복 관리 금지. 상세·갱신은 [SDD §15](../sdd/5-project-milestones-guardrails.md).
 - ~~CRDT Engine 장애 복원 절차 → M2~~ ✅ [ADR-0013](0013-snapshot-persistence-lifecycle.md)
 - ~~outbox 구현 (Debezium vs 앱레벨) → M2~~ ✅ [ADR-0015](0015-outbox-app-level.md) (relay=M4)
 - ~~인증 서비스 분리 시점 → M2~~ ✅ [ADR-0014](0014-auth-authz-boundary.md) (M2=doc-service 내장, 분리=후속)
-- consistent hash 키 전달 상세 (gRPC 메타데이터 ↔ waypoint) → **M3**
+- consistent hash 키 전달 상세 (gRPC 메타데이터 ↔ waypoint) → **M3** (ADR-0023 예정 — [M3 plan](../plans/2026-08-07-m3-presence-multiinstance.md) §Phase 5가 standalone Envoy로 계약을 선확정)
 - AI Service SLO 정량 정의 (큐 대기 + 추론) → **M4**
