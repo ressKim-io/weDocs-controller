@@ -16,7 +16,7 @@
 ┌──────────────────────┐       WebSocket        ┌──────────────────────┐     gRPC bidi     ┌──────────────┐
 │ Frontend             │ ◄───────────────────► │ WS Gateway           │ ◄──────────────► │ CRDT Engine  │
 │ React/Tiptap/Yjs     │   sync + awareness    │ Java VT + RoomRegistry│   document sync   │ Rust/yrs     │
-│ CollaborationCaret   │                       └──────────┬───────────┘                   └──────┬───────┘
+│ CollaborationCaret*  │                       └──────────┬───────────┘                   └──────┬───────┘
 └──────────────────────┘                                  │ gRPC                                   │ gRPC
                                                           ▼                                       ▼
                                                    ┌──────────────┐                   SaveSnapshot/LoadSnapshot
@@ -31,6 +31,7 @@
 
 awareness: 같은 gateway 안에서는 RoomRegistry로 불투명 릴레이(Phase 1 완료)
            gateway 간 Redis pub/sub 전파는 M3 Phase 3 예정 — 아직 배포되지 않음
+           * CollaborationCaret은 M3 Phase 2 pushed branch에 구현, service main에는 아직 미머지
 문서 sync: Redis를 거치지 않고 CRDT Engine의 문서별 broadcast가 권위
 
                     ┌──────────────┐     Kafka (M4)     ┌──────────────┐
@@ -46,7 +47,7 @@ awareness: 같은 gateway 안에서는 RoomRegistry로 불투명 릴레이(Phase
 | `weDocs-controller` | — | proto SSOT, ADR, plan, infra(kustomize) |
 | `weDocs-backend` | Java 25 | ws-gateway + doc-service (Spring Boot) |
 | `weDocs-crdt-engine` | Rust | yrs 기반 CRDT 엔진 (tonic gRPC) |
-| `weDocs-frontend` | TypeScript | React + Tiptap Collaboration + Yjs/y-websocket + CollaborationCaret |
+| `weDocs-frontend` | TypeScript | React + Tiptap Collaboration + Yjs/y-websocket; CollaborationCaret은 M3 Phase 2 pushed branch(main 미머지) |
 | `weDocs-ai-service` | Python | FastAPI + LlamaIndex (M4 신설 예정) |
 
 ## 핵심 결정 (ADR)
@@ -67,7 +68,7 @@ awareness: 같은 gateway 안에서는 RoomRegistry로 불투명 릴레이(Phase
 |---|---|---|
 | M1 | CRDT 코어 — 두 브라우저 수렴 | ✅ |
 | M2 | 영속화·세션·권한 | ✅ |
-| M3 | Presence — 커서·선택 fan-out (멀티인스턴스) | 🔶 Phase 1 머지, Phase 2 로컬 구현·E2E/머지 대기 |
+| M3 | Presence — 커서·선택 fan-out (멀티인스턴스) | 🔶 Phase 1 머지, Phase 2 service branches push·review findings 반영, E2E/PR·머지 대기 |
 | M4 | AI co-pilot — RAG 스트리밍, GPU 폴백 | ⬜ |
 | M5 | 인프라·관측 — GitOps, 단일 trace | ⬜ |
 | M6 | 마감 — 문서·데모·벤치마크 | ⬜ |

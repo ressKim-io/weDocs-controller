@@ -22,7 +22,7 @@
 ## 5-repo 폴리레포
 | 레포 | 스택 | 역할 |
 |---|---|---|
-| `frontend` | React + Tiptap + Yjs/y-websocket | 에디터, Collaboration + 공식 CollaborationCaret 기반 awareness 커서·선택 UI |
+| `frontend` | React + Tiptap + Yjs/y-websocket | 에디터, Collaboration + 공식 CollaborationCaret 기반 awareness 커서·선택 UI (**M3 Phase 2 pushed branch, main 미머지**) |
 | `backend` | Java (gradle multi-module) | ws-gateway, doc-service |
 | `ai-service` | Python | FastAPI RAG + Kafka indexer |
 | `crdt-engine` | Rust | yrs 엔진 + tonic gRPC (bidi streaming) |
@@ -55,7 +55,7 @@ controller/
 - **M0** ✅ 기획·proto·스캐폴딩
 - **M1** ✅ CRDT 코어: 두 브라우저 수렴 + Java→Rust thin trace
 - **M2** ✅ 영속화·세션·권한: 스냅샷 저장/복원 + 인증/인가 + E2E
-- **M3** 🔶 Presence + 멀티인스턴스: Phase 1 머지, Phase 2 로컬 구현·DoD 검증/머지 대기
+- **M3** 🔶 Presence + 멀티인스턴스: Phase 1 머지, Phase 2 service branches push·review findings 반영, DoD 검증/PR·머지 대기
 - **M4** AI co-pilot · **M5** 인프라·관측 · **M6** 마감
 
 최신 세부 상태와 다음 작업은 [`docs/status/current.md`](docs/status/current.md)만을 따른다.

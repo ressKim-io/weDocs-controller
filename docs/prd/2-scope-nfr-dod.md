@@ -52,7 +52,7 @@
 
 - [x] 두 브라우저에서 같은 문서를 동시 편집해 충돌 없이 수렴한다 — **M1 ✅** (E2E green `e8f0c83`)
 - [x] 재접속 후 문서 상태가 복원된다 — **M2 ✅** (SnapshotRestoreE2ETest 8건, backend PR #25 `ba0406c`)
-- [~] 타 사용자 커서·선택이 실시간 표시된다 — **M3 🔶** (로컬 구현·자동 검증 완료, 2브라우저 E2E·commit/merge 증거 대기)
+- [~] 타 사용자 커서·선택이 실시간 표시된다 — **M3 🔶** (pushed service branches에 구현·부분 자동 검사 통과, Docker/2브라우저 E2E·PR/merge 증거 대기)
 - [ ] 문서 근거 기반 AI 답변이 스트리밍으로 출력된다 — **M4**
 - [ ] 로컬 GPU 과부하 시 클라우드로 폴백된다 — **M4**
 - [~] Java→Rust→Python 호출이 단일 trace로 관측된다 — **M1 = 2-hop(Java→Rust) thin 증명 ✅ / 3-hop(+Python) = M4**

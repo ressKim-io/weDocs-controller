@@ -78,8 +78,8 @@ SSE 중단 처리: 추론 실패 시 error 이벤트 + 폴백 재시도.
 
 ## 8. 인증 / 인가 ([ADR-0014](../adr/0014-auth-authz-boundary.md))
 - **인증**: JWT 발급=Doc 서비스(REST 로그인). 검증=게이트웨이(WS 핸드셰이크)·Doc 서비스(REST). M2는 doc-service 내장(분리=후속).
-- **인증 사용자 프로필**: 인증된 `GET /api/users/me`는 검증된 JWT `sub`를 UUID로 해석해 DB의 `UserResponse{id,email,displayName}`를 반환한다. ADR-0017에 따라 JWT에는 email/displayName을 싣지 않으므로, 프론트는 로그인 토큰과 이 프로필을 **메모리 세션에만** 함께 보관한다.
-- **awareness 표시 계약(M3 Phase 2)**: 프론트는 user UUID를 결정론적으로 색에 매핑하고 `user{name,color}`를 awareness에 설정해 공식 Tiptap `CollaborationCaret`으로 원격 커서·선택을 렌더링한다. viewer도 문서 쓰기는 잠기지만 포커스·presence 발행은 허용한다. `WebsocketProvider`/Y.Doc 생성·파괴는 React effect가 소유한다(StrictMode에서 `useMemo` 소유 금지).
+- **인증 사용자 프로필(M3 Phase 2, pushed/unmerged)**: 인증된 `GET /api/users/me`는 검증된 canonical UUID JWT `sub`로 DB의 `UserResponse{id,email,displayName}`를 반환한다. ADR-0017에 따라 JWT에는 email/displayName을 싣지 않으므로, 프론트는 로그인 토큰과 이 프로필을 **메모리 세션에만** 함께 보관한다. 이 계약은 service main 머지 전이다.
+- **awareness 표시 계약(M3 Phase 2, pushed/unmerged)**: 프론트는 user UUID를 결정론적으로 색에 매핑하고 `user{name,color}`를 awareness에 설정해 공식 Tiptap `CollaborationCaret`으로 원격 커서·선택을 렌더링한다. viewer도 문서 쓰기는 잠기지만 포커스·presence 발행은 허용한다. `WebsocketProvider`/Y.Doc 생성·파괴는 React effect가 소유한다(StrictMode에서 `useMemo` 소유 금지). 인증 bootstrap은 최신 시도만 token/profile을 commit·rollback하도록 소유권을 비교한다.
 - **awareness 신뢰 경계**: `name`·`color`는 인증·인가 근거가 아닌 클라이언트 통제 **표시 데이터**다. 원격 값은 DOM 렌더링 경계에서 이름 길이·색 형식을 정규화해 CSS 삽입/UI 훼손을 막는다. 접근 권한은 계속 JWT + `CheckPermission`만 판정하며 게이트웨이는 awareness 페이로드를 디코딩하지 않는다.
 - **WS 토큰 전달**: `Sec-WebSocket-Protocol` 서브프로토콜(브라우저 헤더 커스텀 불가 우회, query param 로그유출 회피).
 - **인가**: connect 시 `DocService.CheckPermission(user_id, page_id)` → effective level(상속 해석). 게이트웨이가 JWT 검증 후 user_id 전달(proto 토큰필드 불요).

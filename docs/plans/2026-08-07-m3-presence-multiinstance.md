@@ -286,10 +286,10 @@ awareness 페이로드는 클라이언트가 만든 `{name, color}`를 담는다
 
 ### 진행 기록 (2026-08-08)
 
-- backend `feat/m3-phase2-current-user` **로컬 working tree**: 공개 `/api/auth/**` 밖의 인증된 `GET /api/users/me` 추가. 검증된 JWT `sub`를 사용자 UUID로 해석해 `UserResponse{id,email,displayName}`를 반환한다. ADR-0017이 JWT에서 email/displayName을 의도적으로 제외하므로 프론트 awareness 이름은 이 프로필 계약을 사용한다.
-- frontend `feat/m3-phase2-collaboration-caret` **로컬 working tree**: 프로필을 토큰과 함께 메모리 인증 세션에 보관하고, user UUID 결정론적 색 + effect 소유 provider의 awareness 선설정 + caret/selection 렌더링 + viewer 포커스 + 원격 이름·색 DOM 경계 정규화를 구현했다.
-- 자동 검증: frontend `npm run test:unit` **74/74** + `npm run build` 통과, backend compile/Checkstyle/PMD 통과. backend 전체 check의 Testcontainers 13 suite는 로컬 Docker 부재로 초기화 실패.
-- **남은 게이트**: 현재 변경은 양 레포 로컬 working tree에만 있다. Docker 환경 backend 전체 회귀, 4프로세스 + 2브라우저(편집자·viewer 포함) 커서·선택 스크린샷/로그, backend/frontend commit·push·PR·승인·머지가 남았다. 완료 전에는 C5와 DoD #3을 체크하지 않는다.
+- backend `feat/m3-phase2-current-user` **origin push·main 미머지**(기능 `f4e12f4`·review-fix `7a5d179`): 공개 `/api/auth/**` 밖의 인증된 `GET /api/users/me` 추가. canonical UUID JWT `sub`를 경계에서 검증하고 `UserResponse{id,email,displayName}`를 반환한다. Docker-free malformed/missing-sub 401 테스트와 Testcontainers current-user 계약 테스트를 보강했다.
+- frontend `feat/m3-phase2-collaboration-caret` **origin push·main 미머지**(기능 `bb77e50`·`e142677`·review-fix `eb433e3`): 프로필을 토큰과 함께 메모리 인증 세션에 보관하고, 최신 인증 시도만 token/profile을 commit·rollback하도록 소유권을 고정했다. user UUID 결정론적 색 + effect 소유 provider의 awareness 선설정 + caret/selection 렌더링 + viewer 포커스 + 원격 이름·색 DOM 경계 정규화를 구현했다.
+- 부분 자동 검사: frontend `npm run test:unit` **84/84** + `npm run build` 통과, backend Docker-free `SecurityWiringTest` + compile/Checkstyle/PMD 통과. `/api/users/me` Testcontainers 계약 테스트는 작성했지만 전체 check의 13 container suite와 함께 로컬 Docker 부재로 실행하지 못했다.
+- **남은 게이트**: Docker 환경 backend 전체 회귀, 4프로세스 + 2브라우저(편집자·viewer 포함) 커서·선택 스크린샷/로그, backend/frontend PR·승인·머지가 남았다. 완료 전에는 C5와 DoD #3을 체크하지 않는다.
 - awareness 표시 이름은 클라이언트 통제라는 §1.5 수용 범위를 유지한다. 원격 color/name은 CSS 삽입·UI 훼손 방지를 위해 렌더링 경계에서 고정 형식·길이로 정규화한다.
 
 ---
@@ -579,7 +579,7 @@ SDD §6.3은 **장애** 케이스만 정의한다(인스턴스 down → 재라�
 - [x] **C2** `docs(sdd):` 문서 정정 **7건**(착수 시 2건 추가 발견) — ① SDD §6.3 Redis 범위를 awareness 한정으로 명시(무손실 버퍼=M5는 유지) ② SDD §6.2 시퀀스의 "+ Redis fan-out" 삭제 ③ `design/crdt-engine.md` §6 "Redis + consistent-hash" 모순 정정 ④ **SDD §15 미해결 3건(yrs GC·eviction·제로카피)의 소유 마일스톤 M2→M3 재배정** ⑤ ADR-0011 §범위의 awareness "M1.5/M5" → M3 정정 ⑥ **SDD §5 Redis 키 설계** — `pub/sub doc:{docId}`가 "update·awareness fan-out"이라 적혀 있어 판단 2와 정면 충돌(→ awareness 전용 채널로 교체) ⑦ **SDD §5 `presence:{docId}`** — M3 미사용을 명시(§3.1 저장 키 0개 결정)
 - [x] **C3** `docs(adr):` `adr/README.md` 표 갱신 — 0021·0022 등재 누락 + **0004·0005·0007이 2026-08-03 정식 승격됐는데 표는 여전히 "분리 예정"**(착수 시 발견). 후자는 이 plan 판단 3이 ADR-0007을 권위로 인용하는 근거라 그냥 둘 수 없었다
 - [x] **C4** backend PR #34 (`bb2cdea`) — Phase 1. 커밋 순서: decorator → 룸 인덱스 → 코덱(awareness/queryAwareness) → 릴레이 + join 시 queryAwareness 발신 → 관측 → 크래프트 게이트 findings → semantic review findings
-- [ ] **C5** backend + frontend PR — Phase 2, **DoD #3 증거 확보**. 양 레포 로컬 working tree 구현 완료(2026-08-08): 인증된 현재 사용자 프로필 계약 + 공식 CollaborationCaret 배선. 남음 = Docker 회귀 + 2브라우저 E2E 증거 + 양 레포 commit·push·PR·승인·머지
+- [ ] **C5** backend + frontend PR — Phase 2, **DoD #3 증거 확보**. 양 서비스 branch 구현·push + semantic review findings 반영(2026-08-08): 인증된 현재 사용자 프로필 계약 + 공식 CollaborationCaret 배선 + 인증 bootstrap 소유권. 남음 = Docker 회귀 + 2브라우저 E2E 증거 + 양 레포 PR·승인·머지
 - [ ] **C6** backend PR — Phase 3 (Redis pub/sub 2채널). **저장 키를 만들지 않는다** — Hash를 도입하면 §1.2 무해석 불변식이 깨진다(§3.1)
 - [ ] **C7** backend PR + engine PR — Phase 4 (게이트웨이 상한 + 엔진 per-doc 캡 + 문서 eviction). **eviction은 §Phase 4의 세 조건을 테스트로 고정한 뒤에만 활성화**
 - [ ] **C7E** engine PR — Phase 4E (증분 저장·GC). **선행 = 현실적 최대 문서 크기 측정** → 방향 3택 ADR
@@ -644,15 +644,16 @@ Phase 1·3·4는 동시성·자원 상한·실패 정책이 핵심이라 `concur
 
 ```
 마지막 완료 = C4 Phase 1 — backend PR #34(`bb2cdea`) 머지(2026-08-08).
-현재        = C5 Phase 2 양 레포 로컬 working tree 구현 완료.
-              backend `feat/m3-phase2-current-user`: 인증된 GET /api/users/me.
-              frontend `feat/m3-phase2-collaboration-caret`: 세션 프로필 + awareness caret/selection.
-              자동 검증: frontend 74/74 + build, backend compile/Checkstyle/PMD.
+현재        = C5 Phase 2 양 서비스 branch push·semantic review findings 반영.
+              backend `feat/m3-phase2-current-user`: 인증된 GET /api/users/me + UUID sub 검증·계약 테스트.
+              frontend `feat/m3-phase2-collaboration-caret`: attempt-owned 세션 + awareness caret/selection.
+              부분 자동 검사: frontend 84/84 + build, backend SecurityWiringTest + compile/Checkstyle/PMD.
 다음        = Docker/Testcontainers 전체 회귀 → 4프로세스 2브라우저(editor/viewer) 스크린샷·로그
-              → backend/frontend 각각 commit·push → PR 생성·승인·머지 → C5·DoD #3 체크.
+              → backend/frontend PR 생성·승인·머지 → C5·DoD #3 체크.
 
 주의 (다음 세션이 밟을 지뢰):
-1. **현재 서비스 변경은 아직 커밋 전 working tree다.** 완료·머지로 오기하지 말고 각 레포 status부터 확인한다.
+1. **현재 서비스 변경은 origin feature branch에 push됐지만 main에는 미머지다.** 완료로 오기하지 말고
+   각 레포 branch/upstream과 PR 상태부터 확인한다.
 2. JWT에는 ADR-0017에 따라 displayName이 없다. awareness 이름은 인증된 `/api/users/me` 프로필을
    메모리 세션에 붙여 얻고, email을 커서 이름으로 노출하거나 localStorage에 프로필/토큰을 저장하지 않는다.
 3. provider/Y.Doc 생성은 React effect가 소유한다. `useMemo` 생성으로 되돌리면 StrictMode의

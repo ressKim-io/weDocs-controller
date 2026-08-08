@@ -10,9 +10,9 @@
 
 ## 지금
 
-**M3 Phase 2 로컬 working tree 구현·DoD 검증 대기(2026-08-08).** 아직 커밋되지 않은 backend `feat/m3-phase2-current-user` working tree에 인증된 `GET /api/users/me`(JWT `sub` → `UserResponse{id,email,displayName}`), frontend `feat/m3-phase2-collaboration-caret` working tree에 메모리 인증 세션 프로필 + awareness 커서·선택 UI를 구현했다. JWT가 의도적으로 `displayName`을 싣지 않으므로(ADR-0017) REST 프로필을 세션에 함께 보관한다.
-자동 검증은 frontend `test:unit` **74/74** + build, backend compile/Checkstyle/PMD 통과. **DoD #3은 아직 열림** — Docker/Testcontainers 회귀, 4프로세스 + 2브라우저 상호 커서·선택 스크린샷·로그, 양 레포 commit/push·PR·승인·머지가 남았다.
-**다음 = Phase 2 검증·PR**: Docker backend 전체 회귀 → 2브라우저 E2E → backend/frontend 각각 commit/push → PR 생성·승인·머지.
+**M3 Phase 2 서비스 branch push·semantic review findings 반영, DoD 검증 대기(2026-08-08).** backend `feat/m3-phase2-current-user`(기능 `f4e12f4`·review-fix `7a5d179`)에 인증된 `GET /api/users/me`와 JWT `sub` UUID 경계 검증·계약 테스트, frontend `feat/m3-phase2-collaboration-caret`(기능 `bb77e50`·`e142677`·review-fix `eb433e3`)에 메모리 인증 세션 프로필 + attempt-owned bootstrap + awareness 커서·선택 UI를 구현했다. 두 서비스 branch는 origin에 push됐지만 아직 main에 머지되지 않았다.
+부분 자동 검사는 frontend `test:unit` **84/84** + build, backend Docker-free `SecurityWiringTest` + compile/Checkstyle/PMD 통과. `/api/users/me` Testcontainers 계약 테스트는 작성했지만 Docker 부재로 실행하지 못했다. **DoD #3은 아직 열림** — Docker 전체 회귀, 4프로세스 + 2브라우저 상호 커서·선택 스크린샷·로그, 양 서비스 PR·승인·머지가 남았다.
+**다음 = Phase 2 검증·PR**: Docker backend 전체 회귀 → 4프로세스 2브라우저 E2E → backend/frontend PR 생성·승인·머지.
 
 **M2 마일스톤 전체 완료(2026-08-03)** — 아래는 그 이력.
 
@@ -48,7 +48,7 @@ doc-service 신설(Phase 1) → 인증/인가(Phase 2) → 스냅샷 영속화(P
    ⚠️ **"Redis 버퍼 복원 설계"는 이 항목에서 빼냈다** — SDD §6.3이 무손실 Redis 버퍼를 **M5**로 배정하고 있고(핸드오프 구현과 한 몸), M3의 Redis는 awareness 전용이다. 여기 M3로 적혀 있던 것이 SDD와 불일치였다(정정 2026-08-07, plan 판단 2)
 7. ~~**plan-audit T4 잔여**~~ ✅ 완료(2026-08-03)
 8. ~~**M3 Phase 1**~~ ✅ 완료(2026-08-08, backend PR #34 `bb2cdea`) — ConcurrentWebSocketSessionDecorator · RoomRegistry · awareness/queryAwareness 코덱 · 릴레이 + join 발신 · 관측 계측 · 크래프트 게이트 + semantic review findings 소거.
-9. **M3 Phase 2** — 로컬 working tree 구현 완료, Docker/4프로세스 2브라우저 E2E + backend/frontend commit/push·PR·승인·머지 대기 (DoD #3) ← **지금 여기**
+9. **M3 Phase 2** — service branches push·semantic review findings 반영, Docker/4프로세스 2브라우저 E2E + backend/frontend PR·승인·머지 대기 (DoD #3) ← **지금 여기**
 
 ## 열린 트랙 (완료 시 여기부터 확인)
 
@@ -58,7 +58,7 @@ doc-service 신설(Phase 1) → 인증/인가(Phase 2) → 스냅샷 영속화(P
 |---|---|---|
 | ~~[m2-persistence-session](../plans/2026-06-30-m2-persistence-session.md)~~ | **done** | Phase 6 완료(2026-08-03, backend PR #25). M2 전체 클리어 |
 | ~~[plan-audit-improvements](../plans/2026-06-30-plan-audit-improvements.md)~~ | **done** | T4 전체 완료(2026-08-03). DoD 트래커·콜사이트·ADR 승격·완전성 보강 |
-| [**m3-presence-multiinstance**](../plans/2026-08-07-m3-presence-multiinstance.md) | **in progress** | C1~C4 완료. **C5 로컬 working tree 구현·검증/commit/PR 대기** = backend 인증 사용자 프로필 계약 + frontend 커서·선택 UI; DoD #3 E2E 증거 미확보. 이후 C6~C11 = Phase 3 Redis · 4 자원 상한+eviction · 4E 증분 저장·GC · 5 Envoy hash · 6 부하·NFR · 7 핸드오프 설계 |
+| [**m3-presence-multiinstance**](../plans/2026-08-07-m3-presence-multiinstance.md) | **in progress** | C1~C4 완료. **C5 service branches push·review findings 반영, Docker/E2E·PR/merge 대기** = backend 인증 사용자 프로필 계약 + frontend 커서·선택 UI; DoD #3 E2E 증거 미확보. 이후 C6~C11 = Phase 3 Redis · 4 자원 상한+eviction · 4E 증분 저장·GC · 5 Envoy hash · 6 부하·NFR · 7 핸드오프 설계 |
 
 
 > **2026-07-31 역방향 점검**(Phase 3+4 완료 후): `m2-phase34-engine-persistence`를 `done`으로 클로징하고
@@ -115,7 +115,7 @@ doc-service 신설(Phase 1) → 인증/인가(Phase 2) → 스냅샷 영속화(P
   (프레임워크 경로). 실측 확인 2026-07-29 → 클라이언트는 `code` 부재를 전제한 폴백이 필요하고,
   분기는 `code`/`status`로만 한다(`detail` 파싱은 서버가 금지).
 - **`POST /api/auth/signup`은 토큰을 주지 않는다** — 201 + `UserResponse`뿐. 세션이 필요하면 login을 이어 부른다.
-- **`GET /api/users/me`는 인증된 현재 사용자 프로필 계약이다(M3 Phase 2 local working tree)** — JWT `sub`로 DB 사용자를 조회해 `UserResponse{id,email,displayName}`를 반환한다. JWT에 displayName을 추가하지 않으며, 프론트는 토큰과 프로필을 메모리에만 보관한다. commit/merge 전까지 main 계약으로 오기하지 말 것.
+- **`GET /api/users/me`는 인증된 현재 사용자 프로필 계약이다(M3 Phase 2 pushed branch, main 미머지)** — canonical UUID JWT `sub`로 DB 사용자를 조회해 `UserResponse{id,email,displayName}`를 반환한다. JWT에 displayName을 추가하지 않으며, 프론트는 token/profile bootstrap을 시도 소유권으로 묶어 메모리에만 보관한다. merge 전까지 main 계약으로 오기하지 말 것.
 - **편집 가능 여부는 `canEdit`이 단일 출처다** — `myRole`은 **표시용**(배지)이다. "editor 또는 owner가 편집 가능"은
   서버 정책이라 클라가 재유도하면 역할 추가 시 즉시 갈라진다. 목록 응답에는 역할이 **없다**(N+1 회피, 계약).
 - **room = 페이지 UUID** — `parseRoom`이 UUID 형식을 요구한다. 게이트웨이는 비UUID `doc_id`를 `CheckPermission`

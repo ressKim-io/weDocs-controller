@@ -46,17 +46,18 @@ proto는 vendoring/생성물이라 **gitignored** → 빌드 전 `make proto-*`�
 
 ```sh
 # crdt-engine (Rust)
-cd weDocs-crdt-engine && make proto-sync && make check      # cargo check (proto export + tonic-prost-build)
+cd weDocs-crdt-engine && make proto-sync && cargo check --all-targets # proto export + 전체 타깃 check
 make test                                                    # proptest 수렴 골격
 
 # backend (Java) — gradlew가 Gradle 9.1 자동 download
-cd ../weDocs-backend && make proto-gen && make compile        # buf generate(java+grpc) + compileJava
+cd ../weDocs-backend && make proto-gen
+./gradlew compileJava checkstyleMain checkstyleTest pmdMain pmdTest
 
 # frontend (React) — proto 의존 없음. lockfile 그대로 재현한다.
 cd ../weDocs-frontend && npm ci && npm run test:unit && npm run build
 ```
 
-검증 통과 기준: `cargo check --all-targets`·`cargo test` / backend compile·Checkstyle·PMD / frontend `npm run test:unit`·`npm run build`. doc-service 전체 통합 테스트는 Testcontainers를 사용하므로 Docker(OrbStack/Colima/Linux daemon)가 필요하다. M3 Phase 2의 CollaborationCaret 3.27.1은 frontend 변경이 머지된 뒤 `package-lock.json`과 `npm ci`로 재현하며 수동 전역 설치하지 않는다.
+검증 통과 기준: `cargo check --all-targets`·`cargo test` / backend compile·Checkstyle·PMD / frontend `npm run test:unit`·`npm run build`. doc-service 전체 통합 테스트는 Testcontainers를 사용하므로 Docker(OrbStack/Colima/Linux daemon)가 필요하다. M3 Phase 2의 CollaborationCaret 3.27.1은 **pushed branch에 구현됐지만 main에는 아직 미머지**이며, 머지 뒤 `package-lock.json`과 `npm ci`로 재현한다. 수동 전역 설치는 하지 않는다.
 
 ## 4. 재현성 매트릭스 — git으로 따라오는 것 vs 머신 로컬
 
@@ -89,7 +90,7 @@ cd ../weDocs-frontend && npm ci && npm run test:unit && npm run build
 - **M0** ✅ 기획·proto·스캐폴딩
 - **M1** ✅ CRDT 코어·두 브라우저 수렴·Java→Rust thin trace
 - **M2** ✅ doc-service·인증/인가·스냅샷 저장/복원·outbox·E2E
-- **M3** 🔶 Presence + 멀티인스턴스 진행 중. Phase 1 awareness 로컬 릴레이는 머지됐고, Phase 2 커서·선택 UI는 로컬 working tree 구현 후 Docker/2브라우저 증거와 서비스 PR을 기다린다.
+- **M3** 🔶 Presence + 멀티인스턴스 진행 중. Phase 1은 머지됐고 Phase 2는 검증·PR/merge 단계다.
 - **M4~M6** AI co-pilot → 인프라·관측 → 문서·데모 마감
 
 자주 바뀌는 branch/PR/검증 상태는 이 문서에 복제하지 않는다. 항상 [`docs/status/current.md`](../status/current.md)를 먼저 읽고, 완료 이력은 [`docs/status/history.md`](../status/history.md), 실행 상세는 [`docs/plans/`](../plans/)에서 확인한다.
