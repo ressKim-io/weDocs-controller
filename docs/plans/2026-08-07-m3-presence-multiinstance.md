@@ -1,7 +1,7 @@
 ---
 date: 2026-08-07
 slug: m3-presence-multiinstance
-status: planned
+status: in-progress
 related:
   - adr/0011-engine-sync-fanout-bridge.md
   - adr/0013-snapshot-persistence-lifecycle.md
@@ -24,7 +24,7 @@ related:
 
 ## Context
 
-### 현재 상태 (실측 2026-08-07)
+### 착수 기준선 (실측 2026-08-07)
 
 **게이트웨이는 룸 개념이 없는 순수 1:1 브리지다.** WS 세션 하나 = 엔진 `Sync` bidi 스트림 하나.
 
@@ -118,7 +118,7 @@ gateway-3 ─┘                                  └─ 모든 게이트웨이�
 | Phase | 내용 | 레포 | 산출 게이트 |
 |---|---|---|---|
 | **1** | 게이트웨이 룸 인덱스 + awareness 릴레이 + join 시 queryAwareness 발신 (단일 인스턴스) | backend | awareness가 같은 룸 세션에 전달 + 신규 접속자가 **즉시** 기존 커서 수신 |
-| **2** | 프론트엔드 커서·선택 UI | frontend | **DoD #3 클로즈** |
+| **2** | 인증 사용자 프로필 + 프론트엔드 커서·선택 UI | backend + frontend | **DoD #3 클로즈** |
 | **3** | Redis pub/sub 크로스 게이트웨이 (**저장 키 0개**) | backend | 게이트웨이 2대에서 커서 상호 표시 + join 즉시 원격 peer 발견 |
 | **4** | 자원 상한·백프레셔 정량화 | backend + engine | SDD §15 "세션/커넥션 캡 정량화" 클로즈 |
 | **4E** | 엔진 증분 저장·GC (스냅샷 크기 절벽 해소) | engine | 대형 문서의 영속화 비활성 제거 |
@@ -263,7 +263,8 @@ awareness 페이로드는 클라이언트가 만든 `{name, color}`를 담는다
 |---|---|---|
 | `@tiptap/react` · `starter-kit` | 3.27.1 | 에디터 (ProseMirror 기반) |
 | `@tiptap/extension-collaboration` | 3.27.1 | Yjs 문서 바인딩 — **이미 배선됨** |
-| `@tiptap/y-tiptap` | 3.0.5 | `plugins/cursor-plugin.js` **export 확인** (y-prosemirror 계열) |
+| `@tiptap/extension-collaboration-caret` | 3.27.1 | 공식 awareness 커서·선택 렌더링 — **2026-08-08 채택·배선** |
+| `@tiptap/y-tiptap` | 3.0.5 | caret 확장의 내부 `yCursorPlugin` 제공 |
 | `y-websocket` | 3.0.0 | provider — `src/page/Editor.tsx:51`에서 이미 생성 중 |
 | `y-protocols` | 1.0.7 | awareness 프로토콜 |
 | `yjs` | 13.6.31 | — |
@@ -271,7 +272,7 @@ awareness 페이로드는 클라이언트가 만든 `{name, color}`를 담는다
 두 가지가 이 확인으로 바뀐다:
 
 1. **awareness는 "활성화"할 것이 없다.** `WebsocketProvider`가 내장 `awareness`를 이미 들고 있고 `Editor.tsx:51`가 그 provider를 생성한다. Phase 2의 실제 작업은 **로컬 상태 세팅 + 렌더링 플러그인 배선**이다.
-2. **커서 플러그인은 의존성 추가를 동반한다.** Tiptap 3의 공식 경로인 `@tiptap/extension-collaboration-caret`은 **미설치**다. 선택지는 둘 — ⓐ 그 확장을 추가(공식·Tiptap 통합), ⓑ 이미 있는 `@tiptap/y-tiptap`의 `cursor-plugin`을 직접 배선(의존성 0, 배선 수동). **착수 시 ⓐ부터 검토** — 이미 `extension-collaboration`을 쓰고 있어 계열이 맞다.
+2. **커서 플러그인은 공식 확장 ⓐ로 확정했다(2026-08-08).** `@tiptap/extension-collaboration-caret@3.27.1`을 정확 버전으로 추가해 기존 `extension-collaboration`과 맞췄다. 직접 `yCursorPlugin`을 감싸는 ⓑ는 수명주기·DOM 렌더링을 중복 소유하므로 기각했다.
 
 ### 작업
 
@@ -282,6 +283,14 @@ awareness 페이로드는 클라이언트가 만든 `{name, color}`를 담는다
 - **회귀 확인**: `Editor.tsx`의 StrictMode provider 라이프사이클 처리(`:28~35` 주석 — `useMemo` 금지, `useEffect`에서 생성)를 깨지 말 것. awareness 배선을 `useMemo`로 되돌리면 "closed before established" 재연결 루프가 재발한다.
 
 프론트 E2E는 여전히 CI 밖이다(4프로세스 사전조건). 증거는 로컬 실행 + 스크린샷·로그로 남긴다.
+
+### 진행 기록 (2026-08-08)
+
+- backend `feat/m3-phase2-current-user` **로컬 working tree**: 공개 `/api/auth/**` 밖의 인증된 `GET /api/users/me` 추가. 검증된 JWT `sub`를 사용자 UUID로 해석해 `UserResponse{id,email,displayName}`를 반환한다. ADR-0017이 JWT에서 email/displayName을 의도적으로 제외하므로 프론트 awareness 이름은 이 프로필 계약을 사용한다.
+- frontend `feat/m3-phase2-collaboration-caret` **로컬 working tree**: 프로필을 토큰과 함께 메모리 인증 세션에 보관하고, user UUID 결정론적 색 + effect 소유 provider의 awareness 선설정 + caret/selection 렌더링 + viewer 포커스 + 원격 이름·색 DOM 경계 정규화를 구현했다.
+- 자동 검증: frontend `npm run test:unit` **74/74** + `npm run build` 통과, backend compile/Checkstyle/PMD 통과. backend 전체 check의 Testcontainers 13 suite는 로컬 Docker 부재로 초기화 실패.
+- **남은 게이트**: 현재 변경은 양 레포 로컬 working tree에만 있다. Docker 환경 backend 전체 회귀, 4프로세스 + 2브라우저(편집자·viewer 포함) 커서·선택 스크린샷/로그, backend/frontend commit·push·PR·승인·머지가 남았다. 완료 전에는 C5와 DoD #3을 체크하지 않는다.
+- awareness 표시 이름은 클라이언트 통제라는 §1.5 수용 범위를 유지한다. 원격 color/name은 CSS 삽입·UI 훼손 방지를 위해 렌더링 경계에서 고정 형식·길이로 정규화한다.
 
 ---
 
@@ -554,7 +563,7 @@ SDD §6.3은 **장애** 케이스만 정의한다(인스턴스 down → 재라�
 
 | 축 | 내용 |
 |---|---|
-| **직접 변경** | backend `ws-gateway`(핸들러·코덱·룸 인덱스·설정·계측) · frontend `src/page/Editor.tsx` + 커서 확장 · engine `doc.rs`·`sync/mod.rs`·`snapshot/` · controller `docs/`(SDD·설계서·ADR·current.md) + Envoy 설정 + 부하 하니스 |
+| **직접 변경** | backend `ws-gateway`(핸들러·코덱·룸 인덱스·설정·계측) + `doc-service`(JWT `sub` 기반 인증 사용자 프로필 REST) · frontend `src/page/Editor.tsx` + 인증 메모리 세션 + 커서 확장 · engine `doc.rs`·`sync/mod.rs`·`snapshot/` · controller `docs/`(SDD·설계서·ADR·current.md) + Envoy 설정 + 부하 하니스 |
 | **간접 영향** | ① **문서 sync 경로** — Phase 1이 WS writer 계약(§D-6)을 바꾼다. decorator가 모든 아웃바운드를 경유하므로 sync 프레임 지연 특성이 달라질 수 있다 ② **엔진 메모리·복원** — Phase 4 eviction이 `registry.open()` 경로의 복원 빈도를 올린다(`RESTORE_BUDGET` 압박) ③ **doc-service** — 4E가 증분/청크로 가면 `SaveSnapshot` 계약·스키마 변경 ④ **proto** — 판단 1대로 Phase 1~3은 무변경, 4E·7만 후보 |
 | **롤백** | Phase별 독립 PR이라 `git revert` 단위가 곧 Phase다. Phase 3은 **저장 키가 없어 revert가 곧 완전 롤백**이다(정리할 Redis 상태 없음, §3.1). **되돌리기 어려운 것 2개**: ⓐ 4E가 스키마를 바꾸면 마이그레이션 역방향 필요 → **ADR 확정 전 착수 금지** ⓑ eviction은 되돌려도 이미 내려간 문서는 복원 경로를 타므로, 켜기 전에 §Phase 4의 세 조건을 테스트로 고정 |
 | **검증** | 아래 §검증 표. Phase 1~4는 자동 테스트, 2는 로컬 E2E + 스크린샷, 5~6은 실측 기록 |
@@ -569,8 +578,8 @@ SDD §6.3은 **장애** 케이스만 정의한다(인스턴스 down → 재라�
 - [x] **C1** `docs(plan):` 이 파일 신설 — controller main 직접 (`0e758f9`)
 - [x] **C2** `docs(sdd):` 문서 정정 **7건**(착수 시 2건 추가 발견) — ① SDD §6.3 Redis 범위를 awareness 한정으로 명시(무손실 버퍼=M5는 유지) ② SDD §6.2 시퀀스의 "+ Redis fan-out" 삭제 ③ `design/crdt-engine.md` §6 "Redis + consistent-hash" 모순 정정 ④ **SDD §15 미해결 3건(yrs GC·eviction·제로카피)의 소유 마일스톤 M2→M3 재배정** ⑤ ADR-0011 §범위의 awareness "M1.5/M5" → M3 정정 ⑥ **SDD §5 Redis 키 설계** — `pub/sub doc:{docId}`가 "update·awareness fan-out"이라 적혀 있어 판단 2와 정면 충돌(→ awareness 전용 채널로 교체) ⑦ **SDD §5 `presence:{docId}`** — M3 미사용을 명시(§3.1 저장 키 0개 결정)
 - [x] **C3** `docs(adr):` `adr/README.md` 표 갱신 — 0021·0022 등재 누락 + **0004·0005·0007이 2026-08-03 정식 승격됐는데 표는 여전히 "분리 예정"**(착수 시 발견). 후자는 이 plan 판단 3이 ADR-0007을 권위로 인용하는 근거라 그냥 둘 수 없었다
-- [ ] **C4** backend PR — Phase 1. **커밋 순서 고정**: decorator → 룸 인덱스 → 코덱(awareness/queryAwareness) → 릴레이 + **join 시 queryAwareness 발신**(§1.3) → 계측
-- [ ] **C5** frontend PR — Phase 2, **DoD #3 증거 확보**. 선행 = 커서 플러그인 ⓐ/ⓑ 판정
+- [x] **C4** backend PR #34 (`bb2cdea`) — Phase 1. 커밋 순서: decorator → 룸 인덱스 → 코덱(awareness/queryAwareness) → 릴레이 + join 시 queryAwareness 발신 → 관측 → 크래프트 게이트 findings → semantic review findings
+- [ ] **C5** backend + frontend PR — Phase 2, **DoD #3 증거 확보**. 양 레포 로컬 working tree 구현 완료(2026-08-08): 인증된 현재 사용자 프로필 계약 + 공식 CollaborationCaret 배선. 남음 = Docker 회귀 + 2브라우저 E2E 증거 + 양 레포 commit·push·PR·승인·머지
 - [ ] **C6** backend PR — Phase 3 (Redis pub/sub 2채널). **저장 키를 만들지 않는다** — Hash를 도입하면 §1.2 무해석 불변식이 깨진다(§3.1)
 - [ ] **C7** backend PR + engine PR — Phase 4 (게이트웨이 상한 + 엔진 per-doc 캡 + 문서 eviction). **eviction은 §Phase 4의 세 조건을 테스트로 고정한 뒤에만 활성화**
 - [ ] **C7E** engine PR — Phase 4E (증분 저장·GC). **선행 = 현실적 최대 문서 크기 측정** → 방향 3택 ADR
@@ -591,7 +600,7 @@ Phase 1·3·4는 동시성·자원 상한·실패 정책이 핵심이라 `concur
 | Phase | 검증 |
 |---|---|
 | 1 | 같은 룸 2세션 awareness 상호 수신 · self-echo 없음 · viewer awareness 통과 · viewer update 여전히 drop(회귀) · 세션 종료 후 릴레이 미발생 · **join 시 기존 peer에 queryAwareness가 실제로 나가고, 그 응답이 신규 세션에 도달**(§1.3 — 이게 없으면 신규 접속자가 ~15초간 기존 커서를 못 본다) |
-| 2 | 2 브라우저 커서·선택 표시 (**DoD #3**) · 한쪽이 **가만히 있어도** 다른 쪽 접속 즉시 커서가 보인다(Phase 1 발신의 e2e 확인) |
+| 2 | 무토큰 `/api/users/me` 401 · JWT `sub` 사용자의 `UserResponse` 반환 · 2 브라우저 커서·선택 표시 (**DoD #3**) · 한쪽이 **가만히 있어도** 다른 쪽 접속 즉시 커서가 보임 · viewer 쓰기 잠금 유지 + 포커스/presence 표시 |
 | 3 | 게이트웨이 2대 크로스 표시 · **gw-2 join 시 gw-1의 가만히 있는 peer가 즉시 보인다**(§3.2 재질의) · Redis 중단 시 편집 계속(fail-open) · Redis 복구 후 재동기화 코드 없이 회복 · **Redis에 키가 생기지 않음**(`--scan` 0건 — 무해석 불변식의 회귀 가드) |
 | 4 | 각 캡 초과 시 지정 close code · **세션 카운터 누수 없음**(핸드셰이크 성공 후 세션 미개설 경로 3종에서 해제 도달) · 느린 클라이언트가 룸 전체를 지연시키지 않음 · 엔진 per-doc 캡 · **evict 3조건**(세션 0 · pending save 0 · durable) 각각의 반례에서 evict 미발생 · eviction 후 재접속이 스냅샷으로 복원 |
 | 4E | 상한 초과 크기 문서가 영속화를 유지 · 재시작 후 복원 정합 · criterion 회귀 없음(가드레일 5) |
@@ -622,7 +631,7 @@ Phase 1·3·4는 동시성·자원 상한·실패 정책이 핵심이라 `concur
 > 착수 전 확인에서 2건이 닫혔다. **"5분이면 확인되는 것"을 열린 질문으로 두지 않는다**
 > (`workflow.md` §검증 없이 쓰지 않는다 — caveat는 검증 불가 영역의 사후 보강이지 대체가 아니다).
 
-1. ~~**Phase 2 프론트 스택**~~ → **닫힘 ✅**(2026-08-07): Tiptap 3.27.1 + `@tiptap/y-tiptap` 3.0.5 + y-websocket 3.0.0. 상세·잔여 판정(커서 확장 ⓐ/ⓑ) = §Phase 2
+1. ~~**Phase 2 프론트 스택**~~ → **닫힘 ✅**(2026-08-08): Tiptap 3.27.1 + 공식 `@tiptap/extension-collaboration-caret@3.27.1` 채택. 직접 `yCursorPlugin`을 감싸는 대안은 수명주기·DOM 렌더링 중복 소유로 기각. 상세 = §Phase 2
 2. **게이트웨이 재연결 로직 존재 여부** — SDD §3.1이 heartbeat + backoff + state reconciliation을 요구하나 구현 미확인. Phase 7의 전제이므로 늦어도 그 전에 확인. (참고: **클라이언트** 측 재연결은 y-websocket이 상한 2500ms backoff로 수행함이 확인됨 — 미확인인 것은 **게이트웨이↔엔진** 스트림 재연결이다)
 3. **Phase 4 캡의 초기값** — Phase 6 측정 전 임시값을 무엇으로 둘지 (보수적으로 낮게 시작 vs 관측만)
 4. **Redis 배포 형태** — 로컬 docker-compose로 M3를 넘기고 K8s 배치는 M5로 미룰지
@@ -634,22 +643,22 @@ Phase 1·3·4는 동시성·자원 상한·실패 정책이 핵심이라 `concur
 ## 재개 지점 (Resume)
 
 ```
-마지막 완료 = 2026-08-07 C1~C3. 계획 커밋(`0e758f9`) + 문서 드리프트 정정 8건
-              (C2 7건: SDD §5·§6.2·§6.3·§15×3 · 설계서 §6·§9 · ADR-0011 / C3 1건: adr/README).
-다음        = Phase 1(backend PR) 착수 — 브랜치 + PR + 건별 승인.
+마지막 완료 = C4 Phase 1 — backend PR #34(`bb2cdea`) 머지(2026-08-08).
+현재        = C5 Phase 2 양 레포 로컬 working tree 구현 완료.
+              backend `feat/m3-phase2-current-user`: 인증된 GET /api/users/me.
+              frontend `feat/m3-phase2-collaboration-caret`: 세션 프로필 + awareness caret/selection.
+              자동 검증: frontend 74/74 + build, backend compile/Checkstyle/PMD.
+다음        = Docker/Testcontainers 전체 회귀 → 4프로세스 2브라우저(editor/viewer) 스크린샷·로그
+              → backend/frontend 각각 commit·push → PR 생성·승인·머지 → C5·DoD #3 체크.
 
 주의 (다음 세션이 밟을 지뢰):
-1. Phase 1의 **첫 커밋은 ConcurrentWebSocketSessionDecorator**여야 한다(§1.1). 나중에 붙이면
-   그 사이 모든 fan-out 코드가 미검증 동시성 위에 쌓인다. §1.3의 join-시 발신이 이 필요를 키웠다.
-2. **queryAwareness는 "릴레이"가 아니라 "게이트웨이 발신"이다**(§1.3). y-websocket은 WS로
-   queryAwareness를 보내지 않는다(BroadcastChannel 전용) — 릴레이만 넣으면 dead code이고
-   신규 접속자가 최대 ~15초간 기존 커서를 못 본다. 이 방향을 되돌리지 말 것.
-3. **Phase 3에 Redis 저장 키를 만들지 말 것**(§3.1). Hash를 두면 게이트웨이가 awareness 페이로드를
-   디코딩해야 하고, 그 순간 §1.2가 ADR-0011 기각사유①을 무력화한 논거와 §1.5의 옵션 B 기각 논거가
-   동시에 무너진다. 유령 커서는 **클라이언트가 30초 타임아웃으로 스스로 지운다**(실측 확인).
-   join 시 원격 peer 발견은 `awareness:query` 채널 재질의로 해결한다(§3.2).
-4. **eviction은 "유휴"가 조건이 아니다** — 세션 0 · pending save 0 · durable의 논리곱(§Phase 4).
-   구독자가 붙은 문서를 evict하면 fan-out이 에러 없이 조용히 끊긴다.
-5. 라인 번호는 2026-08-07 실측이다. 서비스 레포가 앞서면 어긋나므로 `rg`로 심볼을 다시 잡을 것.
-6. C2는 문서 5건 정정이 한 덩어리다 — SDD §15 재배정(M2 이월 3건)을 빠뜨리면 이 발견이 증발한다.
+1. **현재 서비스 변경은 아직 커밋 전 working tree다.** 완료·머지로 오기하지 말고 각 레포 status부터 확인한다.
+2. JWT에는 ADR-0017에 따라 displayName이 없다. awareness 이름은 인증된 `/api/users/me` 프로필을
+   메모리 세션에 붙여 얻고, email을 커서 이름으로 노출하거나 localStorage에 프로필/토큰을 저장하지 않는다.
+3. provider/Y.Doc 생성은 React effect가 소유한다. `useMemo` 생성으로 되돌리면 StrictMode의
+   mount→cleanup→remount에서 파괴된 provider 재사용·재연결 루프가 재발한다.
+4. awareness name/color는 클라이언트 통제 표시 데이터다. DOM 경계 정규화를 제거하거나 권한 판정에
+   사용하지 않는다. 실제 인가는 JWT + CheckPermission 단일 경로다.
+5. Phase 3에 Redis 저장 키를 만들지 않는다(§3.1). Hash는 gateway의 무해석 불변식을 깨뜨린다.
+6. eviction은 세션 0 · pending save 0 · durable의 논리곱이다(§Phase 4).
 ```

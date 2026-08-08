@@ -24,8 +24,9 @@
 ## 3. 서비스 명세
 
 ### 3.1 WS Gateway + Presence (Java / Virtual Thread)
-- **책임**: WebSocket 종단, JWT 핸드셰이크 검증, 문서 sync relay(엔진과 bidi), awareness fan-out
-- **외부 I/F**: WebSocket / **내부 I/F**: gRPC(bidi) → CRDT Engine, gRPC → Doc Service, Redis pub/sub
+- **책임**: WebSocket 종단, JWT 핸드셰이크 검증, 문서 sync relay(엔진과 bidi), 프로세스 로컬 `RoomRegistry` 기반 awareness/queryAwareness fan-out
+- **awareness 상태 경계**: `RoomRegistry`는 세션 역인덱스인 휘발성 best-effort 상태다. 게이트웨이는 awareness 페이로드를 해석·저장하지 않으며 presence 권위가 아니다. 같은 인스턴스는 로컬 릴레이, 크로스 인스턴스는 M3 Phase 3 Redis pub/sub이 담당한다.
+- **외부 I/F**: WebSocket / **내부 I/F**: gRPC(bidi) → CRDT Engine, gRPC → Doc Service, Redis pub/sub(M3 Phase 3 예정)
 - **동시성 모델**:
   - **Virtual Thread per connection** — blocking 코드로 단순하게. JEP 491로 synchronized pinning 없음.
   - VT 풀링 금지(task당 생성). 동시성 제한은 **Semaphore**로.
@@ -52,8 +53,9 @@
   - GC: yrs가 인접 struct 병합·삭제 콘텐츠 비움으로 tombstone 메타 축소(완전 삭제 불가, 완화)
 
 ### 3.3 Doc/Session 서비스 (Java) — M2 신설
-- **책임**: 워크스페이스·페이지 트리 메타·권한(상속)·멤버십, 룸 lifecycle, 스냅샷 영속화(저장·로드), JWT 발급/검증
-- **I/F**: REST(클라이언트: 페이지 CRUD·워크스페이스·멤버 초대·인증) + gRPC(내부: `CheckPermission`·`SaveSnapshot`·`LoadSnapshot`·`GetDocMeta`)
+- **책임**: 워크스페이스·페이지 트리 메타·권한(상속)·멤버십, 룸 lifecycle, 스냅샷 영속화(저장·로드), JWT 발급/검증, 인증 사용자 공개 프로필 조회
+- **I/F**: REST(클라이언트: 페이지 CRUD·워크스페이스·멤버 초대·인증·현재 사용자 프로필) + gRPC(내부: `CheckPermission`·`SaveSnapshot`·`LoadSnapshot`·`GetDocMeta`)
+- **현재 사용자 계약**: 인증된 `GET /api/users/me`의 상세·awareness 사용 경계는 [SDD §8](3-data-sync-ai-auth.md#8-인증--인가-adr-0014)를 따른다.
 - **저장소**: PostgreSQL (page-tree 스키마 §5). 트리 이동=트랜잭션·사이클 검사([ADR-0012](../adr/0012-crdt-boundary-content-vs-tree.md))
 - **이벤트**: 페이지 변경을 **앱레벨 transactional outbox**로([ADR-0015](../adr/0015-outbox-app-level.md)) — DB 트랜잭션 동봉. relay·Kafka 발행=M4. ⚠️ OTel context(traceparent)를 payload에 주입해야 trace가 이어짐.
 

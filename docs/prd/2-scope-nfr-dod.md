@@ -48,11 +48,11 @@
 
 ## 7. 성공 기준 (Definition of Done)
 
-> 각 항목 끝에 **달성 마일스톤** 태그. 진척 추적 상세는 [개선 plan T4](../plans/2026-06-30-plan-audit-improvements.md) `docs/status/dod-tracker.md`(예정).
+> 각 항목 끝에 **달성 마일스톤** 태그. 상세 증거의 단일 출처는 [DoD 트래커](../status/dod-tracker.md)다.
 
 - [x] 두 브라우저에서 같은 문서를 동시 편집해 충돌 없이 수렴한다 — **M1 ✅** (E2E green `e8f0c83`)
-- [ ] 재접속 후 문서 상태가 복원된다 — **M2**
-- [ ] 타 사용자 커서·선택이 실시간 표시된다 — **M3** (awareness=M1.5 연기)
+- [x] 재접속 후 문서 상태가 복원된다 — **M2 ✅** (SnapshotRestoreE2ETest 8건, backend PR #25 `ba0406c`)
+- [~] 타 사용자 커서·선택이 실시간 표시된다 — **M3 🔶** (로컬 구현·자동 검증 완료, 2브라우저 E2E·commit/merge 증거 대기)
 - [ ] 문서 근거 기반 AI 답변이 스트리밍으로 출력된다 — **M4**
 - [ ] 로컬 GPU 과부하 시 클라우드로 폴백된다 — **M4**
 - [~] Java→Rust→Python 호출이 단일 trace로 관측된다 — **M1 = 2-hop(Java→Rust) thin 증명 ✅ / 3-hop(+Python) = M4**

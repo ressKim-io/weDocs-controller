@@ -2,7 +2,7 @@
 
 > 한 페이지로 시스템 전체를 조망한다. 상세는 각 링크 문서 참조.
 
-**최종 갱신**: 2026-08-03
+**최종 갱신**: 2026-08-08
 
 ---
 
@@ -13,25 +13,29 @@
 ## 서비스 토폴로지
 
 ```
-┌──────────────┐       WebSocket        ┌──────────────┐     gRPC bidi     ┌──────────────┐
-│   Frontend   │ ◄───────────────────► │  WS Gateway  │ ◄──────────────► │ CRDT Engine  │
-│  (React/Yjs) │                       │ (Java VT)    │                   │   (Rust/yrs) │
-└──────────────┘                       └──────┬───────┘                   └──────┬───────┘
-                                              │ gRPC                              │ gRPC
-                                              ▼                                  ▼
-                                       ┌──────────────┐              SaveSnapshot/LoadSnapshot
-                                       │ Doc Service  │ ◄───────────────────────────┘
-                                       │ (Java/Spring)│
-                                       └──────┬───────┘
-                                              │ SQL
-                                              ▼
-                                       ┌──────────────┐
-                                       │  PostgreSQL   │
-                                       └──────────────┘
+┌──────────────────────┐       WebSocket        ┌──────────────────────┐     gRPC bidi     ┌──────────────┐
+│ Frontend             │ ◄───────────────────► │ WS Gateway           │ ◄──────────────► │ CRDT Engine  │
+│ React/Tiptap/Yjs     │   sync + awareness    │ Java VT + RoomRegistry│   document sync   │ Rust/yrs     │
+│ CollaborationCaret   │                       └──────────┬───────────┘                   └──────┬───────┘
+└──────────────────────┘                                  │ gRPC                                   │ gRPC
+                                                          ▼                                       ▼
+                                                   ┌──────────────┐                   SaveSnapshot/LoadSnapshot
+                                                   │ Doc Service  │ ◄──────────────────────────────┘
+                                                   │ Java/Spring  │
+                                                   └──────┬───────┘
+                                                          │ SQL
+                                                          ▼
+                                                   ┌──────────────┐
+                                                   │ PostgreSQL   │
+                                                   └──────────────┘
+
+awareness: 같은 gateway 안에서는 RoomRegistry로 불투명 릴레이(Phase 1 완료)
+           gateway 간 Redis pub/sub 전파는 M3 Phase 3 예정 — 아직 배포되지 않음
+문서 sync: Redis를 거치지 않고 CRDT Engine의 문서별 broadcast가 권위
 
                     ┌──────────────┐     Kafka (M4)     ┌──────────────┐
-                    │  Outbox Relay │ ──────────────── → │  AI Service  │
-                    │  (M4, Java)  │                    │ (Python/RAG) │
+                    │ Outbox Relay │ ─────────────────► │ AI Service   │
+                    │ (M4, Java)   │                    │ Python/RAG   │
                     └──────────────┘                    └──────────────┘
 ```
 
@@ -42,7 +46,7 @@
 | `weDocs-controller` | — | proto SSOT, ADR, plan, infra(kustomize) |
 | `weDocs-backend` | Java 25 | ws-gateway + doc-service (Spring Boot) |
 | `weDocs-crdt-engine` | Rust | yrs 기반 CRDT 엔진 (tonic gRPC) |
-| `weDocs-frontend` | TypeScript | React + Tiptap + Yjs |
+| `weDocs-frontend` | TypeScript | React + Tiptap Collaboration + Yjs/y-websocket + CollaborationCaret |
 | `weDocs-ai-service` | Python | FastAPI + LlamaIndex (M4 신설 예정) |
 
 ## 핵심 결정 (ADR)
@@ -63,7 +67,7 @@
 |---|---|---|
 | M1 | CRDT 코어 — 두 브라우저 수렴 | ✅ |
 | M2 | 영속화·세션·권한 | ✅ |
-| M3 | Presence — 커서·선택 fan-out (멀티인스턴스) | ⬜ |
+| M3 | Presence — 커서·선택 fan-out (멀티인스턴스) | 🔶 Phase 1 머지, Phase 2 로컬 구현·E2E/머지 대기 |
 | M4 | AI co-pilot — RAG 스트리밍, GPU 폴백 | ⬜ |
 | M5 | 인프라·관측 — GitOps, 단일 trace | ⬜ |
 | M6 | 마감 — 문서·데모·벤치마크 | ⬜ |

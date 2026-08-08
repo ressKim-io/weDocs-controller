@@ -22,7 +22,7 @@
 ## 5-repo 폴리레포
 | 레포 | 스택 | 역할 |
 |---|---|---|
-| `frontend` | React + Tiptap + Yjs | 에디터, 커스텀 y-websocket provider |
+| `frontend` | React + Tiptap + Yjs/y-websocket | 에디터, Collaboration + 공식 CollaborationCaret 기반 awareness 커서·선택 UI |
 | `backend` | Java (gradle multi-module) | ws-gateway, doc-service |
 | `ai-service` | Python | FastAPI RAG + Kafka indexer |
 | `crdt-engine` | Rust | yrs 엔진 + tonic gRPC (bidi streaming) |
@@ -53,8 +53,12 @@ controller/
 
 ## 마일스톤 (리스크 우선)
 - **M0** ✅ 기획·proto·스캐폴딩
-- **M1** ✅ CRDT 코어: 두 브라우저 동시 편집 수렴(Yjs↔yrs + bidi) + 폴리글랏 단일 trace(Java→Rust, 가드레일 4) — Phase 1~5 완료(2026-06-30)
-- **M2** ← *다음*: 영속화·세션·권한(doc-service 신설) · M3 Presence · M4 AI co-pilot · M5 인프라·관측 · M6 마감
+- **M1** ✅ CRDT 코어: 두 브라우저 수렴 + Java→Rust thin trace
+- **M2** ✅ 영속화·세션·권한: 스냅샷 저장/복원 + 인증/인가 + E2E
+- **M3** 🔶 Presence + 멀티인스턴스: Phase 1 머지, Phase 2 로컬 구현·DoD 검증/머지 대기
+- **M4** AI co-pilot · **M5** 인프라·관측 · **M6** 마감
+
+최신 세부 상태와 다음 작업은 [`docs/status/current.md`](docs/status/current.md)만을 따른다.
 
 ## 가드레일
 [`CLAUDE.md`](CLAUDE.md): proto는 여기서 시작 · AI는 CRDT 의존 금지 · 게이트웨이 JNI 금지 · 서비스 간 gRPC+OTel · CRDT는 "엔진"(최적화+벤치) · M1 머지 전 proptest 통과.

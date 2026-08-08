@@ -3,7 +3,7 @@
 > PRD §7 DoD 9개 항목의 마일스톤별 진척·검증증거 추적.
 > NFR(§6)별 측정수단·소유 마일스톤 매핑 포함.
 
-**최종 갱신**: 2026-08-03
+**최종 갱신**: 2026-08-08
 
 ---
 
@@ -13,7 +13,7 @@
 |---|---|---|---|---|
 | 1 | 두 브라우저 동시 편집 수렴 | M1 | ✅ | E2E green `e8f0c83`, proptest 수렴 |
 | 2 | 재접속 후 문서 상태 복원 | M2 | ✅ | SnapshotRestoreE2ETest 8건 green (PR #25 `ba0406c`), 엔진 save/load 실기동 확인 (PR #15·#17) |
-| 3 | 타 사용자 커서·선택 실시간 표시 | M3 | ⬜ | — |
+| 3 | 타 사용자 커서·선택 실시간 표시 | M3 | 🔶 | 로컬 working tree 구현 + frontend 74/74·build, backend compile/Checkstyle/PMD 통과. Docker 회귀·4프로세스 2브라우저 스크린샷/로그·commit/PR/merge 대기 |
 | 4 | 문서 근거 AI 답변 스트리밍 출력 | M4 | ⬜ | — |
 | 5 | 로컬 GPU 과부하 시 클라우드 폴백 | M4 | ⬜ | — |
 | 6 | Java→Rust→Python 단일 trace 관측 | M1(2-hop) / M4(3-hop) | 🔶 | 2-hop(Java→Rust) thin 증명 ✅ M1. 3-hop = M4 대기 |

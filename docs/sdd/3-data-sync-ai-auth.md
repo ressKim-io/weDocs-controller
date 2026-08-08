@@ -32,9 +32,9 @@ doc_chunks(id, doc_id, chunk_text, embedding vector(N), metadata, created_at)
 | 축 | 채널 | 영속성 | 경로 |
 |---|---|---|---|
 | 문서 sync | binary update | 영속(스냅샷) | Yjs ↔ Gateway ↔ CRDT Engine(**bidi**) |
-| awareness | awareness update | 휘발(TTL) | Yjs ↔ Gateway ↔ Redis pub/sub |
+| awareness | awareness update | 휘발(클라이언트 timeout) | Yjs ↔ Gateway 로컬 `RoomRegistry`; 크로스 gateway ↔ Redis pub/sub(**Phase 3 예정**) |
 
-휘발 커서를 CRDT에 섞지 말 것(tombstone 오염).
+휘발 커서를 CRDT에 섞지 말 것(tombstone 오염). Phase 1의 게이트웨이는 같은 프로세스 안에서 불투명 awareness/queryAwareness 프레임만 릴레이하며, Redis는 아직 필요하지 않다.
 
 ### 6.2 신규 접속 시퀀스
 ```
@@ -48,7 +48,7 @@ client: 로컬 Yjs 적용(즉시 편집 가능)
 
 ### 6.3 수평 확장
 - CRDT Engine: docId consistent hashing(같은 문서 = 같은 인스턴스). Istio waypoint + DestinationRule.
-- WS Gateway: 무상태. 크로스-인스턴스 Redis pub/sub은 **awareness 전용**이다 — 문서 update는 consistent-hash가 같은 doc의 모든 세션을 같은 엔진에 모아주므로 게이트웨이가 몇 대든 엔진 broadcast만으로 전파된다(게이트웨이 fan-out 코드 불요).
+- WS Gateway: **권위·영속 도메인 상태는 없음**. 프로세스 로컬 `RoomRegistry`는 awareness 대상 조회용 휘발성 세션 역인덱스이며, 페이로드를 해석·저장하지 않는다. 같은 gateway는 로컬 릴레이하고, 크로스-인스턴스 Redis pub/sub은 **awareness 전용 Phase 3**이다. 문서 update는 consistent-hash가 같은 doc의 모든 세션을 같은 엔진에 모아 엔진 broadcast로 전파한다.
 - 장애: 엔진 인스턴스 down → 문서 재라우팅 → 복원. **M2 보장경계 = 최신 스냅샷**(엔진 ensure→`LoadSnapshot`→`apply_update_v1`(신규=빈 Doc)→SyncStep2, [ADR-0013](../adr/0013-snapshot-persistence-lifecycle.md)). 무손실(Redis 버퍼) = M5.
 
 ---
@@ -78,6 +78,9 @@ SSE 중단 처리: 추론 실패 시 error 이벤트 + 폴백 재시도.
 
 ## 8. 인증 / 인가 ([ADR-0014](../adr/0014-auth-authz-boundary.md))
 - **인증**: JWT 발급=Doc 서비스(REST 로그인). 검증=게이트웨이(WS 핸드셰이크)·Doc 서비스(REST). M2는 doc-service 내장(분리=후속).
+- **인증 사용자 프로필**: 인증된 `GET /api/users/me`는 검증된 JWT `sub`를 UUID로 해석해 DB의 `UserResponse{id,email,displayName}`를 반환한다. ADR-0017에 따라 JWT에는 email/displayName을 싣지 않으므로, 프론트는 로그인 토큰과 이 프로필을 **메모리 세션에만** 함께 보관한다.
+- **awareness 표시 계약(M3 Phase 2)**: 프론트는 user UUID를 결정론적으로 색에 매핑하고 `user{name,color}`를 awareness에 설정해 공식 Tiptap `CollaborationCaret`으로 원격 커서·선택을 렌더링한다. viewer도 문서 쓰기는 잠기지만 포커스·presence 발행은 허용한다. `WebsocketProvider`/Y.Doc 생성·파괴는 React effect가 소유한다(StrictMode에서 `useMemo` 소유 금지).
+- **awareness 신뢰 경계**: `name`·`color`는 인증·인가 근거가 아닌 클라이언트 통제 **표시 데이터**다. 원격 값은 DOM 렌더링 경계에서 이름 길이·색 형식을 정규화해 CSS 삽입/UI 훼손을 막는다. 접근 권한은 계속 JWT + `CheckPermission`만 판정하며 게이트웨이는 awareness 페이로드를 디코딩하지 않는다.
 - **WS 토큰 전달**: `Sec-WebSocket-Protocol` 서브프로토콜(브라우저 헤더 커스텀 불가 우회, query param 로그유출 회피).
 - **인가**: connect 시 `DocService.CheckPermission(user_id, page_id)` → effective level(상속 해석). 게이트웨이가 JWT 검증 후 user_id 전달(proto 토큰필드 불요).
 - **viewer write-block**: 게이트웨이 1차(client→server update drop) + 엔진 방어(D-5). 실패 close: 인증=4401·인가=4403.

@@ -3,7 +3,7 @@
 다른 머신(Linux 등)에서 `git clone`/`git pull` 후 **Mac 개발 환경과 동일하게** 빌드·작업하기 위한 가이드.
 "무엇이 git으로 따라오고, 무엇이 머신 로컬인지"를 명확히 한다.
 
-> 진입점: [PRD](../PRD.md) → [SDD](../SDD.md) → [ADR](../adr/) → 진행 SSOT [`plans/2026-06-25-m1-convergence-impl.md`](../plans/2026-06-25-m1-convergence-impl.md) §재개 지점 (+ 개선 트랙 [`plans/2026-06-30-plan-audit-improvements.md`](../plans/2026-06-30-plan-audit-improvements.md)).
+> 진입점: [PRD](../PRD.md) → [SDD](../SDD.md) → [ADR](../adr/) → 현재 상태·다음 작업 SSOT [`status/current.md`](../status/current.md). 완료 이력은 [`status/history.md`](../status/history.md), 상세 실행 계획은 [`plans/`](../plans/).
 
 ---
 
@@ -52,11 +52,11 @@ make test                                                    # proptest 수렴 �
 # backend (Java) — gradlew가 Gradle 9.1 자동 download
 cd ../weDocs-backend && make proto-gen && make compile        # buf generate(java+grpc) + compileJava
 
-# frontend (React) — proto 의존 없음
-cd ../weDocs-frontend && npm install && npm run build
+# frontend (React) — proto 의존 없음. lockfile 그대로 재현한다.
+cd ../weDocs-frontend && npm ci && npm run test:unit && npm run build
 ```
 
-검증 통과 기준(Mac 실측): `cargo check --all-targets`·`cargo test` / `./gradlew :ws-gateway:compileJava` / `npm run build` 모두 성공.
+검증 통과 기준: `cargo check --all-targets`·`cargo test` / backend compile·Checkstyle·PMD / frontend `npm run test:unit`·`npm run build`. doc-service 전체 통합 테스트는 Testcontainers를 사용하므로 Docker(OrbStack/Colima/Linux daemon)가 필요하다. M3 Phase 2의 CollaborationCaret 3.27.1은 frontend 변경이 머지된 뒤 `package-lock.json`과 `npm ci`로 재현하며 수동 전역 설치하지 않는다.
 
 ## 4. 재현성 매트릭스 — git으로 따라오는 것 vs 머신 로컬
 
@@ -86,14 +86,13 @@ cd ../weDocs-frontend && npm install && npm run build
 
 ## 6. 현재 상태 / 다음 (roadmap)
 
-- **M0** ✅ 기획·proto·스캐폴딩.
-- **M1** 🔶 수직 슬라이스 — **수렴 증명(Phase 1~3) + OTel engine(Phase 4.1) 머지**, 게이트웨이 OTel·live 검증·마감 남음. proto 배포 = buf 원격 git input(ADR-0010, `proto-v0.1.0`).
-  - **Phase 1~3 ✅**: `yrs 머지 + tokio::broadcast fan-out`(crdt-engine) ↔ `lib0 코덱 + WS↔gRPC 브리지`(ws-gateway) ↔ `y-websocket E2E 수렴`(frontend). 로컬 engine+gateway 실기동으로 `WS→gateway→gRPC→engine→fan-out` 수렴 실측 green.
-  - **Phase 4.1 ✅**: engine OTel(Rust, PR #2 머지 f2cdea2) — `traceparent` 수동 추출→span, **thin 2-hop(세션 레벨)**, otel-expert cross-check 반영.
-  - **다음**: 4.2 게이트웨이 javaagent(앱 코드 0) → 4.3 **live 검증은 Linux**(docker+Jaeger, trace_id 일치) → Phase 5 마감(dev-log·ADR·plan done).
-  - 가드레일: **proptest 수렴(commutative/associative/idempotent) 통과 = Phase 1에서 충족**.
-  - 진행 SSOT: [`docs/plans/2026-06-25-m1-convergence-impl.md`](../plans/2026-06-25-m1-convergence-impl.md) §재개 지점.
-- M2~M6: [SDD §13](../sdd/5-project-milestones-guardrails.md) 참조.
+- **M0** ✅ 기획·proto·스캐폴딩
+- **M1** ✅ CRDT 코어·두 브라우저 수렴·Java→Rust thin trace
+- **M2** ✅ doc-service·인증/인가·스냅샷 저장/복원·outbox·E2E
+- **M3** 🔶 Presence + 멀티인스턴스 진행 중. Phase 1 awareness 로컬 릴레이는 머지됐고, Phase 2 커서·선택 UI는 로컬 working tree 구현 후 Docker/2브라우저 증거와 서비스 PR을 기다린다.
+- **M4~M6** AI co-pilot → 인프라·관측 → 문서·데모 마감
+
+자주 바뀌는 branch/PR/검증 상태는 이 문서에 복제하지 않는다. 항상 [`docs/status/current.md`](../status/current.md)를 먼저 읽고, 완료 이력은 [`docs/status/history.md`](../status/history.md), 실행 상세는 [`docs/plans/`](../plans/)에서 확인한다.
 
 ## 7. 자주 막히는 곳
 
